@@ -1,5 +1,9 @@
 module GDTSM
 
-# Write your package code here.
+function foo()
+    return 5
+end
+
+export foo
 
 end
