@@ -1,0 +1,13 @@
+name = "GDTSM"
+uuid = "7e9258e2-c4b0-4fc1-89eb-9ad7f6b40598"
+authors = ["Preference <econ.preference@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.8.2"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
