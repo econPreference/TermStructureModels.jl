@@ -1,5 +1,3 @@
-
-module Theoretical
 #This module includes analytical results of our no-arbitrage Gaussian dynamic term structure model. For a specific theoretical settings, see our paper.
 
 """
@@ -17,7 +15,11 @@ function GQ_XX(; κQ)
         0 0 exp(-κQ)]
     return X
 end
-function GQ_XX()
+
+"""
+It returns the dimension of Q-dynamics
+"""
+function dimQ()
     return 3
 end
 
@@ -32,7 +34,7 @@ It solves the difference equation for b_τ, where ``P_{\\tau,t}=\\exp[-a_{\\tau}
 ===
 """
 function bτ(N; κQ)
-    dQ = GQ_XX()
+    dQ = dimQ()
     GQ_XX_ = GQ_XX(; κQ)
     ι = ones(dQ)
 
@@ -58,7 +60,7 @@ e_{\\mathcal{O},t}
 ===
 """
 function Bₓ(bτ_, τₙ)
-    return bτ_[:, τₙ] ./ τₙ
+    return bτ_[:, τₙ] ./ τₙ'
 end
 
 
@@ -90,6 +92,19 @@ function aτ(N, bτ_, τₙ; kQ_infty, ΩPP, Wₚ)
     T1X_ = T1X(Bₓ(bτ_, τₙ); Wₚ)
     for i in 2:N
         a[i] = a[i-1] - Jensens(i, bτ_, T1X_; ΩPP) + (i - 1) * kQ_infty
+    end
+
+    return a
+end
+function aτ(N, bτ_; kQ_infty, ΩXX)
+
+    a = zeros(N)
+    for i in 2:N
+        J = 0.5 * ΩXX
+        J = bτ_[:, i-1]' * J * bτ_[:, i-1]
+        J /= 1200
+
+        a[i] = a[i-1] - J + (i - 1) * kQ_infty
     end
 
     return a
@@ -170,7 +185,7 @@ end
 """
 This function caluclat the term premium estimates. 
 
-    * Input: τ is a target maturity. bτ and T1X is calculated from the corresponding functions. yields and macros are the data. GP_F is dP by p*dP matrix that contains slope coefficients of the transition equation. 
+    * Input: τ is a target maturity. bτ and T1X is calculated from the corresponding functions. yields and macros are the data. GₚFF is dP by p*dP matrix that contains slope coefficients of the transition equation. 
         * Remember that data should contains initial conditions, that is t = 0,1,...,p-1. 
 
     * Output: 
@@ -180,7 +195,7 @@ This function caluclat the term premium estimates.
         * Jensens_: Jensen's Ineqaulity part in TP
 ===
 """
-function TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GP_F, ΩPP)
+function TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
 
     # Jensen's Ineqaulity term
     Jensens_ = 0
@@ -190,7 +205,7 @@ function TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GP_F, ΩPP)
     Jensens_ /= -τ
 
     # Constant term
-    dQ = GQ_XX()
+    dQ = dimQ()
     KₚQ = zeros(dQ)
     KₚQ[1] = kQ_infty
     λₚ = KₚP - KₚQ
@@ -201,13 +216,13 @@ function TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GP_F, ΩPP)
     const_TP /= -τ
 
     # Time-varying part
-    dP = size(GP_F)[1]
-    p = size(GP_F)[2] / dP
+    dP = size(GₚFF)[1]
+    p = size(GₚFF)[2] / dP
     T = size(PCs)[1] # time series length including intial conditions
     TV_TP = Matrix{Float64}(undef, T - p, dP) # saving place
 
     GQ_PP = T1X_ * GQ_XX(; κQ) / T1X_
-    Λ_PF = GP_F[1:dQ, :]
+    Λ_PF = GₚFF[1:dQ, :]
     Λ_PF[1:dQ, 1:dQ] -= GQ_PP
     for t = (p+1):T
         # prediction part
@@ -216,12 +231,12 @@ function TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GP_F, ΩPP)
         for horizon = 1:(τ-2)
             regressors = vec([lag_PCs[1:p, :]'
                 lag_macros[1:p, :]'])
-            predicted = (GP_F * regressors)'
-            pushfirst!(lag_PCs, predicted[1:dQ])
-            pushfirst!(lag_macros, predicted[(dQ+1):end])
+            predicted = (GₚFF * regressors)'
+            lag_PCs = vcat(predicted[1:dQ], lag_PCs)
+            lag_macros = vcat(predicted[(dQ+1):end], lag_macros)
         end
-        lag_PCs = lag_PCs[end:-1:1, :]
-        lag_macros = lag_macros[end:-1:1, :]
+        lag_PCs = reverse(lag_PCs, dims=1)
+        lag_macros = reverse(lag_macros, dims=1)
         lag_X = [lag_PCs lag_macros]
 
         # Calculate TP
@@ -239,6 +254,109 @@ function TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GP_F, ΩPP)
     return TP, TV_TP, const_TP, Jensens_
 end
 
-export GQ_XX, bτ, Bₓ, T1X, aτ, Jensens, Aₓ, T0P, Aₚ, Bₚ, TP
+function PCs2latents(saved_θ, yields, τₙ)
 
+    iteration = length(saved_θ)
+    saved_θ_X = []
+    @showprogress 1 "Moving to the latent space..." for iter in 1:iteration
+
+        κQ = saved_θ[iter]["κQ"]
+        kQ_infty = saved_θ[iter]["kQ_infty"]
+        ϕ = saved_θ[iter]["ϕ"]
+        σ²FF = saved_θ[iter]["σ²FF"]
+
+        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+        ϕ0 = C \ ϕ0
+        KₚF = ϕ0[:, 1]
+        GₚFF = ϕ0[:, 2:end]
+        ΩFF = (C \ diagm(σ²FF)) / C'
+
+        X, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = _PCs2latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+
+        push!(saved_θ_X,
+            Dict(
+                "X" => X,
+                "κQ" => κQ,
+                "kQ_infty" => kQ_infty,
+                "KₚXF" => KₚXF,
+                "GₚXFXF" => GₚXFXF,
+                "ΩXFXF" => ΩXFXF
+            ))
+    end
+
+    return saved_θ_X
+end
+
+"""
+    * Input: yields should exclude initial conditions
+===
+"""
+function _PCs2latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+
+    # Dimension
+    dP = size(ΩFF)[1]
+    dQ = dimQ()
+    dM = dP - dQ
+    p = Int(size(GₚFF, 2) / dP)
+
+    # PCs
+    std_yields = yields .- mean(yields, dims=1)
+    std_yields ./= std(yields, dims=1)
+    V = reverse(eigen(cov(std_yields)).vectors, dims=2)
+    Wₚ = V[:, 1:dQ]'
+    PCs = (Wₚ * yields')'
+
+    # statistical Parameters
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    T1X_ = T1X(Bₓ_; Wₚ)
+
+    aτ_ = aτ(τₙ[end], bτ_, τₙ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ], Wₚ)
+    Aₓ_ = Aₓ(aτ_, τₙ)
+    T0P_ = T0P(T1X_, Aₓ_; Wₚ)
+
+    ΩXFXF = ΩFF
+    ΩXFXF[1:dQ, 1:dQ] = (T1X_ \ ΩFF[1:dQ, 1:dQ]) / T1X_'
+    ΩXFXF[(dQ+1):end, 1:dQ] = ΩFF[(dQ+1):end, 1:dQ] / T1X_'
+    ΩXFXF[1:dQ, (dQ+1):end] = ΩXFXF[(dQ+1):end, 1:dQ]'
+
+    GₚXFXF = GₚFF
+    GₚXX_sum = zeros(dQ, dQ)
+    GₚMX_sum = zeros(dM, dQ)
+    for l in 1:p
+        GₚXX_l = T1X_ \ GₚXFXF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] * T1X_
+        GₚXFXF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] = GₚXX_l
+        GₚXX_sum += GₚXX_l
+
+        GₚMX_l = GₚFF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] * T1X_
+        GₚXFXF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] = GₚMX_l
+        GₚMX_sum += GₚMX_l
+
+        GₚXFXF[1:dQ, (dP*(l-1)+dQ+1):(dP*l)] = T1X_ \ GₚXFXF[1:dQ, (dP*(l-1)+dQ+1):(dP*l)]
+    end
+
+    KₚXF = KₚF
+    KₚXF[1:dQ] = T1X_ \ KₚF[1:dQ] + (I(dQ) - GₚXX_sum) * T0P_
+    KₚXF[(dQ+1):end] = KₚF[(dQ+1):end] - GₚMX_sum * T0P_
+
+    # Latent factors
+    X = (T0P_ .+ T1X_ \ PCs')'
+
+    return X, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF
+
+end
+
+function PCA(yields, p)
+
+    dQ = dimQ()
+    std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
+    std_yields ./= std(yields[p+1:end, :], dims=1)
+    V = reverse(eigen(cov(std_yields)).vectors, dims=2)
+    Wₚ = V[:, 1:dQ]'
+    Wₒ = V[:, (dQ+1):end]'
+
+    PCs = (Wₚ * yields')' # Main dQ PCs
+    OCs = (Wₒ * yields')' # remaining PCs
+
+    return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ
 end

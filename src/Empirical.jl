@@ -1,11 +1,3 @@
-module Empirical
-
-using LinearAlgebra, Statistics, Distributions, Parameters, SpecialFunctions
-using .theoretical, .GIG
-
-include("priors.jl")
-include("EB_marginal.jl")
-
 """
 This function generate a log likelihood of the measurement equation.
 
@@ -14,33 +6,30 @@ This function generate a log likelihood of the measurement equation.
     * Output: the measurement equation part in the log likelihood
 ===
 """
-function loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
-    V = eigen(cov(yields)).vectors
-    Wₚ = V[:, 1:dQ]'
-    Wₒ = V[:, (dQ+1):end]'
+function loglik_mea(yields, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
-    PCs = (Wₚ * yields')' # Main dQ PCs
-    OCs = (Wₒ * yields')' # remaining PCs
+    PCs, OCs, Wₚ, Wₒ = PCA(yields, p)
+    PCs = PCs[(p+1):end, :]
+    OCs = OCs[(p+1):end, :]
 
-    N = length(τₙ)
-    bτ_ = bτ(N; κQ)
+    bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
     T1X_ = T1X(Bₓ_; Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_; Wₒ)
 
     ΩPP = ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF)
-    aτ_ = aτ(N, bτ_, τₙ; kQ_infty, ΩPP, Wₚ)
+    aτ_ = aτ(τₙ[end], bτ_, τₙ; kQ_infty, ΩPP, Wₚ)
     Aₓ_ = Aₓ(aτ_, τₙ)
     T0P_ = T0P(T1X_, Aₓ_; Wₚ)
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_; Wₒ)
 
     T = size(OCs)[1]
-    mea = MvNormal(zeros(), diagm(Σₒ))
+    mea = MvNormal(diagm(Σₒ))
     residuals = (OCs' - (Aₚ_ .+ Bₚ_ * PCs'))'
 
     logpdf_ = 0
     for t = 1:T
-        logpdf_ += logpdf(mea, residuals[t, :]')
+        logpdf_ += logpdf(mea, residuals[t, :])
     end
 
     return logpdf_
@@ -64,7 +53,7 @@ function loglik_tran(PCs, macros; ϕ, σ²FF)
 
     logpdf_ = Vector{Float64}(undef, dP)
     for i in 1:dP
-        logpdf_[i] = logpdf(MvNormal(Xϕ * (ϕ[i, :]'), σ²FF[i] * I(T)), yϕ[:, i])
+        logpdf_[i] = logpdf(MvNormal(Xϕ * (ϕ[i, :]), σ²FF[i] * I(T)), yϕ[:, i])
     end
 
     return sum(logpdf_)
@@ -78,7 +67,7 @@ This function generate the dependent variable and the corresponding regressors i
     * Output: yϕ and Xϕ is a full matrix. The regressors that should have been eliminated from Xϕ is excluded by the specific form of ϕ (in which zero coefficiet will do that).
 === 
 """
-function yϕ_Xϕ(PCs, macros; p)
+function yϕ_Xϕ(PCs, macros, p)
     T = size(PCs)[1]
     data = [PCs macros]
     dP = size(data)[2]
@@ -119,7 +108,7 @@ It construct ΩPP from statistical parameters.
 """
 function ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF)
 
-    dQ = GQ_XX()
+    dQ = dimQ()
     dP = length(σ²FF)
     ~, C = ϕ_2_ϕ₀_C(; ϕ)
 
@@ -138,6 +127,12 @@ function ϕ_2_ϕ₀_C(; ϕ)
     return ϕ0, C, C0
 end
 
-include("gibbs.jl")
+function isstationary(GₚFF)
+    dP = size(GₚFF)[1]
+    p = Int(size(GₚFF)[2] / dP)
 
+    G = [GₚFF
+        I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
+
+    return maximum(abs.(eigen(G).values)) < 1
 end
