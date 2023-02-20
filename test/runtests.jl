@@ -1,7 +1,7 @@
 using Statistics, Distributions
 using Test
 import Pkg
-Pkg.build()
+Pkg.build(GDTSM)
 using GDTSM
 
 @testset "Empirical.jl" begin
