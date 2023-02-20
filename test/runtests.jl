@@ -1,5 +1,5 @@
 using Statistics, Distributions
-using Test
+using Test, Pkg
 using GDTSM
 
 @testset "Empirical.jl" begin
