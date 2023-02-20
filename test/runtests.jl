@@ -1,5 +1,7 @@
 using Statistics, Distributions
-using Test, Pkg
+using Test
+import Pkg
+Pkg.build()
 using GDTSM
 
 @testset "Empirical.jl" begin
