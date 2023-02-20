@@ -305,6 +305,16 @@ function load_object(saved_θ, object::String)
 end
 
 export
+    # EB_margianl.jl
+    log_marginal,
+
+    # Empirical.jl
+    loglik_mea,
+    loglik_tran,
+    isstationary,
+    stationary_saved_θ,
+    LDLt,
+
     # GDTSM.jl
     Tuning_Hyperparameter,
     Tuning_Hyperparameter_compact,
@@ -314,14 +324,9 @@ export
     posterior_sampler,
     load_object,
 
-    # EB_margianl.jl
-    log_marginal,
-
-    # Empirical.jl
-    loglik_mea,
-    loglik_tran,
-    isstationary,
-    stationary_saved_θ,
+    # priors.jl
+    prior_κQ,
+    dcurvature_dτ,
 
     # Theoretical.jl
     GQ_XX,
