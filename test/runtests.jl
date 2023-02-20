@@ -1,5 +1,6 @@
-using GDTSM, Statistics, Distributions
+using Statistics, Distributions
 using Test
+using GDTSM
 
 @testset "Empirical.jl" begin
 
