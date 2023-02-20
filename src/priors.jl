@@ -1,33 +1,24 @@
-#######################
-##Prior Distributions##
-#######################
-#This section contains for the prior distribution of the deep-parameters. Several hyperparameters comes into this section, and it formulate the specific prior distribution setting.
-
-#    * Input: 
-#        * hyperparameters that comes from hyperparameters.jl
-#        * medium_τ: candidate maturities that represent medium-term bond yields
-
-#    * Output: Prior distributions for
-#        * ϕᵢ, ``\sigma_{\mathcal{FF},i}^{2}``: parameter that chracterize the transition equation. ϕᵢ is decomposed into C[i,:] and ϕ0ᵢ, that are contemporaneous and lagged slope coefficients, respectively.
-#        * κQ: the DNS decay parameters
-#        * γᵢ: the level of pricing errors
-
 #############################
 ## VAR transition equation ##
 #############################
+# error covariance of reduced form VAR, ΩFF ~ Inverse-Wishart(ν0, diagm[Ω0])
+# Reduced form VAR coefficients ~ Normal
+# However, we orthogonalize the reduced form VAR and estimate C, ϕ and σ²FF,
+# where ΩFF = LDLt decompopsition, C\diagm(σ²FF)/C'
+# ϕ = coefficients of the orthogonalized VAR
+#############################
 """
-We translate the Inverse-Wishart prior to a series of the Normal-InverseGamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This part shows the one that follow IG priors.  
-
-    * Input:
-        * ν0: the degree of freedom
-        * Ω0: the scale parameter
-
-    * Output: Diagonal Matrix in the LDLt decomposition that each diagonal follows IG
-===
+prior_σ²FF(; ν0, Ω0::Vector)
+* We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Inverse-Gamma priors.  
+* Input: the InverseWishart prior
+    - ν0: the degree of freedom
+    - Ω0: the scale parameter
+* Output: prior of σ²FF in the LDLt decomposition, ΩFF = inv(C)*diagm(σ²FF)*inv(C)'
+    - Each element in the output follows Inverse-Gamma priors.
 """
 function prior_σ²FF(; ν0, Ω0::Vector)
 
-    dP, ~ = size(Ω0) # dimension
+    dP = length(Ω0) # dimension
     σ²FF = Vector{Any}(undef, dP) # Diagonal matrix in the LDLt decomposition that follows a IG distribution
 
     for i in 1:dP
@@ -38,13 +29,13 @@ function prior_σ²FF(; ν0, Ω0::Vector)
 end
 
 """
-We translate the Inverse-Wishart prior to a series of the Normal-InverseGamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This part shows the one that follows Normals
-
-    * Input:
-        * Ω0: the scale parameter
-
-    * Output: The LowerTriangular Part in the LDLt that each lower part follows a normal distribution. Note that the variance term is omitted because of the form of NIG.
-===
+prior_C(; Ω0::Vector)
+* We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Normal priors.  
+* Input: the scale parameter, Ω0
+* Output: unscaled prior of C in the LDLt decomposition, ΩFF = inv(C)*diagm(σ²FF)*inv(C)'
+* Important note!!
+    - prior variance for C[i,:] = σ²FF[i]*variance of output[i,:]
+    - Unlike MvNormal, the second arg of "Normal" is a standard deviation.
 """
 function prior_C(; Ω0::Vector)
 
@@ -69,17 +60,18 @@ function prior_C(; Ω0::Vector)
 end
 
 """
-This part derives the prior distribution for the lagged regressors in the transition equation. 
-
-    * Input:
-        * ρ: benchmark persistence of dependent variables. It should be different between growth variables and level variables
-        * ψ0: sparsity on the P-intercept term
-        * ψ: sparsity on the P-slope term
-        * q: Minnesota shrikages with dimension 4 (own, cross, lag, intercept shrikages)
-        * ν0(d.f.), Ω(scale): hyperparameters for prior on p-error covariance
-
-    * Output: Normal prior distributions on the slope coefficient of lagged variables and intercepts in P-transition equation. Note that the variance term is omitted because of the form of NIG.
-===
+prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
+* This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
+* Input:
+    - ρ = Vector{Float64}(0 or near 1, dP-dQ) benchmark persistencies of macro variables. For growth variables and level variables, ρ[i] should be 0 and nearly 1, respectively.
+    - ψ0: sparsity on the intercept 
+    - ψ: sparsity on the slope coefficients
+    - q: Minnesota shrikages with vector dimension 4 (own, cross, lag, intercept shrikages)
+    - ν0(d.f.), Ω0(scale): hyperparameters for Inverse-Wishart prior on error-covariance in the reduced form VAR, ΩFF
+* Output: Normal prior distributions on the slope coefficient of lagged variables and intercepts in the orthogonalized equation. 
+* Important note!!
+    - prior variance for ϕ[i,:] = σ²FF[i]*variance of output[i,:]
+    - Unlike MvNormal, the second arg of "Normal" is a standard deviation.
 """
 function prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
 
@@ -90,7 +82,7 @@ function prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
 
     prior_κQ_ = prior_κQ()
     κQ_candidate = support(prior_κQ_)
-    κQ_prob = pdf(prior_κQ_)
+    κQ_prob = probs(prior_κQ_)
     GQ_XX_mean = zeros(dQ, dQ)
     for i in eachindex(κQ_candidate)
         κQ = κQ_candidate[i]
@@ -130,15 +122,14 @@ function prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
 end
 
 """
-It return a prior variance of the slope coefficients in the transition equation in a spirit of the Minneosta Prior. 
-
-    * Input: 
-        * lag l, dependent variable i, regressor j in the VAR(p)
-        * q = [own, cross, lag, intercept] shrikages
-        * ν0(d.f.), Ω0(scale): Inverse-Wishart prior for the error-covariance matrix of VAR(p)
-
-    * Output: corresponding Minnesota variance
-===
+Minnesota(l, i, j; q, ν0, Ω0)
+* It return unscaled prior variance of the Minnesota prior.
+* Input: 
+    - lag l, dependent variable i, regressor j in the VAR(p)
+    - q = [own, cross, lag, intercept] shrikages
+    - ν0(d.f.), Ω0(scale): Inverse-Wishart prior for the error-covariance matrix of VAR(p)
+* Output: corresponding Minnesota variance
+    - To scale it, the return has to be divided by the corresponding error variance.
 """
 function Minnesota(l, i, j; q, ν0, Ω0)
 
@@ -160,18 +151,15 @@ end
 ## DNS decay parameter κQ##
 ###########################
 """
-The function derive the maximizer decay parameter κQ that maximize the curvature factor loading at each candidate medium-term maturity.
-
-    * Input:
-        * medium_τ: several candidate bond maturities that represent medium term maturity bonds.
-
-    * Output: uniform prior distribution that has a support of the maximizer κQ
-===
+prior_κQ(medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+* The function derive the maximizer decay parameter κQ that maximize the curvature factor loading at each candidate medium-term maturity.
+* Input: Vector{Float64}(candidate medium maturities, # of candidates)
+* Output: uniform prior distribution that has a support of the maximizer κQ
 """
 function prior_κQ(medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]) # Default candidates are one to five years
 
     N = length(medium_τ) # the number of candidates
-    κQ_candidate = Vector{Float64}(undef, N)
+    κQ_candidate = Vector{Float64}(undef, N) # support of the prior
 
     for i in 1:N # calculate the maximizer κQ
         obj(κQ) = 1200 * dcurvature_dτ(medium_τ[i]; κQ)
@@ -183,14 +171,12 @@ function prior_κQ(medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]) # Default
 end
 
 """
-This function calculate the first derivative of the curvature factor loading w.r.t. the maturity, ``\frac{d\text{curvature}}{d\tau} ``.
-
-    * Input:
-        * κQ: The decay parameter
-        * τ: The maturity that the derivative is calculated
-
-    * Output: the first derivative of the curvature factor loading w.r.t. the maturity
-===
+dcurvature_dτ(τ; κQ)
+* This function calculate the first derivative of the curvature factor loading w.r.t. the maturity.
+* Input:
+    - κQ: The decay parameter
+    - τ: The maturity that the derivative is calculated
+* Output: the first derivative of the curvature factor loading w.r.t. the maturity
 """
 function dcurvature_dτ(τ; κQ)
     derivative = (κQ * τ + 1) * exp(-κQ * τ)
@@ -204,24 +190,21 @@ end
 ## Population Measurement error##
 #################################
 """
-There is a hierarchcal structure in the Measurement equation. The prior means of the measurement errors are γᵢ and each γᵢ follows Gamma(1,γ_bar) distribution. This function decides γ_bar empirically. OLS is used to estimate the measurement equation and then the residuals are averaged across all maturities. An inverse of the average value is set to γ_bar.
-
-    * Input: yield data in which each column shows time-series of a specific bond yield. Here, yields does not contain initial conditions. 
-
-    * Output: hyperparameter γ_bar
-===
+prior_γ(yields)
+* There is a hierarchcal structure in the measurement equation. The prior means of the measurement errors are γᵢ and each γᵢ follows Gamma(1,γ_bar) distribution. This function decides γ_bar empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturities. An inverse of the average residual variances is set to γ_bar.
+* Input: yield data in which each column shows time-series of a specific bond yield. Here, yields do not contain initial conditions. 
+* Output: hyperparameter γ_bar
 """
 function prior_γ(yields)
-    dQ = dimQ() # #(latent factors in the bond market)
+    PCs, OCs = PCA(yields, 0)
+    T = size(OCs, 1)
 
-    std_yields = yields .- mean(yields, dims=1)
-    std_yields ./= std(yields, dims=1)
-    V = reverse(eigen(cov(std_yields)).vectors, dims=2)
-    Wₚ = V[:, 1:dQ]'
-    Wₒ = V[:, (dQ+1):end]'
+    res_var = Vector{Float64}(undef, size(OCs, 2))
+    for i in axes(OCs, 2)
+        y = OCs[:, i]
+        X = [ones(T) PCs]
+        res_var[i] = var(y - X * ((X'X) \ (X'y)))
+    end
 
-    PCs = (Wₚ * yields')'
-    OCs = (Wₒ * yields')'
-
-    return 1 / var(OCs - PCs * ((PCs'PCs) \ (PCs'OCs)))
+    return 1 / mean(res_var)
 end
