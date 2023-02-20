@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "6a7e8af5e7740288877abd93069c2266a0bda904"
+project_hash = "beeced43f74ec693c92a8f6e86d85ef6b4eb68a6"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -892,9 +892,7 @@ version = "2.8.1"
 
 [[deps.RCall]]
 deps = ["CategoricalArrays", "Conda", "DataFrames", "DataStructures", "Dates", "Libdl", "Missings", "REPL", "Random", "Requires", "StatsModels", "WinReg"]
-git-tree-sha1 = "3ae40b02650de0d12e753661b0c57b5bac866058"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaInterop/RCall.jl"
+git-tree-sha1 = "2c0ffd39860c9a48259a0f57214ced2024ab63bc"
 uuid = "6f49c342-dc21-5d91-9882-a32aef131414"
 version = "0.13.14"
 
