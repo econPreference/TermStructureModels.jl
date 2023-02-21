@@ -1,6 +1,8 @@
-using Statistics, Distributions
+using Random, Statistics, Distributions, LinearAlgebra
 using Test
 using GDTSM
+Random.seed!(111)
+include(simulation.jl)
 
 @testset "Empirical.jl" begin
 

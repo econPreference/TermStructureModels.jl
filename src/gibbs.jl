@@ -270,9 +270,9 @@ Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 """
 function Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 
-    B₁ = inv(inv(B₀) + X'X)
-    B₁ = 0.5(B₁ + B₁')
-    β₁ = B₁ * (B₀ \ β₀ + X'y)
+    inv_B₀ = inv(B₀)
+    B₁ = Symmetric(inv(inv_B₀ + X'X))
+    β₁ = B₁ * (inv_B₀ * β₀ + X'y)
 
     return rand(MvNormal(β₁, σ² * B₁))
 end
@@ -299,15 +299,17 @@ NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 * Normal-InverseGamma-Normal-InverseGamma update
     - prior: β|σ² ~ MvNormal(β₀,σ²B₀), σ² ~ InverseGamma(α₀,δ₀)
     - likelihood: y|β,σ² = Xβ + MvNormal(zeros(T,1),σ²I(T)) 
-* Output: posterior sample
+* Output(2): β, σ²
+    - posterior sample
 """
 function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
     T = length(y)
 
-    B₁ = inv(inv(B₀) + X'X)
-    B₁ = 0.5(B₁ + B₁')
-    β₁ = B₁ * (B₀ \ β₀ + X'y)
-    δ₁ = δ₀ + 0.5 * (y'y + (β₀' / B₀) * β₀ - (β₁' / B₁) * β₁)
+    inv_B₀ = inv(B₀)
+    inv_B₁ = inv_B₀ + X'X
+    B₁ = Symmetric(inv(inv_B₁))
+    β₁ = B₁ * (inv_B₀ * β₀ + X'y)
+    δ₁ = δ₀ + 0.5 * (y'y + β₀' * inv_B₀ * β₀ - β₁' * inv_B₁ * β₁)
 
     σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
     β = rand(MvNormal(β₁, σ² * B₁))

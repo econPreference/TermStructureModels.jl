@@ -369,24 +369,37 @@ function _PCs2latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 end
 
 """
-PCA(yields, p)
+PCA(yields, p; rescaling = false)
 * It derives the principal components from yields.
 * Input: yields[p+1:end, :] is used to construct the affine transformation, and then all yields[:,:] are transformed into the principal components.
+    - If rescaling == true, all PCs and OCs are normalized to have an average std of yields 
 * Output(4): PCs, OCs, Wₚ, Wₒ
     - PCs, OCs: first dQ and the remaining principal components
     - Wₚ, Wₒ: the rotation matrix for PCs and OCs, respectively
 """
-function PCA(yields, p)
+function PCA(yields, p; rescaling=false)
 
     dQ = dimQ()
-    std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
-    std_yields ./= std(yields[p+1:end, :], dims=1)
-    V = reverse(eigen(cov(std_yields)).vectors, dims=2)
+    ## z-score case
+    # std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
+    # std_yields ./= std(yields[p+1:end, :], dims=1)
+    # V = reverse(eigen(cov(std_yields)).vectors, dims=2)
+
+    V = reverse(eigen(cov(yields[(p+1):end, :])).vectors, dims=2)
     Wₚ = V[:, 1:dQ]'
     Wₒ = V[:, (dQ+1):end]'
 
     PCs = (Wₚ * yields')' # Main dQ PCs
     OCs = (Wₒ * yields')' # remaining PCs
 
-    return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ
+    if rescaling == false
+        return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ
+    else
+        ## rescaling
+        mean_std = mean(std(yields[(p+1):end, :], dims=1))
+        scale_PCs = mean_std ./ std(PCs, dims=1)'
+        scale_OCs = mean_std ./ std(OCs, dims=1)'
+
+        return Matrix((scale_PCs .* PCs')'), Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ
+    end
 end

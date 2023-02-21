@@ -21,13 +21,14 @@ include("Gibbs.jl") # posterior sampler.
 
 
 """
-Tuning_Hyperparameter(yields, macros, ρ)
+Tuning_Hyperparameter(yields, macros, ρ; gradient=false)
 * It derives the hyperparameters that maximize the marginal likelhood. First, the generating set search algorithm detemines the search range that do not make a final solution as a corner solution. Second, the evolutionary algorithm and Nelder-Mead algorithm find the global optimum. Lastly, the LBFGS algorithm calibrate the global optimum. 
 * Input: Data should contain initial conditions.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables.
+    - If gradient == true, the LBFGS method is applied at the last.
 * Output(4): hyper-parameters, p, q, ν0, Ω0
 """
-function Tuning_Hyperparameter(yields, macros, ρ)
+function Tuning_Hyperparameter(yields, macros, ρ; gradient=false)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -86,30 +87,38 @@ function Tuning_Hyperparameter(yields, macros, ρ)
     obj_NM(x) = negative_log_marginal([abs(ceil(Int, x[1])); abs.(x[2:end])], Int(ux[1]))
     NM_opt = optimize(obj_NM, best_candidate(EA_opt), NelderMead(), Optim.Options(show_trace=true))
 
-    function negative_log_marginal_p(input, p)
+    if gradient == true
+        function negative_log_marginal_p(input, p)
 
-        # parameters
-        PCs = PCA(yields, p)[1]
+            # parameters
+            PCs = PCA(yields, p)[1]
 
-        q = input[1:4]
-        ν0 = input[5] + dP + 1
-        Ω0 = input[6:end]
+            q = input[1:4]
+            ν0 = input[5] + dP + 1
+            Ω0 = input[6:end]
 
-        ψ = ones(dP, dP * p)
-        ψ0 = ones(dP)
+            ψ = ones(dP, dP * p)
+            ψ0 = ones(dP)
 
-        return -_log_marginal(PCs, macros, ρ; p, ν0, Ω0, q, ψ, ψ0) # the function should contains the initial conditions
+            return -_log_marginal(PCs, macros, ρ; p, ν0, Ω0, q, ψ, ψ0) # the function should contains the initial conditions
 
+        end
+
+        p = abs(ceil(Int, NM_opt.minimizer[1]))
+        obj_NT(x) = negative_log_marginal_p(abs.(x), p)
+        NT_opt = optimize(obj_NT, NM_opt.minimizer[2:end], LBFGS(; linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true))
+        solution = abs.(NT_opt.minimizer)
+
+        q = solution[1:4]
+        ν0 = solution[5] + dP + 1
+        Ω0 = solution[6:end]
+    else
+        solution = abs.(NM_opt.minimizer)
+        p = abs(ceil(Int, NM_opt.minimizer[1]))
+        q = solution[2:5]
+        ν0 = solution[6] + dP + 1
+        Ω0 = solution[7:end]
     end
-
-    p = abs(ceil(Int, NM_opt.minimizer[1]))
-    obj_NT(x) = negative_log_marginal_p(abs.(x), p)
-    NT_opt = optimize(obj_NT, NM_opt.minimizer[2:end], LBFGS(; linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true))
-    solution = abs.(NT_opt.minimizer)
-
-    q = solution[1:4]
-    ν0 = solution[5] + dP + 1
-    Ω0 = solution[6:end]
 
     return p, q, ν0, Ω0
 
