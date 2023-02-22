@@ -39,7 +39,7 @@ loglik_tran(PCs, macros; ϕ, σ²FF)
 function loglik_tran(PCs, macros; ϕ, σ²FF)
 
     dP = length(σ²FF)
-    p = ((size(ϕ, 2) - 1) / dP) - 1
+    p = Int(((size(ϕ, 2) - 1) / dP) - 1)
 
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
 

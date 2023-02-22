@@ -7,7 +7,7 @@ using BlackBoxOptim: bboptimize, best_candidate, MixedPrecisionRectSearchSpace
 ##When install RCall
 # 1. Install R form internet
 # 2. In R, run " R.home() " and copy the home address
-# 3. In R, run " install.packages("GIGrvg") " and install the package
+# 3. In R, run " install.packages("GIGrvg") " and " install.packages("glasso") " to install the packages
 # 3. In Juila, run  " ENV["R_HOME"]="" "
 # 4. In Juila, run  " ENV["PATH"]="...the address in step 2..." "
 # 5. In Juila, run " using Pkg " and " Pkg.add("RCall") "
@@ -125,6 +125,24 @@ function Tuning_Hyperparameter(yields, macros, ρ; gradient=false)
 end
 
 """
+AR_res_var(TS::Vector, p)
+* It derives an MLE error variance estimate of an AR(p) model
+* Input: univariate time series TS and the lag p
+* output: residual variance estimate
+"""
+function AR_res_var(TS::Vector, p)
+    Y = TS[(p+1):end]
+    T = length(Y)
+    X = ones(T)
+    for i in 1:p
+        X = hcat(X, TS[p+1-i:end-i])
+    end
+    M = I(T) - X * ((X'X) \ X')
+    return var(M * Y)
+end
+
+
+"""
 posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
 * This is a posterior distribution sampler. It needs data and hyperparameters. 
 * Input: Data should include initial conditions. τₙ is a vector that contains observed maturities.
@@ -197,20 +215,77 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
 end
 
 """
-AR_res_var(TS::Vector, p)
-* It derives an MLE error variance estimate of an AR(p) model
-* Input: univariate time series TS and the lag p
-* output: residual variance estimate
+
 """
-function AR_res_var(TS::Vector, p)
-    Y = TS[(p+1):end]
-    T = length(Y)
-    X = ones(T)
-    for i in 1:p
-        X = hcat(X, TS[p+1-i:end-i])
+function sparsity_prec(saved_θ, yields, macros, τₙ)
+
+    R"library(glasso)"
+    ψ = saved_θ[1]["ψ"]
+    dP = size(ψ, 1)
+    p = Int(size(ψ, 2) / dP)
+    T = size(yields, 1) - p
+    PCs = PCA(yields, p)[1]
+
+    iteration = length(saved_θ)
+    sparse_θ = []
+    trace_λ = Vector{Float64}(undef, iteration)
+    @showprogress 1 "glasso on ΩFF..." for iter in 1:iteration
+
+        κQ = saved_θ[iter]["κQ"]
+        kQ_infty = saved_θ[iter]["kQ_infty"]
+        ϕ = saved_θ[iter]["ϕ"]
+        σ²FF = saved_θ[iter]["σ²FF"]
+        ηψ = saved_θ[iter]["ηψ"]
+        ψ = saved_θ[iter]["ψ"]
+        ψ0 = saved_θ[iter]["ψ0"]
+        Σₒ = saved_θ[iter]["Σₒ"]
+        γ = saved_θ[iter]["γ"]
+        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+
+        ΩFF_ = (C \ diagm(σ²FF)) / C'
+        ΩFF_ = 0.5(ΩFF_ + ΩFF_')
+        function glasso(λ)
+
+            glasso_results = rcopy(rcall(:glasso, s=ΩFF_, rho=abs.(λ ./ inv(ΩFF_))))
+            sparse_cov = glasso_results[:w]
+            sparse_prec = glasso_results[:wi]
+
+            inv_sparse_C, sparse_σ²FF = LDLt(sparse_cov)
+            sparse_ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
+
+            BIC_ = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF), Σₒ)
+            BIC_ += loglik_tran(PCs, macros; ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF))
+            BIC_ *= -2
+            BIC_ += sum(abs.(sparse_prec) .> eps()) * log(T)
+
+            return sparse_cov, BIC_
+        end
+
+        obj(x) = glasso(abs(x[1]))[2]
+        optim = optimize(obj, [0.01], NelderMead())
+        λ_best = abs(optim.minimizer[1])
+        trace_λ[iter] = λ_best
+
+        sparse_cov = glasso(λ_best)[1]
+        inv_sparse_C, diagm_σ²FF = LDLt(sparse_cov)
+        ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
+        σ²FF = diag(diagm_σ²FF)
+
+        push!(sparse_θ,
+            Dict(
+                "κQ" => κQ,
+                "kQ_infty" => kQ_infty,
+                "ϕ" => ϕ,
+                "σ²FF" => σ²FF,
+                "ηψ" => ηψ,
+                "ψ" => ψ,
+                "ψ0" => ψ0,
+                "Σₒ" => Σₒ,
+                "γ" => γ
+            ))
     end
-    M = I(T) - X * ((X'X) \ X')
-    return var(M * Y)
+
+    return sparse_θ, trace_λ
 end
 
 """
@@ -313,6 +388,7 @@ function load_object(saved_θ, object::String)
     return [saved_θ[i][object] for i in eachindex(saved_θ)]
 end
 
+
 export
     # EB_margianl.jl
     log_marginal,
@@ -331,6 +407,7 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
+    sparsity_prec,
     load_object,
 
     # priors.jl
