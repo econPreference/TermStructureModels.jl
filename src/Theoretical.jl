@@ -275,7 +275,7 @@ PCs\\_2\\_latents(saved_θ, yields, τₙ)
 * This function translates the principal components state space into the latent factor state space. 
 * Input: the Gibb sampling result "saved_θ", and the data should include initial conditions.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
-    - "latent", "κQ", "kQ_infty", "KₚXF", "GₚXFXF", "ΩXFXF", "ηψ", "ψ", "ψ0", "Σₒ", "γ" ∈ Output[i]
+    - "latents", "κQ", "kQ_infty", "KₚXF", "GₚXFXF", "ΩXFXF", "ηψ", "ψ", "ψ0", "Σₒ", "γ" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
 """
 function PCs_2_latents(saved_θ, yields, τₙ)
@@ -304,7 +304,7 @@ function PCs_2_latents(saved_θ, yields, τₙ)
 
         push!(saved_θ_latent,
             Dict(
-                "latent" => latent,
+                "latents" => latent,
                 "κQ" => κQ,
                 "kQ_infty" => kQ_infty,
                 "KₚXF" => KₚXF,
