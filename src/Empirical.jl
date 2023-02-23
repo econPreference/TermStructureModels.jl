@@ -130,6 +130,17 @@ function ϕ_2_ϕ₀_C(; ϕ)
 end
 
 """
+ϕ\\_σ²FF\\_2\\_ΩFF(; ϕ, σ²FF)
+* It construct ΩFF from statistical parameters.
+* Output: ΩFF
+"""
+function ϕ_σ²FF_2_ΩFF(; ϕ, σ²FF)
+
+    ~, C = ϕ_2_ϕ₀_C(; ϕ)
+    return (C \ diagm(σ²FF)) / C'
+end
+
+"""
 isstationary(GₚFF)
 * It checks whether a reduced VAR matrix has unit roots. If there is at least one unit root, return is false.
 * GₚFF should not include intercepts. Also, GₚFF is dP by dP*p matrix that the coefficient at lag 1 comes first, and the lag p slope matrix comes last. 

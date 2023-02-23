@@ -46,9 +46,14 @@ q = [0.06043749644018473, 0.0033752554401493304,
     0.3749625127396211, 0.3648218490360464]
 
 ## Estimating
-iteration = 10_000
+iteration = 10
 saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
-#saved_θ = saved_θ[round(Int, 0.1iteration):end]
-#stat, accept_rate = stationary_saved_θ(saved_θ)
+saved_θ = saved_θ[round(Int, 0.1iteration):end]
+stat, accept_rate = stationary_saved_θ(saved_θ)
 #saved_Xθ = PCs2latents(saved_θ, yields, τₙ)
-sparsity_prec(saved_θ, yields, macros, τₙ)
+
+S = []
+for i in 1:2
+    push!(S, randn(2, length(τₙ) + dP - dimQ() + 1))
+end
+X = scenario_sampler([], 10, stat, yields, macros, τₙ)

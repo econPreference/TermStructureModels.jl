@@ -1,6 +1,6 @@
 module GDTSM
 
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, Optim, LineSearches, CovarianceMatrices, ProgressMeter
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, Optim, LineSearches, CovarianceMatrices, ProgressMeter, PDMatsExtras
 import Distributions: TDist
 using BlackBoxOptim: bboptimize, best_candidate, MixedPrecisionRectSearchSpace
 
@@ -18,7 +18,7 @@ include("priors.jl") # Contains prior distributions of statistical parameters
 include("EB_marginal.jl") # Calculate the marginal likelihood of the transition VAR equation.
 include("Empirical.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
 include("Gibbs.jl") # posterior sampler.
-
+include("scenario.jl") # scenario analysis
 
 """
 Tuning_Hyperparameter(yields, macros, ρ; gradient=false)
@@ -215,9 +215,16 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
 end
 
 """
-
+sparsify_precision(saved_θ, yields, macros, τₙ)
+* It conduct the glasso of Friedman, Hastie, and Tibshirani (2022) using the method of Hauzenberger, Huber and Onorante. 
+* That is, the posterior samples of ΩFF is penalized with L1 norm to get a sparsity on the precision.
+* Input: "saved\\_θ" from function posterior_sampler, and the data should contain initial conditions.
+* Output(3): sparse_θ, trace_λ, trace_sparsity
+    - sparse_θ: sparsified posterior samples
+    - trace_λ: a vector that contains an optimal lasso parameters in iterations
+    - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparsity_prec(saved_θ, yields, macros, τₙ)
+function sparsify_precision(saved_θ, yields, macros, τₙ)
 
     R"library(glasso)"
     ψ = saved_θ[1]["ψ"]
@@ -227,9 +234,15 @@ function sparsity_prec(saved_θ, yields, macros, τₙ)
     PCs = PCA(yields, p)[1]
 
     iteration = length(saved_θ)
+    iter_print = 1
     sparse_θ = []
     trace_λ = Vector{Float64}(undef, iteration)
-    @showprogress 1 "glasso on ΩFF..." for iter in 1:iteration
+    trace_sparsity = Vector{Float64}(undef, iteration)
+    for iter in 1:iteration
+        if iter == iter_print
+            println("iteration = $iter")
+            iter_print += 20
+        end
 
         κQ = saved_θ[iter]["κQ"]
         kQ_infty = saved_θ[iter]["kQ_infty"]
@@ -256,17 +269,23 @@ function sparsity_prec(saved_θ, yields, macros, τₙ)
             BIC_ = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF), Σₒ)
             BIC_ += loglik_tran(PCs, macros; ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF))
             BIC_ *= -2
-            BIC_ += sum(abs.(sparse_prec) .> eps()) * log(T)
+            sparsity = sum(abs.(sparse_prec) .> eps())
+            BIC_ += sparsity * log(T)
 
-            return sparse_cov, BIC_
+            return sparse_cov, BIC_, sparsity
         end
 
         obj(x) = glasso(abs(x[1]))[2]
-        optim = optimize(obj, [0.01], NelderMead())
+        if iter > 1
+            optim = optimize(obj, [trace_λ[iter-1]], NelderMead())
+        else
+            optim = optimize(obj, [0.0001], NelderMead())
+        end
         λ_best = abs(optim.minimizer[1])
         trace_λ[iter] = λ_best
 
-        sparse_cov = glasso(λ_best)[1]
+        sparse_cov, ~, sparsity = glasso(λ_best)
+        trace_sparsity[iter] = sparsity
         inv_sparse_C, diagm_σ²FF = LDLt(sparse_cov)
         ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
         σ²FF = diag(diagm_σ²FF)
@@ -285,7 +304,7 @@ function sparsity_prec(saved_θ, yields, macros, τₙ)
             ))
     end
 
-    return sparse_θ, trace_λ
+    return sparse_θ, trace_λ, trace_sparsity
 end
 
 """
@@ -399,6 +418,7 @@ export
     isstationary,
     stationary_saved_θ,
     LDLt,
+    ϕ_σ²FF_2_ΩFF,
 
     # GDTSM.jl
     Tuning_Hyperparameter,
@@ -407,12 +427,15 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
-    sparsity_prec,
+    sparsify_precision,
     load_object,
 
     # priors.jl
     prior_κQ,
     dcurvature_dτ,
+
+    # scenario.jl
+    scenario_sampler,
 
     # Theoretical.jl
     GQ_XX,
