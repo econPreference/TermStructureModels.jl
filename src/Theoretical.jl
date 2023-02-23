@@ -196,7 +196,7 @@ function _TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
     T1P_Λ_PF = T1P_ * Λ_PF
 
     datas = [PCs macros]
-    for t = (p+1):T # ranges for the dependent variables. The whole range includes initial conditions.
+    for t in (p+1):T # ranges for the dependent variables. The whole range includes initial conditions.
         # prediction part
         predicted_X = datas[t:-1:(t-p+1), :]
         for horizon = 1:(τ-2)
@@ -271,14 +271,14 @@ function TP(τ, τₙ, saved_θ, yields, macros)
 end
 
 """
-PCs2latents(saved_θ, yields, τₙ)
+PCs\\_2\\_latents(saved_θ, yields, τₙ)
 * This function translates the principal components state space into the latent factor state space. 
 * Input: the Gibb sampling result "saved_θ", and the data should include initial conditions.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "latent", "κQ", "kQ_infty", "KₚXF", "GₚXFXF", "ΩXFXF", "ηψ", "ψ", "ψ0", "Σₒ", "γ" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
 """
-function PCs2latents(saved_θ, yields, τₙ)
+function PCs_2_latents(saved_θ, yields, τₙ)
 
     iteration = length(saved_θ)
     saved_θ_latent = []
@@ -300,7 +300,7 @@ function PCs2latents(saved_θ, yields, τₙ)
         GₚFF = ϕ0[:, 2:end]
         ΩFF = (C \ diagm(σ²FF)) / C'
 
-        latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = _PCs2latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+        latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 
         push!(saved_θ_latent,
             Dict(
@@ -322,13 +322,13 @@ function PCs2latents(saved_θ, yields, τₙ)
 end
 
 """
-_PCs2latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+_PCs\\_2\\_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 * XF are in the latent factor space and F are in the PC state space.
 * Input: yields should include initial conditions
 * Output(6): latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF
     - latent factors contain initial conditions.
 """
-function _PCs2latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+function _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 
     dP = size(ΩFF, 1)
     dQ = dimQ()

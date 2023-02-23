@@ -3,7 +3,7 @@ using GDTSM
 Random.seed!(111)
 
 ## Simulating sample data
-T = 500
+T = 200
 dP = 20
 τₙ = [1, 3, 6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 p = 2
@@ -46,14 +46,22 @@ q = [0.06043749644018473, 0.0033752554401493304,
     0.3749625127396211, 0.3648218490360464]
 
 ## Estimating
-iteration = 10
+iteration = 10_000
 saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
-stat, accept_rate = stationary_saved_θ(saved_θ)
-#saved_Xθ = PCs2latents(saved_θ, yields, τₙ)
+saved_θ, accept_rate = stationary_θ(saved_θ)
+saved_Xθ = PCs_2_latents(saved_θ, yields, τₙ)
 
-S = []
-for i in 1:2
-    push!(S, randn(2, length(τₙ) + dP - dimQ() + 1))
+scene = []
+S = [zeros(2, dP - dimQ() + length(τₙ)) randn(2)]
+S[1, 3] = 1
+S[2, 15] = 3
+push!(scene, S)
+push!(scene, S)
+prediction = scenario_sampler(scene, 3, saved_θ, yields, macros, τₙ)
+
+predicted = zeros(size(yields, 1), size(yields, 2))
+for t = 2:size(yields, 1)-1
+    local prediction = scenario_sampler([], 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
+    predicted[t+1, :] = mean(load_object(prediction, "predicted_yields"))[end, :]
 end
-X = scenario_sampler([], 10, stat, yields, macros, τₙ)

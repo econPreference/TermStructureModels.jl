@@ -157,13 +157,13 @@ function isstationary(GₚFF)
 end
 
 """ 
-stationary_saved_θ(saved_θ)
+stationary\\_θ(saved_θ)
 * It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
 * Output(2): stationary samples, acceptance rate(%)
     - The second output indicates how many posterior samples remain.
     - "κQ", "kQ_infty", "ϕ", "σ²FF" , "ηψ", "ψ", "ψ0","Σₒ", "γ" ∈ Output[i]
 """
-function stationary_saved_θ(saved_θ)
+function stationary_θ(saved_θ)
 
     iteration = length(saved_θ)
     stationary_saved_θ = []

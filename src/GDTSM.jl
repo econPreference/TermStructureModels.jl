@@ -1,6 +1,6 @@
 module GDTSM
 
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, Optim, LineSearches, CovarianceMatrices, ProgressMeter, PDMatsExtras
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, Optim, LineSearches, CovarianceMatrices, ProgressMeter
 import Distributions: TDist
 using BlackBoxOptim: bboptimize, best_candidate, MixedPrecisionRectSearchSpace
 
@@ -416,7 +416,7 @@ export
     loglik_mea,
     loglik_tran,
     isstationary,
-    stationary_saved_θ,
+    stationary_θ,
     LDLt,
     ϕ_σ²FF_2_ΩFF,
 
@@ -441,7 +441,7 @@ export
     GQ_XX,
     dimQ,
     TP,
-    PCs2latents,
+    PCs_2_latents,
     PCA
 end
 

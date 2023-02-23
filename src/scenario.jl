@@ -1,14 +1,15 @@
 """
-scenario_sampler(S, horizon, saved_θ, yields, macros, τₙ)
+scenario\\_sampler(S, horizon, saved\\_θ, yields, macros, τₙ)
 * Input: scenarios, a result of the posterior sampler, and data 
-    - Data excludus initial conditions
-    - S = Vector{Matrix}(scenarios, period length of scenarios) 
-    - S[t] = Matrix{Float64}([S s][row,col], # of scenarios, N + dP - dQ), where S is a combination weight matrix and s is a vector of conditional values.
+    - Data excludes initial conditions
+    - S = Vector{Matrix}(scenario[t], period length of the scenario) 
+    - S[t] = Matrix{Float64}([S s][row,col], # of scenarios, N + dP - dQ), where S is a linear combination coefficient matrix and s is a vector of conditional values.
     - If we need an unconditional prediction, S = [].
     - horizon: maximum length of the predicted path
-* Output(2): spanned_yield, spanned_F
-    - "predicted_yields", "predicted_factors" ∈ Output
+* Output(2): spanned\\_yield, spanned\\_F
+    - "predicted\\_yields", "predicted\\_factors" ∈ Output
     - the scenarios from t = 1 to T+horizon
+    - function "load\\_object" can be applied
 """
 function scenario_sampler(S, horizon, saved_θ, yields, macros, τₙ)
     iteration = length(saved_θ)
@@ -36,7 +37,7 @@ end
 
 """
 _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
-* Input: Data excludus initial conditions
+* Input: Data excludes initial conditions
 * Output(2): spanned_yield, spanned_F
     - the scenarios from t = 1 to t = T+horizon
 """
@@ -47,7 +48,7 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
     ϕ0 = C \ ϕ0 # reduced form parameters
     KₚF = ϕ0[:, 1]
     GₚFF = ϕ0[:, 2:end]
-    ΩFF = (C \ diagm(σ²FF)) / C'
+    ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
 
     PCs, ~, Wₚ, Wₒ = PCA(yields, 0)
     data = [PCs macros] # no initial conditions
@@ -66,7 +67,7 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
     T1X_ = T1X(Bₓ_, Wₚ)
     T1P_ = inv(T1X_)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ)
-    Σᵣ = [Wₚ; Wₒ] \ [zeros(dQ, N); zeros(N - dQ, dQ) diagm(Σₒ)] / [Wₚ' Wₒ']
+    Σᵣ = [Wₚ; Wₒ] \ [zeros(dQ, N); zeros(N - dQ, dQ) diagm(Σₒ)] / [Wₚ' Wₒ'] |> Symmetric
 
     if dh > 0
         ## Construct the Kalman filter parameters
@@ -108,8 +109,8 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
             f_ttm[:, :, t] = f_tt
             P_ttm[:, :, t] = P_tt
 
-            f_ll = f_tt
-            P_ll = P_tt
+            f_ll = deepcopy(f_tt)
+            P_ll = deepcopy(P_tt)
 
         end
 
@@ -120,7 +121,10 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
         # beta(T|T) sampling
         P_tt = P_ttm[:, :, dh] |> Symmetric # k by k
         f_tt = f_ttm[:, 1, dh] # k by 1
-        ft = rand(MvNormal(f_tt, PSDMat(P_tt)))
+
+        ft = deepcopy(f_tt)
+        idx = diag(P_tt) .> eps()
+        ft[idx] = rand(MvNormal(f_tt[idx], P_tt[idx, idx]))
         predicted_F[dh, :] = ft[1:dP]
 
         for t in (dh-1):-1:1
@@ -139,9 +143,13 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
             P_tt1 = P_tt - PGP |> Symmetric
 
             # beta(t|t+1) sampling
-            ft = rand(MvNormal(f_tt1, PSDMat(P_tt1)))
+            ft = deepcopy(f_tt1)
+            idx = diag(P_tt1) .> eps()
+            ft[idx] = rand(MvNormal(f_tt1[idx], P_tt1[idx, idx]))
+
             predicted_F[t, :] = ft[1:dP]
-            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + rand(MvNormal(zeros(N), PSDMat(Σᵣ)))
+            mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
+            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + mea_error
         end
     end
 
@@ -155,8 +163,9 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
     end
     for t in (T+dh+1):(T+horizon) # predicted period
         X = spanned_F[t-1:-1:t-p, :] |> (X -> vec(X'))
-        spanned_F[t, :] = KₚF + GₚFF * X + rand(MvNormal(zeros(dP), PSDMat(ΩFF)))
-        spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_F[t, 1:dQ] + rand(MvNormal(zeros(N), PSDMat(Σᵣ)))
+        spanned_F[t, :] = KₚF + GₚFF * X + rand(MvNormal(zeros(dP), ΩFF))
+        mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
+        spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_F[t, 1:dQ] + mea_error
     end
 
     return spanned_yield, spanned_F

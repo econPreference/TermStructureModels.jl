@@ -249,10 +249,9 @@ function post_ϕ_σ²FF_remaining(PCs, macros, ρ; ϕ, ψ, ψ0, σ²FF, q, ν0, 
     end
     for i in dQ+1:dP
 
-        y = yϕ[:, i]
         mᵢ = mean.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
         Vᵢ = var.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
-        ϕ[i, 1:(1+p*dP+i-1)], σ²FF[i] = NIG_NIG(y, Xϕ[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
+        ϕ[i, 1:(1+p*dP+i-1)], σ²FF[i] = NIG_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
 
     end
 
