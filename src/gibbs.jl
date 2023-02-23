@@ -309,6 +309,39 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
     β₁ = B₁ * (inv_B₀ * β₀ + X'y)
     δ₁ = δ₀ + 0.5 * (y'y + β₀' * inv_B₀ * β₀ - β₁' * inv_B₁ * β₁)
 
+    if δ₁ < eps()
+        idx_deg = []
+        diag_B₀ = diag(B₀)
+        while δ₁ < eps()
+            push!(idx_deg, findmin(diag_B₀)[2])
+            diag_B₀[findmin(diag_B₀)[2]] = maximum(diag_B₀)
+            idx = collect(1:length(β₀))
+            for i in eachindex(idx_deg)
+                aux_idx = similar(idx)
+                aux_idx = collect(1:length(β₀)) .!= idx_deg[i]
+                idx .*= aux_idx
+            end
+            idx = findall(idx .> 0)
+            B₀_deg = B₀[idx, idx]
+            β₀_deg = β₀[idx]
+            X_deg = X[:, idx]
+            y_deg = y - X[:, idx_deg] * β₀[idx_deg]
+
+            inv_B₀ = inv(B₀_deg)
+            inv_B₁ = inv_B₀ + X_deg'X_deg
+            B₁ = Symmetric(inv(inv_B₁))
+            β₁ = B₁ * (inv_B₀ * β₀_deg + X_deg'y_deg)
+            δ₁ = δ₀ + 0.5 * (y_deg'y_deg + β₀_deg' * inv_B₀ * β₀_deg - β₁' * inv_B₁ * β₁)
+
+            if δ₁ > eps()
+                σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
+                β = deepcopy(β₀)
+                β[idx] = rand(MvNormal(β₁, σ² * B₁))
+                return β, σ²
+            end
+        end
+    end
+
     σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
     β = rand(MvNormal(β₁, σ² * B₁))
 
@@ -336,7 +369,7 @@ function post_ψ_ψ0(ρ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 
         std_ϕ = (ϕ[i, 1+(l-1)dP+j] - m)^2
         std_ϕ /= V
-        post_ψ[i, dP*(l-1)+j] = rcopy(rcall(:rgig, lambda=ηψ - 0.5, chi=std_ϕ, psi=2ηψ))
+        post_ψ[i, dP*(l-1)+j] = rcopy(rcall(:rgig, lambda=ηψ - 0.5, chi=max(eps(), std_ϕ), psi=2ηψ))
     end
 
     for i in 1:dP # intercepts
@@ -345,7 +378,7 @@ function post_ψ_ψ0(ρ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 
         std_ϕ = (ϕ[i, 1] - m)^2
         std_ϕ /= V
-        post_ψ0[i] = rcopy(rcall(:rgig, lambda=ηψ - 0.5, chi=std_ϕ, psi=2ηψ))
+        post_ψ0[i] = rcopy(rcall(:rgig, lambda=ηψ - 0.5, chi=max(eps(), std_ϕ), psi=2ηψ))
     end
 
     return post_ψ0, post_ψ
