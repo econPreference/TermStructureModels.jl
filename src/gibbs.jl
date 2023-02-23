@@ -234,10 +234,9 @@ function post_ϕ_σ²FF_remaining(PCs, macros, ρ; ϕ, ψ, ψ0, σ²FF, q, ν0, 
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
 
     # for i = 1
-    y = yϕ[:, 1]
     mᵢ = mean.(prior_ϕ0_[1, :])
     Vᵢ = var.(prior_ϕ0_[1, :])
-    ϕ[1, 1:(1+p*dP)] = Normal_Normal_in_NIG(y, Xϕ0, mᵢ, diagm(Vᵢ), σ²FF[1])
+    ϕ[1, 1:(1+p*dP)] = Normal_Normal_in_NIG(yϕ[:, 1], Xϕ0, mᵢ, diagm(Vᵢ), σ²FF[1])
 
     for i in 2:dQ
 
