@@ -58,10 +58,13 @@ S[1, 3] = 1
 S[2, 15] = 3
 push!(scene, S)
 push!(scene, S)
-prediction = scenario_sampler(scene, 3, saved_θ, yields, macros, τₙ)
+prediction = scenario_sampler(scene, 3, saved_θ, yields[(p+1):end, :], macros[(p+1):end, :], τₙ)
 
-predicted = zeros(size(yields, 1), size(yields, 2))
-for t = 2:size(yields, 1)-1
-    local prediction = scenario_sampler([], 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
-    predicted[t+1, :] = mean(load_object(prediction, "predicted_yields"))[end, :]
+predicted = zeros(size(yields, 1), dP)
+for t = (p+4):(size(yields, 1)-1)
+    local prediction = scenario_sampler([], 1, saved_θ, yields[(p+1):t, :], macros[(p+1):t, :], τₙ)
+    predicted[t+1, :] = mean(load_object(prediction, "predicted_factors"))[end, :]
 end
+factors = [PCA(yields, p)[1] macros]
+plot(factors[p+5:end, 10])
+plot!(predicted[p+5:end, 10])

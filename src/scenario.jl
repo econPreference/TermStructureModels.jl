@@ -8,7 +8,7 @@ scenario\\_sampler(S, horizon, saved\\_θ, yields, macros, τₙ)
     - horizon: maximum length of the predicted path
 * Output(2): spanned\\_yield, spanned\\_F
     - "predicted\\_yields", "predicted\\_factors" ∈ Output
-    - the scenarios from t = 1 to T+horizon
+    - the scenarios from t = p+1 to T+horizon
     - function "load\\_object" can be applied
 """
 function scenario_sampler(S, horizon, saved_θ, yields, macros, τₙ)
@@ -39,7 +39,7 @@ end
 _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 * Input: Data excludes initial conditions
 * Output(2): spanned_yield, spanned_F
-    - the scenarios from t = 1 to t = T+horizon
+    - the scenarios from t = p+1 to t = T+horizon
 """
 function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
