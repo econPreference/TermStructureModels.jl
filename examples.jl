@@ -52,6 +52,7 @@ saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 sparse_θ, trace_λ, trace_sparsity = sparsify_precision(saved_θ, yields, macros, τₙ)
 saved_Xθ = PCs_2_latents(saved_θ, yields, τₙ)
+saved_TP = TP(120, τₙ, saved_θ, yields, macros)
 
 predicted = zeros(size(yields, 1), dP)
 for t = (p+4):(size(yields, 1)-1)
@@ -69,8 +70,8 @@ predicted_factors = zeros(size(yields, 1), dP)
 for t = (p+4):(size(yields, 1)-1)
     scene = []
     S = zeros(1, dP - dimQ() + length(τₙ) + 1)
-    S[1, 1] = 1
-    S[1, end] = data[t+1, 1]
+    S[1, 20] = 1
+    S[1, end] = data[t+1, 20]
     # S[2, 20] = 1
     # S[2, end] = data[t+1, 20]
     push!(scene, S)

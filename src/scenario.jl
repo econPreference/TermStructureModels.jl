@@ -1,14 +1,14 @@
 """
 scenario\\_sampler(S, horizon, saved\\_θ, yields, macros, τₙ)
 * Input: scenarios, a result of the posterior sampler, and data 
-    - Data excludes initial conditions
+    - Data includes initial conditions
     - S = Vector{Matrix}(scenario[t], period length of the scenario) 
     - S[t] = Matrix{Float64}([S s][row,col], # of scenarios, N + dP - dQ), where S is a linear combination coefficient matrix and s is a vector of conditional values.
     - If we need an unconditional prediction, S = [].
     - horizon: maximum length of the predicted path
 * Output(2): spanned\\_yield, spanned\\_F
     - "predicted\\_yields", "predicted\\_factors" ∈ Output
-    - the scenarios from t = p+1 to T+horizon
+    - Matrix{Float64}(scenario,horizon,dP or N)
     - function "load\\_object" can be applied
 """
 function scenario_sampler(S, horizon, saved_θ, yields, macros, τₙ)
@@ -37,9 +37,9 @@ end
 
 """
 _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
-* Input: Data excludes initial conditions
+* Input: Data includes initial conditions
 * Output(2): spanned_yield, spanned_F
-    - the scenarios from t = p+1 to t = T+horizon
+    - Matrix{Float64}(scenario,horizon,dP or N)
 """
 function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
@@ -50,15 +50,15 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
     GₚFF = ϕ0[:, 2:end]
     ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
 
-    PCs, ~, Wₚ, Wₒ = PCA(yields, 0)
-    data = [PCs macros] # no initial conditions
-    T = size(data, 1)
     N = length(τₙ)
     dQ = dimQ()
     dP = size(ΩFF, 1)
     k = size(GₚFF, 2) # of factors in the companion from
     p = Int(k / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
+    PCs, ~, Wₚ, Wₒ = PCA(yields, p)
+    data = [PCs macros] # no initial conditions
+    T = size(data, 1)
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
@@ -171,5 +171,5 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_F[t, 1:dQ] + mea_error
     end
 
-    return spanned_yield, spanned_F
+    return spanned_yield[(end-horizon+1):end, :], spanned_F[(end-horizon+1):end, :]
 end
