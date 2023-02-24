@@ -50,15 +50,8 @@ iteration = 10_000
 saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
+sparse_θ, trace_λ, trace_sparsity = sparsify_precision(saved_θ, yields, macros, τₙ)
 saved_Xθ = PCs_2_latents(saved_θ, yields, τₙ)
-
-scene = []
-S = [zeros(2, dP - dimQ() + length(τₙ)) randn(2)]
-S[1, 3] = 1
-S[2, 15] = 3
-push!(scene, S)
-push!(scene, S)
-prediction = scenario_sampler(scene, 3, saved_θ, yields[(p+1):end, :], macros[(p+1):end, :], τₙ)
 
 predicted = zeros(size(yields, 1), dP)
 for t = (p+4):(size(yields, 1)-1)
@@ -68,3 +61,23 @@ end
 factors = [PCA(yields, p)[1] macros]
 plot(factors[p+5:end, 10])
 plot!(predicted[p+5:end, 10])
+
+data = [yields macros]
+factors = [PCA(yields, p)[1] macros]
+predicted_yields = zeros(size(yields, 1), length(τₙ))
+predicted_factors = zeros(size(yields, 1), dP)
+for t = (p+4):(size(yields, 1)-1)
+    scene = []
+    S = zeros(1, dP - dimQ() + length(τₙ) + 1)
+    S[1, 1] = 1
+    S[1, end] = data[t+1, 1]
+    # S[2, 20] = 1
+    # S[2, end] = data[t+1, 20]
+    push!(scene, S)
+
+    prediction = scenario_sampler(scene, 1, saved_θ, yields[(p+1):t, :], macros[(p+1):t, :], τₙ)
+    predicted_yields[t+1, :] = mean(load_object(prediction, "predicted_yields"))[end, :]
+    predicted_factors[t+1, :] = mean(load_object(prediction, "predicted_factors"))[end, :]
+end
+plot(yields[p+10:end, end])
+plot!(predicted_yields[p+10:end, end])

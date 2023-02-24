@@ -278,10 +278,11 @@ function sparsify_precision(saved_θ, yields, macros, τₙ)
         obj(x) = glasso(abs(x[1]))[2]
         if iter > 1
             optim = optimize(obj, [trace_λ[iter-1]], NelderMead())
+            λ_best = abs(optim.minimizer[1])
         else
-            optim = optimize(obj, [0.0001], NelderMead())
+            optim = bboptimize(obj; SearchRange=(-10.0, 10.0), NumDimensions=1)
+            λ_best = abs(best_candidate(optim)[1])
         end
-        λ_best = abs(optim.minimizer[1])
         trace_λ[iter] = λ_best
 
         sparse_cov, ~, sparsity = glasso(λ_best)

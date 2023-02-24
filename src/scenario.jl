@@ -127,6 +127,9 @@ function _scenario_sampler(S, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ,
         ft[idx] = rand(MvNormal(f_tt[idx], P_tt[idx, idx]))
         predicted_F[dh, :] = ft[1:dP]
 
+        mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
+        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + mea_error
+
         for t in (dh-1):-1:1
 
             f_tt = f_ttm[:, 1, t]
