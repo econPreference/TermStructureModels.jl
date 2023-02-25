@@ -56,7 +56,7 @@ saved_TP = TP(120, τₙ, saved_θ, yields, macros)
 
 predicted = zeros(size(yields, 1), dP)
 for t = (p+4):(size(yields, 1)-1)
-    local prediction = scenario_sampler([], 1, saved_θ, yields[(p+1):t, :], macros[(p+1):t, :], τₙ)
+    local prediction = scenario_sampler([], 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
     predicted[t+1, :] = mean(load_object(prediction, "predicted_factors"))[end, :]
 end
 factors = [PCA(yields, p)[1] macros]
@@ -76,9 +76,24 @@ for t = (p+4):(size(yields, 1)-1)
     # S[2, end] = data[t+1, 20]
     push!(scene, S)
 
-    prediction = scenario_sampler(scene, 1, saved_θ, yields[(p+1):t, :], macros[(p+1):t, :], τₙ)
+    prediction = scenario_sampler(scene, 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
     predicted_yields[t+1, :] = mean(load_object(prediction, "predicted_yields"))[end, :]
     predicted_factors[t+1, :] = mean(load_object(prediction, "predicted_factors"))[end, :]
 end
 plot(yields[p+10:end, end])
 plot!(predicted_yields[p+10:end, end])
+
+data = [yields macros]
+scene = []
+for h = 1:4
+    S = zeros(1, dP - dimQ() + length(τₙ) + 1)
+    S[1, 20] = 1
+    S[1, end] = data[size(data, 1)-4+h, 20]
+    # S[2, 20] = 1
+    # S[2, end] = data[t+1, 20]
+    push!(scene, S)
+end
+prediction = scenario_sampler(scene, 120, 8, saved_θ, yields[1:size(data, 1)-4, :], macros[1:size(data, 1)-4, :], τₙ)
+aux = mean(load_object(prediction, "predicted_factors"))
+plot(aux[:, 11])
+plot!(data[size(data, 1)-3:size(data, 1), 21])
