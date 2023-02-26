@@ -94,6 +94,7 @@ for h = 1:4
     push!(scene, S)
 end
 prediction = scenario_sampler(scene, 120, 8, saved_θ, yields[1:size(data, 1)-4, :], macros[1:size(data, 1)-4, :], τₙ)
-aux = mean(load_object(prediction, "predicted_factors"))
-plot(aux[:, 11])
-plot!(data[size(data, 1)-3:size(data, 1), 21])
+aux = mean(load_object(prediction, "predicted_TP"))
+plot(aux[1:4])
+aux = mean(load_object(saved_TP, "TP"))
+plot!(aux[end-3:end])
