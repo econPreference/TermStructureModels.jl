@@ -76,7 +76,7 @@ function aτ(N, bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
     a = zeros(N)
     T1X_ = T1X(Bₓ(bτ_, τₙ), Wₚ)
     for i in 2:N
-        a[i] = a[i-1] - Jensens(i, bτ_, T1X_; ΩPP) + (i - 1) * kQ_infty
+        a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP) + (i - 1) * kQ_infty
     end
 
     return a
@@ -98,10 +98,10 @@ function aτ(N, bτ_; kQ_infty, ΩXX, annual=1)
 end
 
 """
-Jensens(τ, bτ_, T1X_; ΩPP, annual=1)
+jensens_inequality(τ, bτ_, T1X_; ΩPP, annual=1)
 * This function evaluate the Jensen's Ineqaulity term. 
 """
-function Jensens(τ, bτ_, T1X_; ΩPP, annual=1)
+function jensens_inequality(τ, bτ_, T1X_; ΩPP, annual=1)
     J = 0.5 * ΩPP
     J = (T1X_ \ J) / (T1X_')
     J = bτ_[:, τ-1]' * J * bτ_[:, τ-1]
@@ -152,26 +152,26 @@ function Bₚ(Bₓ_, T1X_, Wₒ)
 end
 
 """
-_TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
+_termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
 * This function calculates a term premium for maturity τ. 
 * Input: τ is a target maturity. bτ and T1X is calculated from the corresponding functions. PCs and macros are the data. GₚFF is dP by p*dP matrix that contains slope coefficients of the reduced form transition equation. 
     - Remember that data should contains initial conditions, that is t = 0,1,...,p-1. 
-* Output(4): TP, TV_TP, const_TP, Jensens_
+* Output(4): TP, timevarying_TP, const_TP, jensen
     - TP: term premium of maturity τ
-    - TV_TP: contributions of each dependent variable on TP at each time t (row: time, col: variable)
+    - timevarying_TP: contributions of each dependent variable on TP at each time t (row: time, col: variable)
     - const_TP: Constant part of TP
-    - Jensens_: Jensen's Ineqaulity part in TP
+    - jensen: Jensen's Ineqaulity part in TP
     - Although input has initial conditions, output excludes the time period for the initial condition.  
 """
-function _TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
+function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
 
     T1P_ = inv(T1X_)
     # Jensen's Ineqaulity term
-    Jensens_ = 0
+    jensen = 0
     for i = 1:(τ-1)
-        Jensens_ += Jensens(i + 1, bτ_, T1X_; ΩPP)
+        jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP)
     end
-    Jensens_ /= -τ
+    jensen /= -τ
 
     # Constant term
     dQ = dimQ()
@@ -188,7 +188,7 @@ function _TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
     dP = size(GₚFF, 1)
     p = Int(size(GₚFF, 2) / dP)
     T = size(PCs, 1) # time series length including intial conditions
-    TV_TP = zeros(T - p, dP) # time-varying part is seperated to see the individual contribution of each priced factor. So, the column length is dP.
+    timevarying_TP = zeros(T - p, dP) # time-varying part is seperated to see the individual contribution of each priced factor. So, the column length is dP.
 
     GQ_PP = T1X_ * GQ_XX(; κQ) * T1P_
     Λ_PF = GₚFF[1:dQ, :]
@@ -210,41 +210,41 @@ function _TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
         for i = 1:(τ-1), l = 1:p
             weight = bτ_[:, τ-i]' * (T1P_Λ_PF)
             for j = 1:dP
-                TV_TP[t-p, j] += weight[j] * predicted_X[i-l+p, j] # first row in predicted_X = (time = t-p+1)
+                timevarying_TP[t-p, j] += weight[j] * predicted_X[i-l+p, j] # first row in predicted_X = (time = t-p+1)
             end
         end
     end
-    TV_TP /= -τ
+    timevarying_TP /= -τ
 
-    TP = sum(TV_TP, dims=2) .+ Jensens_ .+ const_TP
+    TP = sum(timevarying_TP, dims=2) .+ jensen .+ const_TP
 
-    return TP, TV_TP, const_TP, Jensens_
+    return TP, timevarying_TP, const_TP, jensen
 end
 
 """
-TP(τ, τₙ, saved_θ, yields, macros)
+termPremium(τ, τₙ, saved_θ, yields, macros)
 * This function generates posterior samples of the term premiums.
 * Input: targeted maturity τ, all observed maturities τₙ = [1;3;6;...], the Gibbs sampling samples "saved_θ", and the data that contains initial conditions.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
-    - "TP", "TV\\_TP", "const\\_TP", "Jensens" ∈ Output[i]
+    - "TP", "timevarying\\_TP", "const\\_TP", "jensen" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
 """
-function TP(τ, τₙ, saved_θ, yields, macros)
+function termPremium(τ, τₙ, saved_θ, yields, macros)
 
     iteration = length(saved_θ)
-    saved_TP = []
+    saved_TP = Vector{TermPremium}(undef, iteration)
 
     dQ = dimQ()
-    dP = size(saved_θ[1]["ϕ"], 1)
-    p = Int((size(saved_θ[1]["ϕ"], 2) - 1) / dP - 1)
+    dP = size(saved_θ[:ϕ][1], 1)
+    p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ = PCA(yields, p)
 
     @showprogress 1 "Calculating TPs..." for iter in 1:iteration
 
-        κQ = saved_θ[iter]["κQ"]
-        kQ_infty = saved_θ[iter]["kQ_infty"]
-        ϕ = saved_θ[iter]["ϕ"]
-        σ²FF = saved_θ[iter]["σ²FF"]
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
 
         ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
         ϕ0 = C \ ϕ0
@@ -255,15 +255,9 @@ function TP(τ, τₙ, saved_θ, yields, macros)
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
-        TP, TV_TP, const_TP, Jensens_ = _TP(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
+        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
-        push!(saved_TP,
-            Dict(
-                "TP" => TP,
-                "TV_TP" => TV_TP,
-                "const_TP" => const_TP,
-                "Jensens" => Jensens_
-            ))
+        saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
     end
 
     return saved_TP
@@ -281,18 +275,13 @@ PCs\\_2\\_latents(saved_θ, yields, τₙ)
 function PCs_2_latents(saved_θ, yields, τₙ)
 
     iteration = length(saved_θ)
-    saved_θ_latent = []
+    saved_θ_latent = Vector{LatentSpace}(undef, iteration)
     @showprogress 1 "Moving to the latent space..." for iter in 1:iteration
 
-        κQ = saved_θ[iter]["κQ"]
-        kQ_infty = saved_θ[iter]["kQ_infty"]
-        ϕ = saved_θ[iter]["ϕ"]
-        σ²FF = saved_θ[iter]["σ²FF"]
-        ηψ = saved_θ[iter]["ηψ"]
-        ψ = saved_θ[iter]["ψ"]
-        ψ0 = saved_θ[iter]["ψ0"]
-        Σₒ = saved_θ[iter]["Σₒ"]
-        γ = saved_θ[iter]["γ"]
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
 
         ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
         ϕ0 = C \ ϕ0
@@ -301,21 +290,8 @@ function PCs_2_latents(saved_θ, yields, τₙ)
         ΩFF = (C \ diagm(σ²FF)) / C'
 
         latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+        saved_θ_latent[iter] = LatentSpace(latent=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
 
-        push!(saved_θ_latent,
-            Dict(
-                "latents" => latent,
-                "κQ" => κQ,
-                "kQ_infty" => kQ_infty,
-                "KₚXF" => KₚXF,
-                "GₚXFXF" => GₚXFXF,
-                "ΩXFXF" => ΩXFXF,
-                "ηψ" => ηψ,
-                "ψ" => ψ,
-                "ψ0" => ψ0,
-                "Σₒ" => Σₒ,
-                "γ" => γ
-            ))
     end
 
     return saved_θ_latent
@@ -387,7 +363,7 @@ PCA(yields, p; rescaling = false)
     - PCs, OCs: first dQ and the remaining principal components
     - Wₚ, Wₒ: the rotation matrix for PCs and OCs, respectively
 """
-function PCA(yields, p; rescaling=false)
+function PCA(yields, p; rescaling=true)
 
     dQ = dimQ()
     ## z-score case

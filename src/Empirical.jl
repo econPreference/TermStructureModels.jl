@@ -166,36 +166,25 @@ stationary\\_θ(saved_θ)
 function stationary_θ(saved_θ)
 
     iteration = length(saved_θ)
-    stationary_saved_θ = []
+    stationary_saved_θ = Vector{Parameter}(undef, 0)
     @showprogress 1 "Filtering..." for iter in 1:iteration
 
-        κQ = saved_θ[iter]["κQ"]
-        kQ_infty = saved_θ[iter]["kQ_infty"]
-        ϕ = saved_θ[iter]["ϕ"]
-        σ²FF = saved_θ[iter]["σ²FF"]
-        ηψ = saved_θ[iter]["ηψ"]
-        ψ = saved_θ[iter]["ψ"]
-        ψ0 = saved_θ[iter]["ψ0"]
-        Σₒ = saved_θ[iter]["Σₒ"]
-        γ = saved_θ[iter]["γ"]
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
+        ηψ = saved_θ[:ηψ][iter]
+        ψ = saved_θ[:ψ][iter]
+        ψ0 = saved_θ[:ψ0][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
+        γ = saved_θ[:γ][iter]
 
         ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
         ϕ0 = C \ ϕ0
         GₚFF = ϕ0[:, 2:end]
 
         if isstationary(GₚFF)
-            push!(stationary_saved_θ,
-                Dict(
-                    "κQ" => κQ,
-                    "kQ_infty" => kQ_infty,
-                    "ϕ" => ϕ,
-                    "σ²FF" => σ²FF,
-                    "ηψ" => ηψ,
-                    "ψ" => ψ,
-                    "ψ0" => ψ0,
-                    "Σₒ" => Σₒ,
-                    "γ" => γ
-                ))
+            push!(stationary_saved_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ))
         end
     end
 

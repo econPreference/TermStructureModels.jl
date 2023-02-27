@@ -60,7 +60,7 @@ function prior_C(; Ω0::Vector)
 end
 
 """
-prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
+prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
 * This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
 * Input:
     - ρ = Vector{Float64}(0 or near 1, dP-dQ) benchmark persistencies of macro variables. For growth variables and level variables, ρ[i] should be 0 and nearly 1, respectively.
@@ -73,14 +73,13 @@ prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
     - prior variance for ϕ[i,:] = σ²FF[i]*variance of output[i,:]
     - Unlike MvNormal, the second arg of "Normal" is a standard deviation.
 """
-function prior_ϕ0(ρ::Vector; ψ0, ψ, q, ν0, Ω0)
+function prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
 
     dP, dPp = size(ψ) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
     ϕ0 = Matrix{Any}(undef, dP, dPp + 1)
     dQ = dimQ() # reduced dimension of yields
 
-    prior_κQ_ = prior_κQ()
     κQ_candidate = support(prior_κQ_)
     κQ_prob = probs(prior_κQ_)
     GQ_XX_mean = zeros(dQ, dQ)
@@ -151,12 +150,12 @@ end
 ## DNS decay parameter κQ##
 ###########################
 """
-prior_κQ(medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+prior_κQ(medium_τ)
 * The function derive the maximizer decay parameter κQ that maximize the curvature factor loading at each candidate medium-term maturity.
 * Input: Vector{Float64}(candidate medium maturities, # of candidates)
 * Output: uniform prior distribution that has a support of the maximizer κQ
 """
-function prior_κQ(medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]) # Default candidates are one to five years
+function prior_κQ(medium_τ) # Default candidates are one to five years
 
     N = length(medium_τ) # the number of candidates
     κQ_candidate = Vector{Float64}(undef, N) # support of the prior
