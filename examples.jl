@@ -28,7 +28,7 @@ yields, latents, macros = generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, G�
 
 ## Turing hyper-parameters
 ρ = 0.9ones(dP - dimQ())
-#p, q, ν0, Ω0 = Tuning_Hyperparameter(yields, macros, ρ)
+tuned = tuning_hyperparameter(yields, macros, ρ)
 
 p = 2
 q = [0.06043749644018473, 0.0033752554401493304,
@@ -47,7 +47,7 @@ q = [0.06043749644018473, 0.0033752554401493304,
 
 ## Estimating
 iteration = 10_000
-saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration; p, q, ν0, Ω0)
+saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 sparse_θ, trace_λ, trace_sparsity = sparsify_precision(saved_θ, yields, macros, τₙ)

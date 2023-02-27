@@ -1,5 +1,5 @@
 """
-scenario\\_sampler(S, τ, horizon, saved\\_θ, yields, macros, τₙ)
+scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
 * Input: scenarios, a result of the posterior sampler, and data 
     - Data includes initial conditions
     - S = Vector{Matrix}(scenario[t], period length of the scenario) 
@@ -12,25 +12,20 @@ scenario\\_sampler(S, τ, horizon, saved\\_θ, yields, macros, τₙ)
     - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
     - function "load\\_object" can be applied
 """
-function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ)
+function scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τₙ)
     iteration = length(saved_θ)
-    scenarios = []
+    scenarios = Vector{Prediction}(undef, iteration)
     @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
 
-        κQ = saved_θ[iter]["κQ"]
-        kQ_infty = saved_θ[iter]["kQ_infty"]
-        ϕ = saved_θ[iter]["ϕ"]
-        σ²FF = saved_θ[iter]["σ²FF"]
-        Σₒ = saved_θ[iter]["Σₒ"]
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
 
         spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
-        push!(scenarios,
-            Dict(
-                "predicted_yields" => spanned_yield,
-                "predicted_factors" => spanned_F,
-                "predicted_TP" => predicted_TP
-            ))
+        scenarios[iter] = Prediction(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
     end
 
     return scenarios
@@ -38,12 +33,12 @@ end
 
 
 """
-_scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+_scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 * Input: Data includes initial conditions, τ is a maturity that a term premium of interest has.
 * Output(3): spanned_yield, spanned_F, predicted_TP
     - Matrix{Float64}(scenario,horizon,dP or N or 1)
 """
-function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+function _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
@@ -57,7 +52,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     dP = size(ΩFF, 1)
     k = size(GₚFF, 2) # of factors in the companion from
     p = Int(k / dP)
-    dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
+    dh = size(S.values, 2) # a time series length of the scenario, dh = 0 for an unconditional prediction
     PCs, ~, Wₚ, Wₒ = PCA(yields, p)
     data = [PCs macros] # no initial conditions
     T = size(data, 1)
@@ -99,8 +94,8 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
             f_tl = μT + G * f_ll
             P_tl = G * P_ll * G' + Ω
 
-            St = S[t][:, 1:(end-1)]
-            st = S[t][:, end]
+            St = S.combinations[:, :, t]
+            st = S.values[:, t]
             # st = St*μM + St*H*F(t) + N(0,St*Σ*St')
             var_tl = (St * H) * P_tl * (St * H)' + St * Σ * St' |> Symmetric
             e_tl = st - St * μM - St * H * f_tl
@@ -172,7 +167,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_F[t, 1:dQ] + mea_error
     end
-    predicted_TP = _TP(τ, spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
+    predicted_TP = _termPremium(τ, spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
 
     return spanned_yield[(end-horizon+1):end, :], spanned_F[(end-horizon+1):end, :], predicted_TP
 end
