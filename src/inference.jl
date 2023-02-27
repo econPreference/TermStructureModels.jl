@@ -235,7 +235,7 @@ function sparsify_precision(saved_θ, yields, macros, τₙ)
             sparse_cov = glasso_results[:w]
             sparse_prec = glasso_results[:wi]
 
-            inv_sparse_C, sparse_σ²FF = LDLt(sparse_cov)
+            inv_sparse_C, sparse_σ²FF = LDL(sparse_cov)
             sparse_ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
 
             BIC_ = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF), Σₒ)
@@ -259,7 +259,7 @@ function sparsify_precision(saved_θ, yields, macros, τₙ)
 
         sparse_cov, ~, sparsity = glasso(λ_best)
         trace_sparsity[iter] = sparsity
-        inv_sparse_C, diagm_σ²FF = LDLt(sparse_cov)
+        inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
         ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
         σ²FF = diag(diagm_σ²FF)
 

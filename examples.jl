@@ -1,6 +1,5 @@
-using Random, Distributions, LinearAlgebra
+using Distributions, LinearAlgebra
 using GDTSM
-Random.seed!(1)
 
 ## Simulating sample data
 T = 200

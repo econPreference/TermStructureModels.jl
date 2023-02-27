@@ -81,13 +81,13 @@ function yϕ_Xϕ(PCs, macros, p)
 end
 
 """
-LDLt(X)
+LDL(X)
 * This function generate a matrix decomposition, called LDLt. X = L*D*L', where L is a lower triangular matrix and D is a diagonal. How to conduct it can be found at [Wikipedia](https://en.wikipedia.org/wiki/Cholesky_decomposition#LDL_decomposition).
 * Input: Decomposed Object, X
 * Output(2): L, D
     - Decomposed result is X = L*D*L'
 """
-function LDLt(X)
+function LDL(X)
     C = cholesky(X).L
     S = Diagonal(diagm(diag(C)))
     L = C / S

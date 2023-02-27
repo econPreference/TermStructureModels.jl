@@ -175,7 +175,7 @@ export
     loglik_tran,
     isstationary,
     stationary_θ,
-    LDLt,
+    LDL,
     ϕ_σ²FF_2_ΩFF,
 
     # GDTSM.jl

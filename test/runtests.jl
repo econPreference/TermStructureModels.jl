@@ -1,44 +1,41 @@
-using Random, Statistics, Distributions, LinearAlgebra
+using Statistics, Distributions, LinearAlgebra
 using Test
 using GDTSM
-Random.seed!(111)
-include(simulation.jl)
 
-@testset "Empirical.jl" begin
+@testset "empirical.jl" begin
 
-    # LDLt(X)
+    # LDL(X)
     X = [4 12 -16
         12 37 -43
         -16 -43 98]
-    L, D = LDLt(X)
+    L, D = LDL(X)
     @test X == L * D * L'
 
 end
 
-@testset "GDTSM.jl" begin
+@testset "inference.jl" begin
 
     # Calculation of the inefficiency factor
-    saved_θ = []
     iteration = 10_000
+    saved_θ = Vector{Parameter}(undef, iteration)
     for iter in 1:iteration
         κQ = randn()
         kQ_infty = randn()
-        σ²FF = randn()
-        ϕ = randn(2)
+        σ²FF = randn(2)
+        ϕ = randn(2, 2)
         ηψ = randn()
-        ψ0 = randn()
-        ψ = randn(2)
-        Σₒ = randn()
-        γ = randn()
-        push!(saved_θ,
-            Dict("κQ" => κQ, "kQ_infty" => kQ_infty, "ϕ" => ϕ, "σ²FF" => σ²FF, "ηψ" => ηψ, "ψ" => ψ, "ψ0" => ψ0, "Σₒ" => Σₒ, "γ" => γ)
-        )
+        ψ0 = randn(2)
+        ψ = randn(2, 2)
+        Σₒ = randn(2)
+        γ = randn(2)
+        saved_θ[iter] = Parameter(κQ, kQ_infty, ϕ,
+            σ²FF, ηψ, ψ, ψ0, Σₒ, γ)
     end
-    @test mean(ineff_factor(saved_θ)) < 1.1
+    @test abs(mean(ineff_factor(saved_θ)) - 1) < 0.1
 
 end
 
-@testset "priors.jl" begin
+@testset "prior.jl" begin
 
     medium_τ = 12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
     prior_κQ_ = prior_κQ(medium_τ)
