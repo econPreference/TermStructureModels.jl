@@ -27,10 +27,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
         ν0 = input[6] + dP + 1
         Ω0 = input[7:end]
 
-        ψ = ones(dP, dP * p)
-        ψ0 = ones(dP)
-
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, prior_κQ_; p, ν0, Ω0, q, ψ, ψ0) # Although the input data should contains initial conditions, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, prior_κQ_; p, ν0, Ω0, q) # Although the input data should contains initial conditions, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
@@ -78,10 +75,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
             ν0 = input[5] + dP + 1
             Ω0 = input[6:end]
 
-            ψ = ones(dP, dP * p)
-            ψ0 = ones(dP)
-
-            return -log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q, ψ, ψ0) # the function should contains the initial conditions
+            return -log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q) # the function should contains the initial conditions
 
         end
 

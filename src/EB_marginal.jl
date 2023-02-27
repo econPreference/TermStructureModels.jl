@@ -12,9 +12,9 @@ log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q, ψ, ψ0)
     * ρ only indicates macro variables' persistencies.
 *Output: the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q, ψ=NaN, ψ0=NaN)
+function log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q, ψ=[], ψ0=[])
     dP = length(Ω0)
-    if isnan(ψ) || isnan(ψ0)
+    if isempty(ψ) || isempty(ψ0)
         ψ = ones(dP, dP * p)
         ψ0 = ones(dP)
     end

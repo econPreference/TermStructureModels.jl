@@ -110,7 +110,7 @@ include("EB_marginal.jl") # Calculate the marginal likelihood of the transition 
 include("Empirical.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
 include("Gibbs.jl") # posterior sampler.
 include("scenario.jl") # scenario analysis
-include("inference.jl") # scenario analysis
+include("inference.jl") # implementation part
 
 export
     # EB_margianl.jl
