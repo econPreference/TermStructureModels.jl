@@ -290,7 +290,7 @@ function PCs_2_latents(saved_θ, yields, τₙ)
         ΩFF = (C \ diagm(σ²FF)) / C'
 
         latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
-        saved_θ_latent[iter] = LatentSpace(latent=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
+        saved_θ_latent[iter] = LatentSpace(latents=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
 
     end
 
@@ -352,6 +352,42 @@ function _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 
     return latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF
 
+end
+
+"""
+fitted_YieldCurve(τₙ, saved_Xθ::Vector{LatentSpace})
+* It generates a fitted yield curve
+* Input: τₙ is a set of maturities of interest. saved_Xθ is a transformed posterior sample using function PCs_2_latents.
+    - τₙ does not need to be the same as the one used for the estimation.
+* Output: Vector{YieldCurve}(,# of iteration)
+"""
+function fitted_YieldCurve(τₙ, saved_Xθ::Vector{LatentSpace})
+
+    dQ = dimQ()
+    iteration = length(saved_Xθ)
+    YieldCurve_ = Vector{YieldCurve}(undef, iteration)
+    @showprogress 1 "Generating fitted yield curve..." for iter in 1:iteration
+
+        latents = saved_Xθ[:latents][iter]
+        κQ = saved_Xθ[:κQ][iter]
+        kQ_infty = saved_Xθ[:kQ_infty][iter]
+        ΩXFXF = saved_Xθ[:ΩXFXF][iter]
+
+        # statistical Parameters
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        aτ_ = aτ(τₙ[end], bτ_; kQ_infty, ΩXX=ΩXFXF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+
+        YieldCurve_[iter] = YieldCurve(
+            latents=latents,
+            yields=(Aₓ_ .+ Bₓ_ * latents')' |> Matrix,
+            intercept=Aₓ_,
+            slope=Bₓ_
+        )
+    end
+
+    return YieldCurve_
 end
 
 """

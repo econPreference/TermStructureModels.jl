@@ -50,9 +50,9 @@ abstract type PosteriorSample end
     - kQ_infty::Float64
     - ϕ::Matrix{Float64}
     - σ²FF::Vector{Float64}
-    - ηψ::Float64 = 1.0
-    - ψ::Matrix{Float64} = ones(1, 1)
-    - ψ0::Vector{Float64} = ones(1)
+    - ηψ::Float64
+    - ψ::Matrix{Float64}
+    - ψ0::Vector{Float64}
     - Σₒ::Vector{Float64}
     - γ::Vector{Float64}
 * It contains statistical parameters of the model that are sampled from function "posterior_sampler".
@@ -62,16 +62,16 @@ abstract type PosteriorSample end
     kQ_infty::Float64
     ϕ::Matrix{Float64}
     σ²FF::Vector{Float64}
-    ηψ::Float64 = 1.0
-    ψ::Matrix{Float64} = ones(1, 1)
-    ψ0::Vector{Float64} = ones(1)
+    ηψ::Float64
+    ψ::Matrix{Float64}
+    ψ0::Vector{Float64}
     Σₒ::Vector{Float64}
     γ::Vector{Float64}
 end
 
 """
 * @kwdef struct LatentSpace <: PosteriorSample
-    - latent::Matrix{Float64}
+    - latents::Matrix{Float64}
     - κQ::Float64
     - kQ_infty::Float64
     - KₚXF::Vector{Float64}
@@ -84,12 +84,28 @@ end
     - data[t,:] = KₚXF + GₚXFXF*vec(data[t:-1:t-p+1]') + MvNormal(O,ΩXFXF)  
 """
 @kwdef struct LatentSpace <: PosteriorSample
-    latent::Matrix{Float64}
+    latents::Matrix{Float64}
     κQ::Float64
     kQ_infty::Float64
     KₚXF::Vector{Float64}
     GₚXFXF::Matrix{Float64}
     ΩXFXF::Matrix{Float64}
+end
+
+"""
+@kwdef struct YieldCurve <: PosteriorSample
+    - latents::Matrix{Float64}
+    - yields::VecOrMat{Float64}
+    - intercept::Union{Float64,Vector{Float64}}
+    - slope::Matrix{Float64}
+* It contains fitted yield curve.
+    -yields[t,:] = intercept + slope*latents[t,:]
+"""
+@kwdef struct YieldCurve <: PosteriorSample
+    latents::Matrix{Float64}
+    yields::VecOrMat{Float64}
+    intercept::Union{Float64,Vector{Float64}}
+    slope::Matrix{Float64}
 end
 
 """
@@ -167,6 +183,7 @@ export
     PosteriorSample,
     Parameter,
     LatentSpace,
+    YieldCurve,
     TermPremium,
     Scenario,
     Forecast,
@@ -192,6 +209,7 @@ export
     termPremium,
     PCs_2_latents,
     PCA,
+    fitted_YieldCurve,
 
     # utilities.jl
     getindex,

@@ -199,9 +199,9 @@ sparsify_precision(saved_θ, yields, macros, τₙ)
 function sparsify_precision(saved_θ, yields, macros, τₙ)
 
     R"library(glasso)"
-    ψ = saved_θ[:ψ][1]
-    dP = size(ψ, 1)
-    p = Int(size(ψ, 2) / dP)
+    ϕ = saved_θ[:ϕ][1]
+    dP = size(ϕ, 1)
+    p = (size(ϕ, 2) - 1) / dP - 1 |> Int
     T = size(yields, 1) - p
     PCs = PCA(yields, p)[1]
 
