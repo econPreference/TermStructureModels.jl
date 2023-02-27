@@ -1,6 +1,6 @@
 using Random, Distributions, LinearAlgebra
 using GDTSM
-Random.seed!(111)
+Random.seed!(12345)
 
 ## Simulating sample data
 T = 200

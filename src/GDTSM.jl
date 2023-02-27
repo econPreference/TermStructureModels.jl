@@ -26,7 +26,7 @@ using RCall
 * ν0(d.f.), Ω0(scale): hyper-parameters of the Inverse-Wishart prior distribution for the error covariance matrix in the transition equation
 """
 @kwdef struct HyperParameter
-    p::Float64
+    p::Int64
     q::Vector{Float64}
     ν0::Float64
     Ω0::Vector{Float64}

@@ -62,7 +62,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss)
 
-    obj_NM(x) = negative_log_marginal([abs(ceil(Int, x[1])); abs.(x[2:end])], Int(ux[1]))
+    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:end])], Int(ux[1]))
     NM_opt = optimize(obj_NM, best_candidate(EA_opt), NelderMead(), Optim.Options(show_trace=true))
 
     if gradient == true
@@ -79,7 +79,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
 
         end
 
-        p = abs(ceil(Int, NM_opt.minimizer[1]))
+        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1]))
         obj_NT(x) = negative_log_marginal_p(abs.(x), p)
         NT_opt = optimize(obj_NT, NM_opt.minimizer[2:end], LBFGS(; linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true))
         solution = abs.(NT_opt.minimizer)
@@ -95,7 +95,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
         Ω0 = solution[7:end]
     end
 
-    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
+    return HyperParameter(p=Int(p), q=q, ν0=ν0, Ω0=Ω0)
 
 end
 
