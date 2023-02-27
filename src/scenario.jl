@@ -12,9 +12,9 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
     - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
     - function "load\\_object" can be applied
 """
-function scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τₙ)
+function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ)
     iteration = length(saved_θ)
-    scenarios = Vector{Prediction}(undef, iteration)
+    scenarios = Vector{Forecast}(undef, iteration)
     @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -25,7 +25,7 @@ function scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τ
 
         spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
-        scenarios[iter] = Prediction(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
+        scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
     end
 
     return scenarios
@@ -38,7 +38,7 @@ _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
 * Output(3): spanned_yield, spanned_F, predicted_TP
     - Matrix{Float64}(scenario,horizon,dP or N or 1)
 """
-function _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
@@ -52,7 +52,11 @@ function _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ,
     dP = size(ΩFF, 1)
     k = size(GₚFF, 2) # of factors in the companion from
     p = Int(k / dP)
-    dh = size(S.values, 2) # a time series length of the scenario, dh = 0 for an unconditional prediction
+    if S != []
+        dh = size(S.values, 2) # a time series length of the scenario, dh = 0 for an unconditional prediction
+    else
+        dh = 0
+    end
     PCs, ~, Wₚ, Wₒ = PCA(yields, p)
     data = [PCs macros] # no initial conditions
     T = size(data, 1)

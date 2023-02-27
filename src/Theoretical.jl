@@ -257,7 +257,7 @@ function termPremium(τ, τₙ, saved_θ, yields, macros)
         T1X_ = T1X(Bₓ_, Wₚ)
         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
-        saved_TP[iter] = TermPremium(TP=TP, timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
+        saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
     end
 
     return saved_TP
@@ -363,7 +363,7 @@ PCA(yields, p; rescaling = false)
     - PCs, OCs: first dQ and the remaining principal components
     - Wₚ, Wₒ: the rotation matrix for PCs and OCs, respectively
 """
-function PCA(yields, p; rescaling=false)
+function PCA(yields, p; rescaling=true)
 
     dQ = dimQ()
     ## z-score case

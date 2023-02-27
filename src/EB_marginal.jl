@@ -1,23 +1,21 @@
 """
-log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q, ψ, ψ0)
+log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], ψ0=[], medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
 * This file derives hyper-parameters for priors. The marginal likelihood for the transition equation is maximized at the selected hyperparameters. 
-* Input: Data should contain initial conditions. Keywords are hyperparameters. The hyperparameters are
-    * p: the lag of the transition equation
-    * ν0(d.f.), Ω0(scale): hyper-parameters of the Inverse-Wishart prior distribution for the error covariance matrix in the transition equation
-    * q: the degree of shrinkages of the intercept and the slope coefficient of the transition equation
-        * q[1]: shrinkages for the lagged dependent variable
-        * q[2]: shrinkages for cross variables
-        * q[3]: power of the lag shrinkage
-        * q[4]: shrinkages for the intercept
+* Input: Data should contain initial conditions. 
     * ρ only indicates macro variables' persistencies.
+    * medium_τ is a vector of representative medium maturities that are used for constructing prior for κQ.
 *Output: the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q, ψ=[], ψ0=[])
+function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], ψ0=[], medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+
+    (; p, ν0, Ω0, q) = HyperParameter_
+    prior_κQ_ = prior_κQ(medium_τ)
     dP = length(Ω0)
     if isempty(ψ) || isempty(ψ0)
         ψ = ones(dP, dP * p)
         ψ0 = ones(dP)
     end
+
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     T = size(yϕ, 1)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0, ψ, q, ν0, Ω0)

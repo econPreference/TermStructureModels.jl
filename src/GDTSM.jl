@@ -5,6 +5,7 @@ using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, Optim, 
 using BlackBoxOptim: bboptimize, best_candidate, MixedPrecisionRectSearchSpace
 import Distributions: TDist
 import Base: getindex
+import Statistics: mean, median, std, var, quantile
 
 ##When install RCall##
 # 1. Install R form internet
@@ -17,6 +18,11 @@ using RCall
 ######################
 
 """
+@kwdef struct HyperParameter
+    p::Int64
+    q::Vector{Float64}
+    ν0::Float64
+    Ω0::Vector{Float64}
 * p: the lag of the transition equation
 * q: the degree of shrinkages of the intercept and the slope coefficient of the transition equation
     - q[1]: shrinkages for the lagged dependent variable
@@ -31,15 +37,24 @@ using RCall
     ν0::Float64
     Ω0::Vector{Float64}
 end
+
 """
+abstract type PosteriorSample
 * It contains structs, that are Parameter, LatentSpace, TermPremium, and Scenario.
 """
 abstract type PosteriorSample end
-function getindex(x::Vector{<:PosteriorSample}, c::Symbol)
-    return getproperty.(x, c)
-end
 
 """
+* @kwdef struct Parameter <: PosteriorSample
+    - κQ::Float64
+    - kQ_infty::Float64
+    - ϕ::Matrix{Float64}
+    - σ²FF::Vector{Float64}
+    - ηψ::Float64 = 1.0
+    - ψ::Matrix{Float64} = ones(1, 1)
+    - ψ0::Vector{Float64} = ones(1)
+    - Σₒ::Vector{Float64}
+    - γ::Vector{Float64}
 * It contains statistical parameters of the model that are sampled from function "posterior_sampler".
 """
 @kwdef struct Parameter <: PosteriorSample
@@ -53,7 +68,15 @@ end
     Σₒ::Vector{Float64}
     γ::Vector{Float64}
 end
+
 """
+* @kwdef struct LatentSpace <: PosteriorSample
+    - latent::Matrix{Float64}
+    - κQ::Float64
+    - kQ_infty::Float64
+    - KₚXF::Vector{Float64}
+    - GₚXFXF::Matrix{Float64}
+    - ΩXFXF::Matrix{Float64}
 * When the model goes to the JSZ latent factor space, the statistical parameters in struct Parameter are also transformed. This struct contains the transformed parameters.
 * Transformation: latent Xₜ = T0P_ + inv(T1X)*PCsₜ
 * Transition equation in the latent factor space
@@ -68,7 +91,13 @@ end
     GₚXFXF::Matrix{Float64}
     ΩXFXF::Matrix{Float64}
 end
+
 """
+* @kwdef struct TermPremium <: PosteriorSample
+    - TP::Vector{Float64}
+    - timevarying_TP::Matrix{Float64}
+    - const_TP::Float64
+    - jensen::Float64
 * It contains term premium estimates.
 * TP: term premium estimates of a specific maturity bond
     - TP = timevarying_TP + const_TP + jensen
@@ -84,8 +113,12 @@ end
 end
 
 """
+* @kwdef struct Scenario
+    - combinations::Array{Float64}
+    - values::Array{Float64}
 * It contains conditioning scenarios in the scenario analysis.
 * When y is a observed vector, combinations*y = values constitutes the scenario.
+    - Here, yₜ = [yields[t,:]; macros[t,:]]
 * Matrix combination[:,:,t] is the scenario at time t, and Vector values[:,t] is the conditioning value at time t.
     - combinations[:,:,t]*y = values[:,t] is the conditioning scenario at time t.
 """
@@ -95,19 +128,24 @@ end
 end
 
 """
+* @kwdef struct Forecast <: PosteriorSample
+    - yields::Matrix{Float64}
+    - factors::Matrix{Float64}
+    - TP::Array{Float64}
 * It contains a result of the scenario analysis, the conditional prediction for yields, factors, and term premiums.
     - Prediction for the expectation hypothesis part = yields - TP
 """
-@kwdef struct Prediction <: PosteriorSample
+@kwdef struct Forecast <: PosteriorSample
     yields::Matrix{Float64}
     factors::Matrix{Float64}
     TP::Array{Float64}
 end
 
-include("Theoretical.jl") # Theoretical results in GDTSM
+include("utilities.jl") # utility functions
+include("theoretical.jl") # Theoretical results in GDTSM
 include("prior.jl") # Contains prior distributions of statistical parameters
 include("EB_marginal.jl") # Calculate the marginal likelihood of the transition VAR equation.
-include("Empirical.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
+include("empirical.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
 include("Gibbs.jl") # posterior sampler.
 include("scenario.jl") # scenario analysis
 include("inference.jl") # implementation part
@@ -116,7 +154,7 @@ export
     # EB_margianl.jl
     log_marginal,
 
-    # Empirical.jl
+    # empirical.jl
     loglik_mea,
     loglik_tran,
     isstationary,
@@ -125,13 +163,21 @@ export
     ϕ_σ²FF_2_ΩFF,
 
     # GDTSM.jl
+    HyperParameter,
+    PosteriorSample,
+    Parameter,
+    LatentSpace,
+    TermPremium,
+    Scenario,
+    Forecast,
+
+    # inference.jl
     tuning_hyperparameter,
     AR_res_var,
     generative,
     ineff_factor,
     posterior_sampler,
     sparsify_precision,
-    # load_object,
 
     # priors.jl
     prior_κQ,
@@ -140,10 +186,19 @@ export
     # scenario.jl
     scenario_sampler,
 
-    # Theoretical.jl
+    # theoretical.jl
     GQ_XX,
     dimQ,
     termPremium,
     PCs_2_latents,
-    PCA
+    PCA,
+
+    # utilities.jl
+    getindex,
+    mean,
+    median,
+    std,
+    var,
+    quantile
+
 end

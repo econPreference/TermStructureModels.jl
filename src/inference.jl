@@ -27,7 +27,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
         ν0 = input[6] + dP + 1
         Ω0 = input[7:end]
 
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, prior_κQ_; p, ν0, Ω0, q) # Although the input data should contains initial conditions, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial conditions, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
@@ -75,7 +75,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
             ν0 = input[5] + dP + 1
             Ω0 = input[6:end]
 
-            return -log_marginal(PCs, macros, ρ, prior_κQ_; p, ν0, Ω0, q) # the function should contains the initial conditions
+            return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial conditions
 
         end
 
@@ -212,7 +212,7 @@ function sparsify_precision(saved_θ, yields, macros, τₙ)
     trace_sparsity = Vector{Float64}(undef, iteration)
     for iter in 1:iteration
         if iter == iter_print
-            println("iteration = $iter")
+            println("$(round(100iter/iteration;digits = 2)) (%) done...")
             iter_print += 20
         end
 
