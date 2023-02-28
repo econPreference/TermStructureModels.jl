@@ -18,11 +18,11 @@ using RCall
 ######################
 
 """
-@kwdef struct HyperParameter
-    p::Int64
-    q::Vector{Float64}
-    ν0::Float64
-    Ω0::Vector{Float64}
+* @kwdef struct HyperParameter
+    - p::Int64
+    - q::Vector{Float64}
+    - ν0::Float64
+    - Ω0::Vector{Float64}
 * p: the lag of the transition equation
 * q: the degree of shrinkages of the intercept and the slope coefficient of the transition equation
     - q[1]: shrinkages for the lagged dependent variable
@@ -68,6 +68,28 @@ abstract type PosteriorSample end
     Σₒ::Vector{Float64}
     γ::Vector{Float64}
 end
+"""
+* struct ReducedForm <: PosteriorSample
+    - κQ::Float64
+    - kQ_infty::Float64
+    - KₚF::Vector{Float64}
+    - GₚFF::Matrix{Float64}
+    - ΩFF::Matrix{Float64}
+    - Σₒ::Vector{Float64}
+    - λP::Vector{Float64}
+    - ΛPF::Matrix{Float64}
+* It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. λP and ΛPF are paramters in the market prices of risks equation, and they only contain non-zero elements. 
+"""
+@kwdef struct ReducedForm <: PosteriorSample
+    κQ::Float64
+    kQ_infty::Float64
+    KₚF::Vector{Float64}
+    GₚFF::Matrix{Float64}
+    ΩFF::Matrix{Float64}
+    Σₒ::Vector{Float64}
+    λP::Vector{Float64}
+    ΛPF::Matrix{Float64}
+end
 
 """
 * @kwdef struct LatentSpace <: PosteriorSample
@@ -93,7 +115,7 @@ end
 end
 
 """
-@kwdef struct YieldCurve <: PosteriorSample
+* @kwdef struct YieldCurve <: PosteriorSample
     - latents::Matrix{Float64}
     - yields::VecOrMat{Float64}
     - intercept::Union{Float64,Vector{Float64}}
@@ -177,11 +199,13 @@ export
     stationary_θ,
     LDL,
     ϕ_σ²FF_2_ΩFF,
+    reducedform,
 
     # GDTSM.jl
     HyperParameter,
     PosteriorSample,
     Parameter,
+    ReducedForm,
     LatentSpace,
     YieldCurve,
     TermPremium,

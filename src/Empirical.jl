@@ -190,3 +190,41 @@ function stationary_θ(saved_θ)
 
     return stationary_saved_θ, 100length(stationary_saved_θ) / iteration
 end
+
+"""
+reducedform(saved_θ)
+* It generate posterior samples of the statistical parameters in struct "ReducedForm". 
+* Input: "saved_θ" comes from function "posterior_sampler".
+"""
+function reducedform(saved_θ)
+
+    dQ = dimQ()
+    iteration = length(saved_θ)
+    reduced_θ = Vector{ReducedForm}(undef, iteration)
+    @showprogress 1 "Moving to the reduced form..." for iter in 1:iteration
+
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
+
+        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+        ϕ0 = C \ ϕ0
+        KₚF = ϕ0[:, 1]
+        GₚFF = ϕ0[:, 2:end]
+        ΩFF = (C \ diagm(σ²FF)) / C'
+
+        KPQ = zeros(dQ)
+        KPQ[1] = kQ_infty
+        GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
+        GQPF[:, 1:dQ] = GQ_XX(; κQ)
+        λP = KₚF[1:dQ] - KPQ
+        ΛPF = GₚFF[1:dQ, :] - GQPF
+
+        reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF)
+
+    end
+
+    return reduced_θ
+end
