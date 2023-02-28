@@ -58,15 +58,15 @@ Despite the AFNS restriction, our theoretical model sustains the JSZ form. The l
 
 ## Estimation
 
-Note that all yield data should be annual percentage data (i.e. yield data = 1200$\times$theoretical yield).
+Note that all yield data should be annual percentage data (i.e. yield data = 1200 $\times$ theoretical yield).
 
 ### Step1. Tuning hyper-parameters
 
 We have four hyper-parameters, $p$, $q$, $\nu_0$, and $\Omega_0$.
 
 * $p$(Float64): lag of the VAR(p) in $\mathbb{P}$ -measure
-* $q$(Vector) $=$ [$q_1$; $q_2$; $q_3$; $q_4$]: Minnesota prior
-  * Prior variances of slopes $\propto$ $q_1$/lag$^{q_3}$ (for own lagged variables) or $q_2$/lag$^{q_3}$ (for cross lagged variables)
+* $q$(Vector) $=$ [ $q_1$; $q_2$; $q_3$; $q_4$]: Minnesota prior
+  * Prior variances of slopes $\propto$ $q_1$/ ${lag}^{q_3}$ (for own lagged variables) or $q_2$/ ${lag}^{q_3}$ (for cross lagged variables)
   * Prior variances of intercepts $\propto$ $q_4$
 * $\nu_0$(Float64), $\Omega_0$(Vector): Error covariance of VAR(p) $\backsim$ InverseWishart($\nu_0$, $\Omega_0$)
 
@@ -120,20 +120,20 @@ The variable names in structs "Parameter" and "ReducedForm", and "LatentSpace" r
 
 * κQ: $\kappa^{\mathbb{Q}}$,
 * kQ_infty: $k^{\mathbb{Q}}_{\infty}$,
-* ϕ: {$\phi_{i}$; $i$ $=$ $1$, $\cdots$, $d_\mathbb{P}$},
-* σ²FF: {$\sigma^2_{\mathcal{FF},i}$; $i$ $=$ $1$, $\cdots$, $d_\mathbb{P}$},
+* ϕ: { $\phi_{i}$; $i$ $=$ $1$, $\cdots$, ${d}_{\mathbb{P}}$ },
+* σ²FF: { $\sigma^2_{\mathcal{FF},i}$ ; $i$ $=$ $1$, $\cdots$, $d_\mathbb{P}$ },
 * ηψ: $\eta_{\psi}$,
-* ψ: $d_\mathbb{P}$ by $p\cdot$$d_\mathbb{P}$ Matrix, [$[\psi_{1,i,j}]_{i,j}$ $\cdots$ $[\psi_{p,i,j}]_{i,j}$]
-* ψ0: {$\psi_{0,i}$:$i=1$,$\cdots$, $d_\mathbb{P}$}
+* ψ: $d_\mathbb{P}$ by ${p}{\cdot}$ $d_{\mathbb{P}}$ Matrix, [[ $\psi_{1,i,j}$ ] $\cdots$ [ $\psi_{p,i,j}$ ] ]
+* ψ0: { $\psi_{0,i}$ : $i=1$, $\cdots$, $d_\mathbb{P}$ }
 * Σₒ: $\Sigma_{\mathcal{O}}$
-* γ: {$\gamma_i$:$i=1$,$\cdots$, N - $d_\mathbb{Q}$}
+* γ: { $\gamma_i$ : $i=1$, $\cdots$, N - $d_\mathbb{Q}$ }
 * KₚF: $K^\mathbb{P}_\mathcal{F}$
-* GₚFF: [$G^\mathbb{P}_\mathcal{FF,1}$ $\cdots$ $G^\mathbb{P}_\mathcal{FF,p}$]
+* GₚFF: [ $G^P_{\mathcal{FF},1}$ $\cdots$ $G^P_{\mathcal{FF},p}$ ]
 * ΩFF: $\Omega_\mathcal{FF}$
 * λP: $\lambda_\mathcal{P}$
-* ΛPF: [[$\Lambda_\mathcal{PP,1}$, $\Lambda_{\mathcal{P}M,1}$] $\cdots$ [$\Lambda_\mathcal{PP,p}$, $\Lambda_{\mathcal{P}M,p}$]]
+* ΛPF: [[ $\Lambda_{\mathcal{PP},1}$, $\Lambda_{\mathcal{P}M,1}$] $\cdots$ [ $\Lambda_{\mathcal{PP},p}$, $\Lambda_{\mathcal{P}M,p}$]]
 * KₚXF: $K^\mathbb{P}_F$
-* GₚXFXF: [$G^\mathbb{P}_{FF,1}$ $\cdots$ $G^\mathbb{P}_{FF,p}$]
+* GₚXFXF: [ $G^P_{FF,1}$ $\cdots$ $G^P_{FF,p}$ ]
 * ΩXFXF: $\Omega_{FF}$
 
 in our paper. Parameters in "ReducedForm" and "LatentSpace" can be deduced by using functions reducedform and latentspace, respectively.
