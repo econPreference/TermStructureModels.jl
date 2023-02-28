@@ -5,7 +5,7 @@
 
 Gaussian Dynamic Term Structure Model (GDTSM) is a theoretical government bond model where the bond price satisfies the no-arbitrage condition. It is a Gaussian model because all shocks follow Normal distributions. **GDTSM.jl** is a package for estimating the GDTSM. I follow the three-factor GDTSM of Joslin, Singleton, and Zhu(JSZ, 2011).
 
-The major features of the package are
+The **main features** of the package are
 
 * Bayesian Estimation with automatically tuned hyper-parameters in a data-driven way (including VAR(p) lag selection)
 * Yield curve interpolation and fitting
@@ -52,13 +52,13 @@ Pkg.add("RCall")
 
 ## Model
 
-We follow the JSZ form, but with the restriction that Q-eigenvalue is [1, exp( $- \kappa^\mathbb{Q}$), exp( $- \kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
+We follow the JSZ form, but with the restriction that Q-eigenvalues are [1, exp( $- \kappa^\mathbb{Q}$), exp( $- \kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
 
 Despite the AFNS restriction, our theoretical model sustains the JSZ form. The latent factors in our JSZ model are transformed into the principal components. And then, we estimate the model with the transformed state space as the JSZ did. One major difference between JSZ and ours is that we use the Bayesian methodology. For details, see our paper.
 
 ## Estimation
 
-Note that all yield data should be annual percentage data (i.e. yield data = 1200 $\times$ theoretical yield).
+**Note that all yield data should be annual percentage data (i.e. yield data = 1200 $\times$ theoretical yield).**
 
 ### Step1. Tuning hyper-parameters
 
