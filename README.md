@@ -58,7 +58,7 @@ Despite the AFNS restriction, our theoretical model sustains the JSZ form. The l
 
 ## Estimation
 
-**Note that all yield data should be annual percentage data (i.e. yield data = 1200 $\times$ theoretical yield).**
+**Note that all yield data should be annual percentage data (i.e. yield data = 1200 $\times$ theoretical yield in the model).**
 
 ### Step1. Tuning hyper-parameters
 
