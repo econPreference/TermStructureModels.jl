@@ -55,6 +55,7 @@ saved_θ, accept_rate = stationary_θ(saved_θ)
 sparse_θ, trace_λ, trace_sparsity = sparsify_precision(saved_θ, yields, macros, τₙ)
 saved_Xθ = PCs_2_latents(saved_θ, yields, τₙ)
 saved_TP = termPremium(120, τₙ, saved_θ, yields, macros)
+reduced_θ = reducedform(saved_θ)
 fitted = fitted_YieldCurve(τₙ, saved_Xθ)
 idx = 13
 plot(mean(fitted)[:yields][:, idx])
