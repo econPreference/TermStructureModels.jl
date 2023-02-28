@@ -191,7 +191,7 @@ The function calculates term premium estimates of maturity τ (months). Here, τ
 prediction = scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τₙ)
 ```
 
-The function generates (un)conditional forecasts using our model. "S" is a conditioned scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "τₙ", "yields", and "macros" are the things that were inputs of function "posterior sampler". "saved_θ" is an output of function "posterior sampler". The output is Vector{Forecast}.
+The function generates (un)conditional forecasts using our model. We use the Kalman filter to make conditional filtered forecasts (Bańbura, Giannone, and Lenza, 2015), and then we use Kim and Nelson (1999) to make smoothed posterior samples of the conditional forecasts.  "S" is a conditioned scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "τₙ", "yields", and "macros" are the things that were inputs of function "posterior sampler". "saved_θ" is an output of function "posterior sampler". The output is Vector{Forecast}.
 
 Struct Scenario has two elements, "combinations" and "values". Meaning of the struct can be found by help? command. Examples of making struct "Scenario" are as follows.
 
@@ -229,3 +229,5 @@ Here, **both "combinations" and "values" should be type Array{Float64}**. Also, 
 * Hörmann, W., and Leydold, J. (2014), “Generating generalized inverse Gaussian random variates,” Statistics and Computing, 24, 547–557. <https://doi.org/10.1007/s11222-013-9387-3>.
 * Friedman, J., Hastie, T., and Tibshirani, R. (2008), “Sparse inverse covariance estimation with the graphical lasso,” Biostatistics, 9, 432–441. <https://doi.org/10.1093/biostatistics/kxm045>.
 * Hauzenberger, N., Huber, F., and Onorante, L. (2021), “Combining shrinkage and sparsity in conjugate vector autoregressive models,” Journal of Applied Econometrics, n/a. <https://doi.org/10.1002/jae.2807>.
+* Bańbura, M., Giannone, D., and Lenza, M. (2015), “Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections,” International Journal of Forecasting, 31, 739–756. https://doi.org/10.1016/j.ijforecast.2014.08.013.
+* Kim, C.-J., and Nelson, C. R. (2017), State-space models with regime switching: Classical and gibbs-sampling approaches with applications, The MIT Press. https://doi.org/10.7551/mitpress/6444.001.0001.
