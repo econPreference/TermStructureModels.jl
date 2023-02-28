@@ -121,7 +121,7 @@ end
     - intercept::Union{Float64,Vector{Float64}}
     - slope::Matrix{Float64}
 * It contains fitted yield curve.
-    -yields[t,:] = intercept + slope*latents[t,:]
+    - yields[t,:] = intercept + slope*latents[t,:]
 """
 @kwdef struct YieldCurve <: PosteriorSample
     latents::Matrix{Float64}
@@ -157,8 +157,8 @@ end
 * It contains conditioning scenarios in the scenario analysis.
 * When y is a observed vector, combinations*y = values constitutes the scenario.
     - Here, yₜ = [yields[t,:]; macros[t,:]]
-* Matrix combination[:,:,t] is the scenario at time t, and Vector values[:,t] is the conditioning value at time t.
-    - combinations[:,:,t]*y = values[:,t] is the conditioning scenario at time t.
+* Matrix combination[:,:,t] is the scenario at time t, and Vector values[:,t] is the conditioned value at time t.
+    - combinations[:,:,t]*yₜ = values[:,t] is the conditioned scenario at time t.
 """
 @kwdef struct Scenario
     combinations::Array{Float64}
@@ -170,7 +170,7 @@ end
     - yields::Matrix{Float64}
     - factors::Matrix{Float64}
     - TP::Array{Float64}
-* It contains a result of the scenario analysis, the conditional prediction for yields, factors, and term premiums.
+* It contains a result of the scenario analysis, the conditional prediction for yields, factors = [PCs macros], and term premiums.
     - Prediction for the expectation hypothesis part = yields - TP
 """
 @kwdef struct Forecast <: PosteriorSample

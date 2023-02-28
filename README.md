@@ -75,7 +75,7 @@ We have additional two hyper-parameters that can be decided more objectively.
 * $\rho$(Vector): ρ is a vector that has a size of size(macros,2). If $i$'th variable in macros is a growth(or level) variable, $\rho$[i] = 0(or $\approx$ 1) should be set.
 * medium_τ(Vector): Candidate maturities where the curvature factor loading is maximized. The default value is [12, 18, 24, 30, 36, 42, 48, 54, 60] (months). When you estimate quarterly or annual data, this value should be modified.
 
-struct "HyperParameter($p$, $q$, $\nu_0$, $\Omega_0$)" contains hyper-parameter values. We have a function "tuning_hyperparameter" that generates struct "HyperParameter" in a data-driven way.
+Struct "HyperParameter($p$, $q$, $\nu_0$, $\Omega_0$)" contains hyper-parameter values. We have a function "tuning_hyperparameter" that generates struct "HyperParameter" in a data-driven way.
 
 ```juila
 tuned = tuning_hyperparameter(yields, macros, ρ)
@@ -89,13 +89,13 @@ You can maximize the model selection criterion (marginal likelihood) directly if
 log_marginal(PCs, macros, ρ, tuned::HyperParameter; medium_τ = 12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]) 
 ```
 
-Here, the objective is maximized over "tuned". "PCs" are the first, second, and third principal components of yields. We have a function for the principal component analysis.
+Here, the objective is maximized over "tuned", and initial observations also should be included. "PCs" are the first, second, and third principal components of yields. We have a function for the principal component analysis.
 
 ```juila
 PCs, OCs, Wₚ, Wₒ = PCA(yields, p; rescaling=true)
 ```
 
-EigenVectors of cov(yields[p+1:end,:]) are used to transform yields[1:end,:] to PCs. When rescaling = true, standard deviations of all PCs are normalized to an average of standard deviations of yields.
+The function uses eigenVectors of cov(yields[p+1:end,:]) to transform yields[1:end,:] to PCs. When rescaling = true, standard deviations of all PCs are normalized to an average of standard deviations of yields. Here, PCs and OCs are the first three and remaining principal components, respectively. Also, PCs[t,:] = Wₚ $\times$ yields[t,:] and OCs[t,:] = Wₒ $\times$ yields[t,:] hold.
 
 ### Step 2. sampling the posterior distribution of GDTSM
 
@@ -103,16 +103,16 @@ EigenVectors of cov(yields[p+1:end,:]) are used to transform yields[1:end,:] to 
 saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
 ```
 
-When using the function, T by N matrix "yields" and T by M matrix "macros" should contain initial observations ($t$ = 0, -1, -2, $\cdots$). τₙ is a vector that contains observed maturities of "yields". "Iteration" is the number of Gibbs sampling samples.
+When using the function, T by N matrix "yields" and T by M matrix "macros" should contain initial observations ($t$ = 0, -1, -2, $\cdots$). τₙ is a vector that contains observed maturities of "yields". "Iteration" is the number of Gibbs sampling samples. Function "posterior_sampler" generate a vector of struct "Parameter"s that contains posterior samples.
 
 When "sparsity = true", we introduce additional Normal-Gamma(NG) priors on the intercepts and slopes while maintaining the Minnesota prior (Chan, 2021). The NG prior leads to the Generalized Inverse Gaussian posterior distribution. To sample this posterior, we use R package "GIGrvg" (Hörmann and Leydold, 2014).
 
 ## Inference
 
-To call posterior samples of parameters, use [:name]. For example,
+To call posterior samples of objects in structs ("Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast"), use [:name]. For example, for output "saved_θ" of function "posterior sampler",
 
 ```juila
-samples = saved_saved_θ[:κQ]
+samples = saved_θ[:κQ]
 samples[i] # i'th posterior sample of κQ
 ```
 
@@ -136,49 +136,84 @@ The variable names in structs "Parameter" and "ReducedForm", and "LatentSpace" r
 * GₚXFXF: [ $G^P_{FF,1}$ $\cdots$ $G^P_{FF,p}$ ]
 * ΩXFXF: $\Omega_{FF}$
 
-in our paper. Parameters in "ReducedForm" and "LatentSpace" can be deduced by using functions reducedform and latentspace, respectively.
+in our paper. Parameters in "ReducedForm" and "LatentSpace" can be deduced by using functions "reducedform" and "latentspace", respectively. "ReducedForm" contains the reduced form VAR(p) parameters. "LatentSpace" contains parameters when our model is expressed in terms of latent factor $X_t$
 
-We also support mean(), var(), std(), median(), quantile(), so for example
+We support mean(), var(), std(), median(), quantile() in Statistics.jl. So, for example, when we need a posterior mean,
 
 ```juila
 mean(saved_θ)[:kQ_infty]
 ```
 
-gives the corresponding posterior mean. All functions, [:name], $\cdots$, quantile(), can be run on five structs, that are "Parameter", "ReducedForm" "LatentSpace", "TermPremium", and "Scenario".
+gives the corresponding posterior mean of kQ_infty. All functions, [:name], $\cdots$, quantile(), can be run on six structs, that are "Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast".
+
+## Structs in the packages
+
+To see names of objects in the structs, type, for example,
+
+```juila
+help?>YieldCurve
+```
+
+We have eight structs, that are **HyperParameter**, **Parameter**, **ReducedForm**, **LatentSpace**, **YieldCurve**, **TermPremium**, **Scenario**, and **Forecast**. It also provides details of the structs.
 
 ## Introducing a sparsity on error precision matrix
 
 ```juila
-sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ::Parameter, yields, macros, τₙ)
+sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ::Vector{Parameter}, yields, macros, τₙ)
 ```
 
 It introduces a sparsity on the error precision matrix of VAR(p) P-dynamics using Freidman, Hastie, and Tibshirani (2008) and Hauzenberger, Huber, and Onorante (2021). We use R-package "glasso" to implement it. Specifically, the additionally introduced lasso penalty makes some small element in the precision to zero.
 
+Here, the data should contain initial observations. τₙ is a vector that contains observed maturities of "yields". "saved_θ" is output of function "posterior sampler". For the outputs, "sparse_θ" is also a vector of struct "Parameter" but has sparse precision matrices. "trace_λ" and "trace_sparsity" contain the used optimal penalty parameter and the number of non-zero elements of the precision.
+
 ## Yield curve interpolation
 
 ```juila
-fitted = fitted_YieldCurve(τₙ, saved_Xθ)
+fitted = fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
 ```
+
+To derive the fitted yield curve, you first derive "saved_Xθ" from function "latentspace". τ0 is a vector that contains maturities of interest. The output is Vector{"YieldCurve"}.
 
 ## Term premium
 
 ```juila
-saved_TP = term_premium(120, τₙ, saved_θ, yields, macros)
+saved_TP = term_premium(τ, τₙ, saved_θ::Vector{Parameter}, yields, macros)
 ```
+
+The function calculate term premium estimates of maturity τ (months). Here, τ does not need to be the one in τₙ. "τₙ", "yields", and "macros" are the things that was inputs of function "posterior sampler".
+"saved_θ" is the output of function "posterior sampler". Output "saved_TP" is Vector{TermPremium}.
 
 ## Scenario Analysis and unconditional forecasts
 
 ```juila
-S = zeros(1, dP - dimQ() + length(τₙ))
-S[1, 20] = 1.0
-s = [data[t+1, 20]]
-scene = Scenario(combinations=S, values=s)
-
-prediction = scenario_sampler(scene, 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
-predicted_yields[t+1, :] = mean(prediction)[:yields][end, :]
-predicted_factors[t+1, :] = mean(prediction)[:factors][end, :]
+prediction = scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τₙ)
 ```
+The function generate (un)conditional forecasts using our model. "S" is a conditional scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "τₙ", "yields", and "macros" are the things that was inputs of function "posterior sampler". "saved_θ" is the output of function "posterior sampler". Output is Vector{Forecast}.
 
+Struct Scenario has two elements, "combinations" and "values". Meaning of the struct can be found by help? command. Users can make struct "Scenario" as follows.
+```juila
+# Case 1. Unconditional Forecasts
+S = []
+
+# Case 2. Conditional Scenario with one conditioning variable and time length 2
+comb = zeros(1, size([yields macros], 1))
+comb[1, 1, 1] = 1.0 # one month yield is selected at time T+1
+values = [3.0] # one month yield at time T+1 is 3.0
+S = Scenario(combinations=comb, values=values)
+
+# Case 3. Conditional Scenario with two conditioning scenario and time length 3
+comb = zeros(2, size([yields macros], 3))
+values = zeros(2, 3)
+for i in 1:3
+  comb[1, 1, i] = 1.0 # one month yield is selected at time T+i
+  comb[2, 20, i] = 0.5
+  comb[2, 21, i] = 0.5 # the average of 20th and 21st observables is selected
+  values[1,i] = [3.0] # one month yield at time T+i is 3.0
+  values[2,i] = 0 # the average value is zero.
+end
+S = Scenario(combinations=comb, values=values)
+```
+Here, both "combinations" and "values" should be type Array. Also, "horizon" should not be smaller than size(values,2).
 ## Citation
 
 * Joslin, S., Singleton, K. J., and Zhu, H. (2011), “A new perspective on Gaussian dynamic term structure models,” The Review of Financial Studies, Oxford University Press, 24, 926–970.

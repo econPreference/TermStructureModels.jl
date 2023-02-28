@@ -5,7 +5,7 @@
 
 """
 post_kQ_infty(σ²kQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
-* Input: yields should exclude initial conditions. σ²kQ_infty is a prior variance.
+* Input: yields should exclude initial observations. σ²kQ_infty is a prior variance.
 * Output: Posterior distribution itself
 """
 function post_kQ_infty(σ²kQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
@@ -47,7 +47,7 @@ end
 
 """
 post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ)
-* Input: data should exclude initial conditions
+* Input: data should exclude initial observations
 * Output: Posterior distribution itself
 """
 function post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ)
@@ -69,7 +69,7 @@ end
 
 """
 post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-* Input: Data should contain initial conditions.
+* Input: Data should contain initial observations.
 * Output: a posterior sample of σ²FF is returned, but only σ²FF[1] is updated
 """
 function post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
@@ -100,7 +100,7 @@ end
 """
 post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
 * It make a posterior sample of components in ΩPP, except for σ²FF₁.
-* Input: data should contain initial conditions.
+* Input: data should contain initial observations.
 * Output(2): ϕ, σ²FF
     - posterior samples of [ϕ0 C0], σ²FF are returned
     - 2~dQ rows of C0 and σ²FF are updated
@@ -217,7 +217,7 @@ end
 """
 post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
 * Posterior sampler for ϕ and σ²FF that are not sampled by the MH. 
-* Input: data should contain initial conditions.
+* Input: data should contain initial observations.
 * Output(2): ϕ, σ²FF
     - It gives a posterior sample, and it is updated for the remaining elements that are not in MH block.
 """
@@ -387,7 +387,7 @@ end
 """
 post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
 * Posterior sampler for the measurement errors
-* Input: Data excludes initial conditions
+* Input: Data excludes initial observations
 * Output: Vector{Dist}(IG, N-dQ)
 """
 function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)

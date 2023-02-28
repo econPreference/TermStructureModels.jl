@@ -1,7 +1,7 @@
 """
 loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 * This function generate a log likelihood of the measurement equation.
-* Inputs: yields should exclude their initial conditions. τₙ is maturities in "yields".
+* Inputs: yields should exclude their initial observations. τₙ is maturities in "yields".
 * Output: the measurement equation part of the log likelihood
 """
 function loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
@@ -33,7 +33,7 @@ end
 """
 loglik_tran(PCs, macros; ϕ, σ²FF)
 * It calculate log likelihood of the transition equation. 
-* Input: All data should contains initial conditions.
+* Input: All data should contains initial observations.
 * Output: log likelihood of the transition equation.
 """
 function loglik_tran(PCs, macros; ϕ, σ²FF)
@@ -55,7 +55,7 @@ end
 """
 yϕ_Xϕ(PCs, macros, p)
 * This function generate the dependent variable and the corresponding regressors in the orthogonal transition equation.
-* Input: PCs and macros data should contain initial conditions. p is the transition equation lag.
+* Input: PCs and macros data should contain initial observations. p is the transition equation lag.
 * Output(4): yϕ, Xϕ = [ones(T - p) Xϕ_lag Xϕ_contemporaneous], [ones(T - p) Xϕ_lag], Xϕ_contemporaneous
     - yϕ and Xϕ is a full matrix. For i'th equation, the dependent variable is yϕ[:,i] and the regressor is Xϕ. 
     - Xϕ is same to all orthogonalized transtion equations. The orthogonalized equations are different in terms of contemporaneous regressors. Therefore, the corresponding regressors in Xϕ should be excluded. The form of parameter ϕ do that task by setting the coefficients of the excluded regressors to zeros.
@@ -64,7 +64,7 @@ yϕ_Xϕ(PCs, macros, p)
 function yϕ_Xϕ(PCs, macros, p)
 
     data = [PCs macros]
-    T = size(data, 1) # length including initial conditions
+    T = size(data, 1) # length including initial observations
     dP = size(data, 2)
 
     yϕ = data[(p+1):T, :]

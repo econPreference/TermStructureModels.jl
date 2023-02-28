@@ -155,13 +155,13 @@ end
 _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
 * This function calculates a term premium for maturity τ. 
 * Input: τ is a target maturity. bτ and T1X is calculated from the corresponding functions. PCs and macros are the data. GₚFF is dP by p*dP matrix that contains slope coefficients of the reduced form transition equation. 
-    - Remember that data should contains initial conditions, that is t = 0,1,...,p-1. 
+    - Remember that data should contains initial observations, that is t = 0,1,...,p-1. 
 * Output(4): TP, timevarying_TP, const_TP, jensen
     - TP: term premium of maturity τ
     - timevarying_TP: contributions of each dependent variable on TP at each time t (row: time, col: variable)
     - const_TP: Constant part of TP
     - jensen: Jensen's Ineqaulity part in TP
-    - Although input has initial conditions, output excludes the time period for the initial condition.  
+    - Although input has initial observations, output excludes the time period for the initial observations.  
 """
 function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
 
@@ -196,7 +196,7 @@ function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF,
     T1P_Λ_PF = T1P_ * Λ_PF
 
     datas = [PCs macros]
-    for t in (p+1):T # ranges for the dependent variables. The whole range includes initial conditions.
+    for t in (p+1):T # ranges for the dependent variables. The whole range includes initial observations.
         # prediction part
         predicted_X = datas[t:-1:(t-p+1), :]
         for horizon = 1:(τ-2)
@@ -224,7 +224,7 @@ end
 """
 term_premium(τ, τₙ, saved_θ, yields, macros)
 * This function generates posterior samples of the term premiums.
-* Input: targeted maturity τ, all observed maturities τₙ = [1;3;6;...], the Gibbs sampling samples "saved_θ", and the data that contains initial conditions.
+* Input: targeted maturity τ, all observed maturities τₙ = [1;3;6;...], the Gibbs sampling samples "saved_θ", and the data that contains initial observations.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "TP", "timevarying\\_TP", "const\\_TP", "jensen" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
@@ -267,7 +267,7 @@ end
 """
 latentspace(saved_θ, yields, τₙ)
 * This function translates the principal components state space into the latent factor state space. 
-* Input: the Gibb sampling result "saved_θ", and the data should include initial conditions.
+* Input: the Gibb sampling result "saved_θ", and the data should include initial observations.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "latents", "κQ", "kQ_infty", "KₚXF", "GₚXFXF", "ΩXFXF", "ηψ", "ψ", "ψ0", "Σₒ", "γ" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
@@ -300,9 +300,9 @@ end
 """
 PCs\\_2\\_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 * XF are in the latent factor space and F are in the PC state space.
-* Input: yields should include initial conditions
+* Input: yields should include initial observations
 * Output(6): latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF
-    - latent factors contain initial conditions.
+    - latent factors contain initial observations.
 """
 function PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 

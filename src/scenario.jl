@@ -1,7 +1,7 @@
 """
 scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
 * Input: scenarios, a result of the posterior sampler, and data 
-    - Data includes initial conditions
+    - Data includes initial observations
     - S = Vector{Matrix}(scenario[t], period length of the scenario) 
     - S[t] = Matrix{Float64}([S s][row,col], # of scenarios, N + dP - dQ), where S is a linear combination coefficient matrix and s is a vector of conditional values.
     - If we need an unconditional prediction, S = [].
@@ -34,7 +34,7 @@ end
 
 """
 _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
-* Input: Data includes initial conditions, τ is a maturity that a term premium of interest has.
+* Input: Data includes initial observations, τ is a maturity that a term premium of interest has.
 * Output(3): spanned_yield, spanned_F, predicted_TP
     - Matrix{Float64}(scenario,horizon,dP or N or 1)
 """
@@ -58,7 +58,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         dh = 0
     end
     PCs, ~, Wₚ, Wₒ = PCA(yields, p)
-    data = [PCs macros] # no initial conditions
+    data = [PCs macros] # no initial observations
     T = size(data, 1)
 
     bτ_ = bτ(τₙ[end]; κQ)

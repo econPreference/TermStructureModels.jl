@@ -2,7 +2,7 @@
 """
 tuning_hyperparameter(yields, macros, ρ; gradient=false)
 * It derives the hyperparameters that maximize the marginal likelhood. First, the generating set search algorithm detemines the search range that do not make a final solution as a corner solution. Second, the evolutionary algorithm and Nelder-Mead algorithm find the global optimum. Lastly, the LBFGS algorithm calibrate the global optimum. 
-* Input: Data should contain initial conditions.
+* Input: Data should contain initial observations.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables.
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
@@ -27,7 +27,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
         ν0 = input[6] + dP + 1
         Ω0 = input[7:end]
 
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial conditions, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
@@ -75,7 +75,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
             ν0 = input[5] + dP + 1
             Ω0 = input[6:end]
 
-            return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial conditions
+            return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial observations
 
         end
 
@@ -120,7 +120,7 @@ end
 """
 posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
 * This is a posterior distribution sampler. It needs data and hyperparameters. 
-* Input: Data should include initial conditions. τₙ is a vector that contains observed maturities.
+* Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
     - iteration: # of posterior samples
 * Output: Vector{Dict}(, iteration)
@@ -190,7 +190,7 @@ end
 sparse_precision(saved_θ, yields, macros, τₙ)
 * It conduct the glasso of Friedman, Hastie, and Tibshirani (2022) using the method of Hauzenberger, Huber and Onorante. 
 * That is, the posterior samples of ΩFF is penalized with L1 norm to impose a sparsity on the precision.
-* Input: "saved\\_θ" from function posterior_sampler, and the data should contain initial conditions.
+* Input: "saved\\_θ" from function posterior_sampler, and the data should contain initial observations.
 * Output(3): sparse_θ, trace_λ, trace_sparsity
     - sparse_θ: sparsified posterior samples
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
@@ -206,14 +206,12 @@ function sparse_precision(saved_θ, yields, macros, τₙ)
     PCs = PCA(yields, p)[1]
 
     iteration = length(saved_θ)
-    iter_print = 1
     sparse_θ = Vector{Parameter}(undef, iteration)
     trace_λ = Vector{Float64}(undef, iteration)
     trace_sparsity = Vector{Float64}(undef, iteration)
     for iter in 1:iteration
-        if iter == iter_print
+        if (iter % 20) == 0
             println("$(round(100iter/iteration;digits = 2)) (%) done...")
-            iter_print += 20
         end
 
         κQ = saved_θ[:κQ][iter]

@@ -191,7 +191,7 @@ end
 """
 prior_γ(yields)
 * There is a hierarchcal structure in the measurement equation. The prior means of the measurement errors are γᵢ and each γᵢ follows Gamma(1,γ_bar) distribution. This function decides γ_bar empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturities. An inverse of the average residual variances is set to γ_bar.
-* Input: yield data in which each column shows time-series of a specific bond yield. Here, yields do not contain initial conditions. 
+* Input: yield data in which each column shows time-series of a specific bond yield. Here, yields do not contain initial observations. 
 * Output: hyperparameter γ_bar
 """
 function prior_γ(yields)
