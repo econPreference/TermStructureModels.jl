@@ -77,7 +77,7 @@ We have additional two hyper-parameters that can be decided more objectively.
 * $\rho$(Vector): ρ is a vector that has a size of size(macros,2). If $i$'th variable in macros is a growth(or level) variable, $\rho$[i] = 0(or $\approx$ 1) should be set.
 * medium_τ(Vector): Candidate maturities where the curvature factor loading is maximized. The default value is [12, 18, 24, 30, 36, 42, 48, 54, 60] (months). When you estimate quarterly or annual data, this value should be modified.
 
-Struct "HyperParameter($p$, $q$, $\nu_0$, $\Omega_0$)" contains hyper-parameter values. We have a function "tuning_hyperparameter" that generates struct "HyperParameter" in a data-driven way.
+Struct "HyperParameter($p$, $q$, $\nu_0$, $\Omega_0$)" contains hyper-parameter values. We have a function "tuning_hyperparameter" that generates struct "HyperParameter" in a data-driven way (Chan, 2022).
 
 ```juila
 tuned = tuning_hyperparameter(yields, macros, ρ)
@@ -225,6 +225,7 @@ Here, **both "combinations" and "values" should be type Array{Float64}**. Also, 
 * Joslin, S., Singleton, K. J., and Zhu, H. (2011), “A new perspective on Gaussian dynamic term structure models,” The Review of Financial Studies, Oxford University Press, 24, 926–970.
 * Diebold, F. X., and Li, C. (2006), “Forecasting the term structure of government bond yields,” Journal of econometrics, Elsevier, 130, 337–364.
 * Christensen, J. H. E., Diebold, F. X., and Rudebusch, G. D. (2011), “The affine arbitrage-free class of Nelson – Siegel term structure models,” Journal of Econometrics, Elsevier B.V., 164, 4–20. <https://doi.org/10.1016/j.jeconom.2011.02.011>.
+* Chan, J. C. (2022), “Asymmetric Conjugate Priors for Large Bayesian VARs,” Quantitative Economics. https://doi.org/10.2139/ssrn.3424437.
 * Chan, J. C. C. (2021), “Minnesota-type adaptive hierarchical priors for large Bayesian VARs,” International Journal of Forecasting, Elsevier, 37, 1212–1226. <https://doi.org/10.1016/J.IJFORECAST.2021.01.002>.
 * Hörmann, W., and Leydold, J. (2014), “Generating generalized inverse Gaussian random variates,” Statistics and Computing, 24, 547–557. <https://doi.org/10.1007/s11222-013-9387-3>.
 * Friedman, J., Hastie, T., and Tibshirani, R. (2008), “Sparse inverse covariance estimation with the graphical lasso,” Biostatistics, 9, 432–441. <https://doi.org/10.1093/biostatistics/kxm045>.
