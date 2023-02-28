@@ -52,7 +52,7 @@ Pkg.add("RCall")
 
 ## Model
 
-We follow the JSZ form, but with the restriction that Q-eigenvalue is [1, exp(-$\kappa^\mathbb{Q}$), exp(-$\kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
+We follow the JSZ form, but with the restriction that Q-eigenvalue is [1, exp(- $\kappa^\mathbb{Q}$), exp(- $\kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
 
 Despite the AFNS restriction, our theoretical model sustains the JSZ form. The latent factors in our JSZ model are transformed into the principal components. And then, we estimate the model with the transformed state space as the JSZ did. One major difference between JSZ and ours is that we use the Bayesian methodology. For details, see our paper.
 
@@ -155,14 +155,29 @@ sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ::Parameter, yiel
 It introduces a sparsity on the error precision matrix of VAR(p) P-dynamics using Freidman, Hastie, and Tibshirani (2008) and Hauzenberger, Huber, and Onorante (2021). We use R-package "glasso" to implement it. Specifically, the additionally introduced lasso penalty makes some small element in the precision to zero.
 
 ## Yield curve interpolation
+
 ```juila
 fitted = fitted_YieldCurve(τₙ, saved_Xθ)
 ```
-## Term premium
-```juila
 
+## Term premium
+
+```juila
+saved_TP = term_premium(120, τₙ, saved_θ, yields, macros)
 ```
-## Scenario Analysis
+
+## Scenario Analysis and unconditional forecasts
+
+```juila
+S = zeros(1, dP - dimQ() + length(τₙ))
+S[1, 20] = 1.0
+s = [data[t+1, 20]]
+scene = Scenario(combinations=S, values=s)
+
+prediction = scenario_sampler(scene, 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
+predicted_yields[t+1, :] = mean(prediction)[:yields][end, :]
+predicted_factors[t+1, :] = mean(prediction)[:factors][end, :]
+```
 
 ## Citation
 
