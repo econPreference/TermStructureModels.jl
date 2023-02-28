@@ -15,9 +15,9 @@ The major features of the package are
 
 ## Prerequisites
 
-Since we use two R packages (GIGrvg, glasso), users have to install R language. Follow the below steps.
+Since we use two R packages (GIGrvg, glasso), users have to install R language. If you already have experience using RCall.jl, you just need to install the two R Packages. If it is the first time using RCall.jl, follow the below steps.
 
-1. Install R form internet.
+1. Install R on your computer from the internet.
 2. In R, run the below command and copy the home address.
 
 ```R
@@ -52,7 +52,7 @@ Pkg.add("RCall")
 
 ## Model
 
-We follow the JSZ form, but with the restriction that Q-eigenvalue is [1, exp(- $\kappa^\mathbb{Q}$), exp(- $\kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
+We follow the JSZ form, but with the restriction that Q-eigenvalue is [1, exp( $- \kappa^\mathbb{Q}$), exp( $- \kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
 
 Despite the AFNS restriction, our theoretical model sustains the JSZ form. The latent factors in our JSZ model are transformed into the principal components. And then, we estimate the model with the transformed state space as the JSZ did. One major difference between JSZ and ours is that we use the Bayesian methodology. For details, see our paper.
 
@@ -95,7 +95,7 @@ Here, the objective is maximized over "tuned", and initial observations also sho
 PCs, OCs, Wₚ, Wₒ = PCA(yields, p; rescaling=true)
 ```
 
-The function uses eigenVectors of cov(yields[p+1:end,:]) to transform yields[1:end,:] to PCs. When rescaling = true, standard deviations of all PCs are normalized to an average of standard deviations of yields. Here, PCs and OCs are the first three and remaining principal components, respectively. Also, PCs[t,:] = Wₚ $\times$ yields[t,:] and OCs[t,:] = Wₒ $\times$ yields[t,:] hold.
+The function uses eigenVectors of cov(yields[p+1:end,:]) to transform yields[1:end, :] to PCs. When rescaling = true, standard deviations of all PCs are normalized to an average of standard deviations of yields. Here, PCs and OCs are the first three and remaining principal components, respectively. Also, PCs[t, :] = Wₚ $\times$ yields[t, :] and OCs[t, :] = Wₒ $\times$ yields[t, :] hold.
 
 ### Step 2. sampling the posterior distribution of GDTSM
 
@@ -116,7 +116,7 @@ samples = saved_θ[:κQ]
 samples[i] # i'th posterior sample of κQ
 ```
 
-The variable names in structs "Parameter" and "ReducedForm", and "LatentSpace" represent
+The variable names in structs "Parameter", "ReducedForm", and "LatentSpace" represent
 
 * κQ: $\kappa^{\mathbb{Q}}$,
 * kQ_infty: $k^{\mathbb{Q}}_{\infty}$,
@@ -144,17 +144,17 @@ We support mean(), var(), std(), median(), quantile() in Statistics.jl. So, for 
 mean(saved_θ)[:kQ_infty]
 ```
 
-gives the corresponding posterior mean of kQ_infty. All functions, [:name], $\cdots$, quantile(), can be run on six structs, that are "Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast".
+gives the corresponding posterior mean of kQ_infty. All functions, [:name], $\cdots$, quantile(), can be run on six structs, which are "Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast".
 
 ## Structs in the packages
 
-To see names of objects in the structs, type, for example,
+To see names of objects in the structs, run, for example,
 
 ```juila
 help?>YieldCurve
 ```
 
-We have eight structs, that are **HyperParameter**, **Parameter**, **ReducedForm**, **LatentSpace**, **YieldCurve**, **TermPremium**, **Scenario**, and **Forecast**. It also provides details of the structs.
+We have eight structs, which are **HyperParameter**, **Parameter**, **ReducedForm**, **LatentSpace**, **YieldCurve**, **TermPremium**, **Scenario**, and **Forecast**. It also provides details of the structs.
 
 ## Introducing a sparsity on error precision matrix
 
@@ -162,9 +162,9 @@ We have eight structs, that are **HyperParameter**, **Parameter**, **ReducedForm
 sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ::Vector{Parameter}, yields, macros, τₙ)
 ```
 
-It introduces a sparsity on the error precision matrix of VAR(p) P-dynamics using Freidman, Hastie, and Tibshirani (2008) and Hauzenberger, Huber, and Onorante (2021). We use R-package "glasso" to implement it. Specifically, the additionally introduced lasso penalty makes some small element in the precision to zero.
+It introduces a sparsity on the error precision matrix of VAR(p) P-dynamics using Freidman, Hastie, and Tibshirani (2008) and Hauzenberger, Huber, and Onorante (2021). We use R-package "glasso" to implement it. Specifically, the additionally introduced lasso penalty makes some small elements in the precision to zero.
 
-Here, the data should contain initial observations. τₙ is a vector that contains observed maturities of "yields". "saved_θ" is output of function "posterior sampler". For the outputs, "sparse_θ" is also a vector of struct "Parameter" but has sparse precision matrices. "trace_λ" and "trace_sparsity" contain the used optimal penalty parameter and the number of non-zero elements of the precision.
+Here, the data should contain initial observations. τₙ is a vector that contains observed maturities of "yields". "saved_θ" is an output of function "posterior sampler". For the outputs, "sparse_θ" is also a vector of struct "Parameter" but has sparse precision matrices. "trace_λ" and "trace_sparsity" contain the used optimal penalty parameter and the number of non-zero elements of the precision.
 
 ## Yield curve interpolation
 
@@ -180,7 +180,7 @@ To derive the fitted yield curve, you first derive "saved_Xθ" from function "la
 saved_TP = term_premium(τ, τₙ, saved_θ::Vector{Parameter}, yields, macros)
 ```
 
-The function calculate term premium estimates of maturity τ (months). Here, τ does not need to be the one in τₙ. "τₙ", "yields", and "macros" are the things that was inputs of function "posterior sampler".
+The function calculates term premium estimates of maturity τ (months). Here, τ does not need to be the one in τₙ. "τₙ", "yields", and "macros" are the things that were inputs of function "posterior sampler".
 "saved_θ" is the output of function "posterior sampler". Output "saved_TP" is Vector{TermPremium}.
 
 ## Scenario Analysis and unconditional forecasts
@@ -188,32 +188,36 @@ The function calculate term premium estimates of maturity τ (months). Here, τ 
 ```juila
 prediction = scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τₙ)
 ```
-The function generate (un)conditional forecasts using our model. "S" is a conditional scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "τₙ", "yields", and "macros" are the things that was inputs of function "posterior sampler". "saved_θ" is the output of function "posterior sampler". Output is Vector{Forecast}.
 
-Struct Scenario has two elements, "combinations" and "values". Meaning of the struct can be found by help? command. Users can make struct "Scenario" as follows.
+The function generates (un)conditional forecasts using our model. "S" is a conditioned scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "τₙ", "yields", and "macros" are the things that were inputs of function "posterior sampler". "saved_θ" is an output of function "posterior sampler". The output is Vector{Forecast}.
+
+Struct Scenario has two elements, "combinations" and "values". Meaning of the struct can be found by help? command. Examples of making struct "Scenario" are as follows.
+
 ```juila
 # Case 1. Unconditional Forecasts
 S = []
 
-# Case 2. Conditional Scenario with one conditioning variable and time length 2
-comb = zeros(1, size([yields macros], 1))
-comb[1, 1, 1] = 1.0 # one month yield is selected at time T+1
-values = [3.0] # one month yield at time T+1 is 3.0
+# Case 2. Scenario with one conditioned variable and time length 2
+comb = zeros(1, size([yields macros], 2))
+comb[1, 1] = 1.0 # one month yield is selected as a conditioned variable
+values = [3.0] # Scenario: one month yield at time T+1 is 3.0
 S = Scenario(combinations=comb, values=values)
 
-# Case 3. Conditional Scenario with two conditioning scenario and time length 3
-comb = zeros(2, size([yields macros], 3))
+# Case 3. Scenario with two conditioned combinations and time length 3
+comb = zeros(2, size([yields macros], 2), 3)
 values = zeros(2, 3)
-for i in 1:3
-  comb[1, 1, i] = 1.0 # one month yield is selected at time T+i
-  comb[2, 20, i] = 0.5
-  comb[2, 21, i] = 0.5 # the average of 20th and 21st observables is selected
-  values[1,i] = [3.0] # one month yield at time T+i is 3.0
-  values[2,i] = 0 # the average value is zero.
+for t in 1:3 # for simplicity, we just assume the same scenario for time = T+1, T+2, T+3. Users can freely assume different scenarios for each time T+t.
+  comb[1, 1, t] = 1.0 # one month yield is selected as a conditioned variable in the first combination
+  comb[2, 20, t] = 0.5 
+  comb[2, 21, t] = 0.5 # the average of 20th and 21st observables is selected as a second conditioned combination
+  values[1,t] = 3.0 # one month yield at time T+t is 3.0
+  values[2,t] = 0.0 # the average value is zero.
 end
 S = Scenario(combinations=comb, values=values)
 ```
-Here, both "combinations" and "values" should be type Array. Also, "horizon" should not be smaller than size(values,2).
+
+Here, **both "combinations" and "values" should be type Array{Float64}**. Also, "horizon" should not be smaller than size(values, 2).
+
 ## Citation
 
 * Joslin, S., Singleton, K. J., and Zhu, H. (2011), “A new perspective on Gaussian dynamic term structure models,” The Review of Financial Studies, Oxford University Press, 24, 926–970.

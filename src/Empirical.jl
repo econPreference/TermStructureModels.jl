@@ -136,7 +136,7 @@ end
 """
 function ϕ_σ²FF_2_ΩFF(; ϕ, σ²FF)
 
-    ~, C = ϕ_2_ϕ₀_C(; ϕ)
+    C = ϕ_2_ϕ₀_C(; ϕ)[2]
     return (C \ diagm(σ²FF)) / C'
 end
 
