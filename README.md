@@ -232,3 +232,6 @@ Here, **both "combinations" and "values" should be type Array{Float64}**. Also, 
 * Hauzenberger, N., Huber, F., and Onorante, L. (2021), “Combining shrinkage and sparsity in conjugate vector autoregressive models,” Journal of Applied Econometrics, n/a. <https://doi.org/10.1002/jae.2807>.
 * Bańbura, M., Giannone, D., and Lenza, M. (2015), “Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections,” International Journal of Forecasting, 31, 739–756. https://doi.org/10.1016/j.ijforecast.2014.08.013.
 * Kim, C.-J., and Nelson, C. R. (2017), State-space models with regime switching: Classical and gibbs-sampling approaches with applications, The MIT Press. https://doi.org/10.7551/mitpress/6444.001.0001.
+
+## To do list
+1. make CITATION.bib
