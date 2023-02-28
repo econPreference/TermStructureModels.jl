@@ -187,16 +187,16 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
 end
 
 """
-sparsify_precision(saved_θ, yields, macros, τₙ)
+sparse_precision(saved_θ, yields, macros, τₙ)
 * It conduct the glasso of Friedman, Hastie, and Tibshirani (2022) using the method of Hauzenberger, Huber and Onorante. 
-* That is, the posterior samples of ΩFF is penalized with L1 norm to get a sparsity on the precision.
+* That is, the posterior samples of ΩFF is penalized with L1 norm to impose a sparsity on the precision.
 * Input: "saved\\_θ" from function posterior_sampler, and the data should contain initial conditions.
 * Output(3): sparse_θ, trace_λ, trace_sparsity
     - sparse_θ: sparsified posterior samples
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparsify_precision(saved_θ, yields, macros, τₙ)
+function sparse_precision(saved_θ, yields, macros, τₙ)
 
     R"library(glasso)"
     ϕ = saved_θ[:ϕ][1]

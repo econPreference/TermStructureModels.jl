@@ -218,7 +218,7 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
-    sparsify_precision,
+    sparse_precision,
 
     # priors.jl
     prior_κQ,

@@ -110,7 +110,7 @@ gives the corresponding posterior mean. All functions, [:name], $\cdots$, quanti
 
 ## Introducing a sparsity the error covariance matrix
 ```juila
-sparse_θ, trace_λ, trace_sparsity = sparsify_precision(saved_θ, yields, macros, τₙ)
+sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, yields, macros, τₙ)
 ```
 
 ## Yield curve interpolation
