@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/econPreference/GDTSM.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/econPreference/GDTSM.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/econPreference/GDTSM.jl/branch/main/graph/badge.svg?token=j1mtPiDTgF)](https://codecov.io/gh/econPreference/GDTSM.jl)
 
-Gaussian Dynamic Term Structure Model (GDTSM) is a theoretical government bond model where the bond price satisfies the no-arbitrage condition. It is a Gaussian model because all shocks follow Normal distributions. **GDTSM.jl** is a package for estimating the GDTSM. I follow the three-factor GDTSM of Joslin, Singleton, and Zhu(JSZ, 2011).
+Gaussian Dynamic Term Structure Model (GDTSM) is a theoretical government bond model where the bond price satisfies the no-arbitrage condition. It is a Gaussian model because all shocks follow Normal distributions. **GDTSM.jl** is a package for estimating the GDTSM. I follow the three-factor GDTSM of Joslin, Singleton, and Zhu (JSZ, 2011).
 
 The **main features** of the package are
 
@@ -12,6 +12,8 @@ The **main features** of the package are
 * Decomposition of a bond yield into the expectation hypothesis component and the term premium component
 * The capability of accommodating unspanned macro risks
 * Scenario Analyses and unconditional forecasts under the large-scale VAR framework to inspect interactions between bond yields and the macroeconomy
+
+If you have any suggestions, please feel free to ask me by raising issues.
 
 ## Prerequisites
 
@@ -52,7 +54,7 @@ Pkg.add("RCall")
 
 ## Model
 
-We follow the JSZ form, but with the restriction that Q-eigenvalues are [1, exp( $- \kappa^\mathbb{Q}$), exp( $- \kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
+We follow the JSZ form, but with the restriction that Q-eigenvalues are [1, exp( $- \kappa^\mathbb{Q}$), exp( $- \kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model (Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
 
 Despite the AFNS restriction, our theoretical model sustains the JSZ form. The latent factors in our JSZ model are transformed into the principal components. And then, we estimate the model with the transformed state space as the JSZ did. One major difference between JSZ and ours is that we use the Bayesian methodology. For details, see our paper.
 
