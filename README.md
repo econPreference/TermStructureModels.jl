@@ -78,7 +78,7 @@ samples = saved_saved_θ[:κQ]
 samples[i] # i'th posterior sample of κQ
 ```
 
-The variables in struct "Parameter" and "ReducedForm"represent
+The variable names in structs "Parameter" and "ReducedForm", and "LatentSpace" represent
 
 * κQ: $\kappa^{\mathbb{Q}}$,
 * kQ_infty: $k^{\mathbb{Q}}_{\infty}$,
@@ -89,16 +89,29 @@ The variables in struct "Parameter" and "ReducedForm"represent
 * ψ0: {$\psi_{0,i}$:$i=1$,$\cdots$, $d_\mathbb{P}$}
 * Σₒ: $\Sigma_{\mathcal{O}}$
 * γ: {$\gamma_i$:$i=1$,$\cdots$, N - $d_\mathbb{Q}$}
+* KₚF: $K^\mathbb{P}_\mathcal{F}$
+* GₚFF: [$G^\mathbb{P}_\mathcal{FF,1}$ $\cdots$ $G^\mathbb{P}_\mathcal{FF,p}$]
+* ΩFF: $\Omega_\mathcal{FF}$
+* λP: $\lambda_\mathcal{P}$
+* ΛPF: [[$\Lambda_\mathcal{PP,1}$, $\Lambda_{\mathcal{P}M,1}$] $\cdots$ [$\Lambda_\mathcal{PP,p}$, $\Lambda_{\mathcal{P}M,p}$]]
+* KₚXF: $K^\mathbb{P}_F$
+* GₚXFXF: [$G^\mathbb{P}_{FF,1}$ $\cdots$ $G^\mathbb{P}_{FF,p}$]
+* ΩXFXF: $\Omega_{FF}$
 
-in our paper. We also support mean(), var(), std(), median(), quantile(), so for example
+in our paper. Parameters in "ReducedForm" and "LatentSpace" can be deduced by using functions reducedform and latentspace, respectively.
+
+We also support mean(), var(), std(), median(), quantile(), so for example
 
 ```juila
 mean(saved_θ)[:kQ_infty]
 ```
 
-gives the corresponding posterior mean. All functions, [:name], $\cdots$, quantile(), can be run on four structs, that are "Parameter", "ReducedForm" "LatentSpace", "TermPremium", and "Scenario".
+gives the corresponding posterior mean. All functions, [:name], $\cdots$, quantile(), can be run on five structs, that are "Parameter", "ReducedForm" "LatentSpace", "TermPremium", and "Scenario".
 
 ## Introducing a sparsity the error covariance matrix
+```juila
+sparse_θ, trace_λ, trace_sparsity = sparsify_precision(saved_θ, yields, macros, τₙ)
+```
 
 ## Yield curve interpolation
 

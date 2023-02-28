@@ -231,7 +231,7 @@ export
     GQ_XX,
     dimQ,
     termPremium,
-    PCs_2_latents,
+    latentspace,
     PCA,
     fitted_YieldCurve,
 

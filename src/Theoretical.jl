@@ -265,14 +265,14 @@ function termPremium(τ, τₙ, saved_θ, yields, macros)
 end
 
 """
-PCs\\_2\\_latents(saved_θ, yields, τₙ)
+latentspace(saved_θ, yields, τₙ)
 * This function translates the principal components state space into the latent factor state space. 
 * Input: the Gibb sampling result "saved_θ", and the data should include initial conditions.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "latents", "κQ", "kQ_infty", "KₚXF", "GₚXFXF", "ΩXFXF", "ηψ", "ψ", "ψ0", "Σₒ", "γ" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
 """
-function PCs_2_latents(saved_θ, yields, τₙ)
+function latentspace(saved_θ, yields, τₙ)
 
     iteration = length(saved_θ)
     saved_θ_latent = Vector{LatentSpace}(undef, iteration)
@@ -289,7 +289,7 @@ function PCs_2_latents(saved_θ, yields, τₙ)
         GₚFF = ϕ0[:, 2:end]
         ΩFF = (C \ diagm(σ²FF)) / C'
 
-        latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+        latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
         saved_θ_latent[iter] = LatentSpace(latents=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
 
     end
@@ -298,13 +298,13 @@ function PCs_2_latents(saved_θ, yields, τₙ)
 end
 
 """
-_PCs\\_2\\_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+PCs\\_2\\_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 * XF are in the latent factor space and F are in the PC state space.
 * Input: yields should include initial conditions
 * Output(6): latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF
     - latent factors contain initial conditions.
 """
-function _PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
+function PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 
     dP = size(ΩFF, 1)
     dQ = dimQ()
@@ -357,7 +357,7 @@ end
 """
 fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
 * It generates a fitted yield curve
-* Input: τ0 is a set of maturities of interest. saved_Xθ is a transformed posterior sample using function PCs_2_latents.
+* Input: τ0 is a set of maturities of interest. saved_Xθ is a transformed posterior sample using function latentspace.
     - τ0 does not need to be the same as the one used for the estimation.
 * Output: Vector{YieldCurve}(,# of iteration)
 """
