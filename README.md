@@ -13,6 +13,43 @@ The major features of the package are
 * The capability of accommodating unspanned macro risks
 * Scenario Analyses and unconditional forecasts under the large-scale VAR framework to inspect interactions between bond yields and the macroeconomy
 
+## Prerequisites
+
+Since we use two R packages (GIGrvg, glasso), users have to install R language. Follow the below steps.
+
+1. Install R form internet.
+2. In R, run the below command and copy the home address.
+
+```R
+R.home() 
+```
+
+3. In R, run the below code to install the packages.
+
+```R
+install.packages("GIGrvg")
+install.packages("glasso")
+```
+
+4. In Juila, run
+
+```juila
+ENV["R_HOME"]=""
+```
+
+5. In Juila, run
+
+```juila
+ENV["PATH"]="...the address in step 2..."
+```
+
+6. In Juila, run
+
+```juila
+using Pkg
+Pkg.add("RCall")
+```
+
 ## Model
 
 We follow the JSZ form, but with the restriction that Q-eigenvalue is [1, exp(-$\kappa^\mathbb{Q}$), exp(-$\kappa^\mathbb{Q}$)]. In this case, $\kappa^\mathbb{Q}$ is statistically equivalent to the decay parameter of the Dynamic Nelson-Siegel model(Diebold and Li, 2006). That is, our restricted JSZ model is statistically equivalent to the AFNS model (Christensen, Diebold, and Rudebusch, 2011).
@@ -67,7 +104,8 @@ saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::HyperP
 ```
 
 When using the function, T by N matrix "yields" and T by M matrix "macros" should contain initial observations ($t$ = 0, -1, -2, $\cdots$). τₙ is a vector that contains observed maturities of "yields". "Iteration" is the number of Gibbs sampling samples.
-When "sparsity = true", we introduce additional Normal-Gamma priors on the intercepts and slopes while maintaining the Minnesota prior (Chan, 2021).
+
+When "sparsity = true", we introduce additional Normal-Gamma(NG) priors on the intercepts and slopes while maintaining the Minnesota prior (Chan, 2021). The NG prior leads to the Generalized Inverse Gaussian posterior distribution. To sample this posterior, we use R package "GIGrvg" (Hörmann and Leydold, 2014).
 
 ## Inference
 
@@ -108,15 +146,22 @@ mean(saved_θ)[:kQ_infty]
 
 gives the corresponding posterior mean. All functions, [:name], $\cdots$, quantile(), can be run on five structs, that are "Parameter", "ReducedForm" "LatentSpace", "TermPremium", and "Scenario".
 
-## Introducing a sparsity the error covariance matrix
+## Introducing a sparsity on error precision matrix
+
 ```juila
-sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, yields, macros, τₙ)
+sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ::Parameter, yields, macros, τₙ)
 ```
 
+It introduces a sparsity on the error precision matrix of VAR(p) P-dynamics using Freidman, Hastie, and Tibshirani (2008) and Hauzenberger, Huber, and Onorante (2021). We use R-package "glasso" to implement it. Specifically, the additionally introduced lasso penalty makes some small element in the precision to zero.
+
 ## Yield curve interpolation
-
+```juila
+fitted = fitted_YieldCurve(τₙ, saved_Xθ)
+```
 ## Term premium
+```juila
 
+```
 ## Scenario Analysis
 
 ## Citation
@@ -125,3 +170,6 @@ sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, yields, macros,
 * Diebold, F. X., and Li, C. (2006), “Forecasting the term structure of government bond yields,” Journal of econometrics, Elsevier, 130, 337–364.
 * Christensen, J. H. E., Diebold, F. X., and Rudebusch, G. D. (2011), “The affine arbitrage-free class of Nelson – Siegel term structure models,” Journal of Econometrics, Elsevier B.V., 164, 4–20. <https://doi.org/10.1016/j.jeconom.2011.02.011>.
 * Chan, J. C. C. (2021), “Minnesota-type adaptive hierarchical priors for large Bayesian VARs,” International Journal of Forecasting, Elsevier, 37, 1212–1226. <https://doi.org/10.1016/J.IJFORECAST.2021.01.002>.
+* Hörmann, W., and Leydold, J. (2014), “Generating generalized inverse Gaussian random variates,” Statistics and Computing, 24, 547–557. <https://doi.org/10.1007/s11222-013-9387-3>.
+* Friedman, J., Hastie, T., and Tibshirani, R. (2008), “Sparse inverse covariance estimation with the graphical lasso,” Biostatistics, 9, 432–441. <https://doi.org/10.1093/biostatistics/kxm045>.
+* Hauzenberger, N., Huber, F., and Onorante, L. (2021), “Combining shrinkage and sparsity in conjugate vector autoregressive models,” Journal of Applied Econometrics, n/a. <https://doi.org/10.1002/jae.2807>.

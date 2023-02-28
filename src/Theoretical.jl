@@ -222,14 +222,14 @@ function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF,
 end
 
 """
-termPremium(τ, τₙ, saved_θ, yields, macros)
+term_premium(τ, τₙ, saved_θ, yields, macros)
 * This function generates posterior samples of the term premiums.
 * Input: targeted maturity τ, all observed maturities τₙ = [1;3;6;...], the Gibbs sampling samples "saved_θ", and the data that contains initial conditions.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "TP", "timevarying\\_TP", "const\\_TP", "jensen" ∈ Output[i]
     - The object in the output can be loaded by function "load_object."
 """
-function termPremium(τ, τₙ, saved_θ, yields, macros)
+function term_premium(τ, τₙ, saved_θ, yields, macros)
 
     iteration = length(saved_θ)
     saved_TP = Vector{TermPremium}(undef, iteration)
