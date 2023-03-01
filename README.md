@@ -102,7 +102,7 @@ The function uses eigenVectors of cov(yields[p+1:end,:]) to transform yields[1:e
 ### Step 2. sampling the posterior distribution of GDTSM
 
 ```juila
-saved_θ, isaccept_C_σ²FF, isaccept_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
 ```
 
 When using the function, T by N matrix "yields" and T by M matrix "macros" should contain initial observations ($t$ = 0, -1, -2, $\cdots$). τₙ is a vector that contains observed maturities of "yields". "Iteration" is the number of Gibbs sampling samples. Function "posterior_sampler" generate a vector of struct "Parameter"s that contains posterior samples. The second and third outputs say an MH acceptance probability of { $\phi_{i}$, $σ²_{FF,i}$: $i = 1$, $\cdots$, $d_\mathbb{Q}$ } and ηψ, respectively.

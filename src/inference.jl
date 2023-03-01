@@ -123,7 +123,7 @@ posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsit
 * Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
     - iteration: # of posterior samples
-* Output(3): Vector{Parameter}(posterior, iteration), isaccept_C_σ²FF, isaccept_ηψ 
+* Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
 """
 function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
 
