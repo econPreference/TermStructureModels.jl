@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 CovarianceMatrices = "60f91f6f-d783-54cb-84f9-544141854719"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 LineSearches = "d3d80556-e9d4-5f37-9878-2ab0fcc64255"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"

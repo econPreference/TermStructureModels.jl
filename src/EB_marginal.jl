@@ -32,13 +32,13 @@ function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], �
         Vᵢ = V[i, 1:(end-dP+i-1)]
         Kϕᵢ = Kϕ(i, V, Xϕ, dP)
         Sᵢ_hat = S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
-        det_Kϕᵢ = det(Kϕᵢ)
-        if min(det_Kϕᵢ, Sᵢ_hat) < 0 || isinf(det_Kϕᵢ)
+        logdet_Kϕᵢ = logdet(Kϕᵢ)
+        if Sᵢ_hat < 0 || isinf(logdet_Kϕᵢ)
             return -Inf
         end
 
         log_marginalᵢ = sum(log.(Vᵢ))
-        log_marginalᵢ += log(det_Kϕᵢ)
+        log_marginalᵢ += logdet_Kϕᵢ
         log_marginalᵢ /= -2
         log_marginalᵢ += loggamma(νᵢ + 0.5T)
         log_marginalᵢ += νᵢ * log(Sᵢ)
