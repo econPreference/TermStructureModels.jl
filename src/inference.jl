@@ -123,9 +123,7 @@ posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsit
 * Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
     - iteration: # of posterior samples
-* Output: Vector{Dict}(, iteration)
-    - "κQ", "kQ_infty", "ϕ", "σ²FF" , "ηψ", "ψ", "ψ0","Σₒ", "γ" ∈ Output[i]
-    - Each element in the vector is a dictionary that "parameter"=>posterior sample value. Function load_object(output of the sampling function, "parameter") gives a vector of posteior samples of "parameter" in which which element has a numerical posteior sample value.
+* Output(3): Vector{Parameter}(posterior, iteration), isaccept_C_σ²FF, isaccept_ηψ 
 """
 function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
 
@@ -154,18 +152,23 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
     γ = 1 ./ fill(γ_bar, N - dQ)
     ########################
 
+    isaccept_C_σ²FF = zeros(dQ)
+    isaccept_ηψ = 0
     saved_θ = Vector{Parameter}(undef, iteration)
     @showprogress 1 "Sampling the posterior..." for iter in 1:iteration
         κQ = rand(post_κQ(yields[(p+1):end, :], prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ))
 
         kQ_infty = rand(post_kQ_infty(σ²kQ_infty, yields[(p+1):end, :], τₙ; κQ, ϕ, σ²FF, Σₒ))
 
-        σ²FF = post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+        σ²FF, isaccept = post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+        isaccept_C_σ²FF[1] += isaccept
 
-        ϕ, σ²FF = post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+        ϕ, σ²FF, isaccept = post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+        isaccept_C_σ²FF[2:end] += isaccept
 
         if sparsity == true
-            ηψ = post_ηψ(; ηψ, ψ, ψ0)
+            ηψ, isaccept = post_ηψ(; ηψ, ψ, ψ0)
+            isaccept_ηψ += isaccept
         end
 
         ϕ, σ²FF = post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
@@ -183,7 +186,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
 
     end
 
-    return saved_θ
+    return saved_θ, 100isaccept_C_σ²FF / iteration, 100isaccept_ηψ / iteration
 end
 
 """

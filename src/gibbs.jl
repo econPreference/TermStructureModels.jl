@@ -70,7 +70,8 @@ end
 """
 post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
 * Input: Data should contain initial observations.
-* Output: a posterior sample of σ²FF is returned, but only σ²FF[1] is updated
+* Output(2): σ²FF, isaccept
+    - a posterior sample of σ²FF is returned, but only σ²FF[1] is updated
 """
 function post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
 
@@ -90,9 +91,9 @@ function post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σ�
     prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
     if rand() < min(1.0, exp(prob))
-        return prop_σ²FF
+        return prop_σ²FF, true
     else
-        return σ²FF
+        return σ²FF, false
     end
 
 end
@@ -101,7 +102,7 @@ end
 post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
 * It make a posterior sample of components in ΩPP, except for σ²FF₁.
 * Input: data should contain initial observations.
-* Output(2): ϕ, σ²FF
+* Output(3): ϕ, σ²FF, isaccept
     - posterior samples of [ϕ0 C0], σ²FF are returned
     - 2~dQ rows of C0 and σ²FF are updated
 """
@@ -115,6 +116,7 @@ function post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, �
     prior_C_ = prior_C(; Ω0)
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
 
+    isaccept = fill(false, dQ - 1)
     for i in 2:dQ
         prop_C0 = deepcopy(C0) # proposal for C
         prop_σ²FF = deepcopy(σ²FF) # proposal for σ²FF
@@ -131,17 +133,19 @@ function post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, �
         if rand() < min(1.0, exp(prob))
             C0 = deepcopy(prop_C0)
             σ²FF = deepcopy(prop_σ²FF)
+            isaccept[i-1] = true
         end
 
     end
-    return [ϕ0 C0], σ²FF
+    return [ϕ0 C0], σ²FF, isaccept
 
 end
 
 """
 post_ηψ(; ηψ, ψ, ψ0)
 * Posterior sampler for the sparsity parameters
-* Output: a sample from the MH algorithm.
+* Output(2): ηψ, isaccept
+    - a sample from the MH algorithm.
 """
 function post_ηψ(; ηψ, ψ, ψ0)
 
@@ -167,9 +171,9 @@ function post_ηψ(; ηψ, ψ, ψ0)
     prob -= log_target(ηψ; ψ, ψ0)
 
     if rand() < min(1.0, exp(prob))
-        return prop_ηψ
+        return prop_ηψ, true
     else
-        return ηψ
+        return ηψ, false
     end
 end
 """

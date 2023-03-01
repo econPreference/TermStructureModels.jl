@@ -49,7 +49,7 @@ tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
 ## Estimating
 iteration = 10_000
-saved_θ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned)
+saved_θ, isaccept_C_σ²FF, isaccept_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned; sparsity=true)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, yields, macros, τₙ)
