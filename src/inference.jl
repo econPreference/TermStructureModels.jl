@@ -7,12 +7,11 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime_EA=false, maxtime_NM=NaN, maxtime_LBFGS=NaN)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     p_max = 4 # initial guess for the maximum lag
-    prior_κQ_ = prior_κQ(medium_τ)
 
     function negative_log_marginal(input, p_max_)
 
@@ -41,7 +40,7 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
 
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
     obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
-    LS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
+    LS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=60)
     corner_idx = findall([false; best_candidate(LS_opt)[2:end] .> 0.9ux[2:end]])
     corner_p = best_candidate(LS_opt)[1] == ux[1]
 
@@ -60,39 +59,36 @@ function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 
         corner_p = best_candidate(LS_opt)[1] == ux[1]
     end
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss)
+    EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss, MaxTime=maxtime_EA)
 
-    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:end])], Int(ux[1]))
-    NM_opt = optimize(obj_NM, best_candidate(EA_opt), NelderMead(), Optim.Options(show_trace=true))
+    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:6]); best_candidate(EA_opt)[7:end]], Int(ux[1]))
+    NM_opt = optimize(obj_NM, best_candidate(EA_opt)[1:6], NelderMead(), Optim.Options(show_trace=true, time_limit=maxtime_NM))
 
-    if gradient == true
-        function negative_log_marginal_p(input, p)
+    if isLBFGS == true
+        function negative_log_marginal_p_Ω0(input, p, Ω0)
 
             # parameters
             PCs = PCA(yields, p)[1]
 
             q = input[1:4]
             ν0 = input[5] + dP + 1
-            Ω0 = input[6:end]
 
             return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial observations
 
         end
 
         p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1]))
-        obj_NT(x) = negative_log_marginal_p(abs.(x), p)
-        NT_opt = optimize(obj_NT, NM_opt.minimizer[2:end], LBFGS(; linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true))
-        solution = abs.(NT_opt.minimizer)
+        Ω0 = best_candidate(EA_opt)[7:end]
+        obj_LBFGS(x) = negative_log_marginal_p_Ω0(abs.(x), p, Ω0)
+        LBFGS_opt = optimize(obj_LBFGS, NM_opt.minimizer[2:6], LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
 
-        q = solution[1:4]
-        ν0 = solution[5] + dP + 1
-        Ω0 = solution[6:end]
+        q = (abs.(LBFGS_opt.minimizer))[1:4]
+        ν0 = (abs.(LBFGS_opt.minimizer))[5] + dP + 1
     else
-        solution = abs.(NM_opt.minimizer)
-        p = abs(ceil(Int, NM_opt.minimizer[1]))
-        q = solution[2:5]
-        ν0 = solution[6] + dP + 1
-        Ω0 = solution[7:end]
+        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1]))
+        Ω0 = best_candidate(EA_opt)[7:end]
+        q = (abs.(NM_opt.minimizer))[2:5]
+        ν0 = (abs.(NM_opt.minimizer))[6] + dP + 1
     end
 
     return HyperParameter(p=Int(p), q=q, ν0=ν0, Ω0=Ω0)

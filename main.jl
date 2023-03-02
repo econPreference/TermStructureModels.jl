@@ -7,8 +7,8 @@ begin ## Data: macro data
     R"library(fbi)"
     raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=true))
     macros = raw_fred[:, [1; (1+1):(1+57); (1+59):(1+83); (1+101):size(raw_fred, 2)]]
-    selected_macros = [:DPCERA3M086SBEA, :INDPRO, :IPFINAL, :PAYEMS, :MANEMP, :CE16OV, :UNRATE, :HOUST, :PERMIT, :CPIAUCSL, :M2REAL, Symbol("S&P 500"), :TOTRESNS]
-    macros = macros[:, selected_macros]
+    # selected_macros = [:DPCERA3M086SBEA, :INDPRO, :IPFINAL, :PAYEMS, :MANEMP, :CE16OV, :UNRATE, :HOUST, :PERMIT, :CPIAUCSL, :M2REAL, Symbol("S&P 500"), :TOTRESNS]
+    # macros = macros[:, selected_macros]
 end
 
 begin ## Data: yield data
@@ -35,11 +35,7 @@ begin
         end
     end
 end
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ)
-# p = 
-# q = 
-# ν0 = 
-# Ω0 = 
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=300, maxtime_NM=300, maxtime_LBFGS=300, isLBFGS=true)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
