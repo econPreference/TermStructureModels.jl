@@ -6,7 +6,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 begin ## Data: macro data
     R"library(fbi)"
     raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=true))
-    macros = raw_fred[:, [1; (1+1):(1+57); (1+59):(1+83); (1+101):size(raw_fred, 2)]]
+    macros = raw_fred[:, [1; (1+1):(1+22); (1+24):(1+57); (1+59):(1+83); (1+101):size(raw_fred, 2)]]
     # selected_macros = [:DPCERA3M086SBEA, :INDPRO, :IPFINAL, :PAYEMS, :MANEMP, :CE16OV, :UNRATE, :HOUST, :PERMIT, :CPIAUCSL, :M2REAL, Symbol("S&P 500"), :TOTRESNS]
     # macros = macros[:, selected_macros]
 end
@@ -43,5 +43,6 @@ iteration = 10_000
 saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=true)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
-saved_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
 reduced_θ = reducedform(saved_θ)
+sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
+reduced_sparse_θ = reducedform(sparse_θ)
