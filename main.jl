@@ -8,8 +8,12 @@ begin ## Data: macro data
     raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=true))
     excluded = ["FEDFUNDS", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "ACOGNO"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
+    # scaling
+    macros[:, 21] /= 200
+    macros[:, 116] /= 5
+    macros[:, 112] /= 5
 end
-
+# 21, 116, 112
 begin ## Data: yield data
     # yield(3 months) and yield(6 months)
     raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=false))
