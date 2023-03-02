@@ -24,21 +24,17 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
         end
         q = input[2:5]
         ν0 = input[6] + dP + 1
-        Ω0 = input[7:end]
+        Ω0 = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
 
         return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    PCs = PCA(yields, p_max)[1]
     starting = [1, 0.1, 0.1, 2, 2, 1]
-    for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], p_max))
-    end
-    lx = 0.0 .+ [1; zeros(4); 0; zeros(dP)]
-    ux = 0.0 .+ [p_max; [1, 1, 4, 10]; 0.5size(macros, 1); 10starting[7:end]]
+    lx = 0.0 .+ [1; zeros(4); 0]
+    ux = 0.0 .+ [p_max; [1, 1, 4, 10]; 0.5size(macros, 1)]
 
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5)])
     obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
     LS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=60)
     corner_idx = findall([false; best_candidate(LS_opt)[2:end] .> 0.9ux[2:end]])
@@ -51,7 +47,7 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
         if corner_p
             ux[1] += 1
         end
-        ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
+        ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5)])
         obj_GSS(x) = negative_log_marginal(x, Int(ux[1]))
         LS_opt = bboptimize(obj_GSS, best_candidate(LS_opt); SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
 
@@ -61,8 +57,8 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss, MaxTime=maxtime_EA)
 
-    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:6]); best_candidate(EA_opt)[7:end]], Int(ux[1]))
-    NM_opt = optimize(obj_NM, best_candidate(EA_opt)[1:6], NelderMead(), Optim.Options(show_trace=true, time_limit=maxtime_NM))
+    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:end])], Int(ux[1]))
+    NM_opt = optimize(obj_NM, best_candidate(EA_opt), NelderMead(), Optim.Options(show_trace=true, time_limit=maxtime_NM))
 
     if isLBFGS == true
         function negative_log_marginal_p_Ω0(input, p, Ω0)
@@ -77,21 +73,23 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
 
         end
 
-        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1]))
-        Ω0 = best_candidate(EA_opt)[7:end]
+        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1])) |> Int
+        PCs = PCA(yields, p)[1]
+        Ω0 = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
         obj_LBFGS(x) = negative_log_marginal_p_Ω0(abs.(x), p, Ω0)
-        LBFGS_opt = optimize(obj_LBFGS, NM_opt.minimizer[2:6], LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
+        LBFGS_opt = optimize(obj_LBFGS, NM_opt.minimizer[2:end], LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
 
         q = (abs.(LBFGS_opt.minimizer))[1:4]
         ν0 = (abs.(LBFGS_opt.minimizer))[5] + dP + 1
     else
-        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1]))
-        Ω0 = best_candidate(EA_opt)[7:end]
-        q = (abs.(NM_opt.minimizer))[2:5]
-        ν0 = (abs.(NM_opt.minimizer))[6] + dP + 1
+        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1])) |> Int
+        PCs = PCA(yields, p)[1]
+        Ω0 = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
+        q = (abs.(NM_opt.minimizer))[2:end-1]
+        ν0 = (abs.(NM_opt.minimizer))[end] + dP + 1
     end
 
-    return HyperParameter(p=Int(p), q=q, ν0=ν0, Ω0=Ω0)
+    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
 end
 
