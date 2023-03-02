@@ -6,9 +6,8 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 begin ## Data: macro data
     R"library(fbi)"
     raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=true))
-    macros = raw_fred[:, [1; (1+1):(1+19); (1+21):(1+57); (1+59):(1+83); (1+101):size(raw_fred, 2)]]
-    selected_macros = [:DPCERA3M086SBEA, :INDPRO, :IPFINAL, :PAYEMS, :MANEMP, :CE16OV, :UNRATE, :HOUST, :PERMIT, :CPIAUCSL, :M2REAL, Symbol("S&P 500"), :TOTRESNS]
-    macros = macros[:, selected_macros]
+    excluded = ["FEDFUNDS", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "ACOGNO"]
+    macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
 end
 
 begin ## Data: yield data
