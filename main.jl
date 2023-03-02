@@ -6,9 +6,9 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 begin ## Data: macro data
     R"library(fbi)"
     raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=true))
-    macros = raw_fred[:, [1; (1+1):(1+22); (1+24):(1+57); (1+59):(1+83); (1+101):size(raw_fred, 2)]]
-    # selected_macros = [:DPCERA3M086SBEA, :INDPRO, :IPFINAL, :PAYEMS, :MANEMP, :CE16OV, :UNRATE, :HOUST, :PERMIT, :CPIAUCSL, :M2REAL, Symbol("S&P 500"), :TOTRESNS]
-    # macros = macros[:, selected_macros]
+    macros = raw_fred[:, [1; (1+1):(1+19); (1+21):(1+57); (1+59):(1+83); (1+101):size(raw_fred, 2)]]
+    selected_macros = [:DPCERA3M086SBEA, :INDPRO, :IPFINAL, :PAYEMS, :MANEMP, :CE16OV, :UNRATE, :HOUST, :PERMIT, :CPIAUCSL, :M2REAL, Symbol("S&P 500"), :TOTRESNS]
+    macros = macros[:, selected_macros]
 end
 
 begin ## Data: yield data
@@ -21,7 +21,9 @@ begin ## Data: yield data
     idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
     yield_year = raw_yield[idx, :]
     yield_year = yield_year[findall(x -> x == yearmonth(date_start), yearmonth.(yield_year[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(yield_year[:, 1]))[1], :]
-    yields = DataFrame([yield_year[:, 1] Y3M Y6M Matrix(yield_year[:, 2:end])], [:date, :M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
+    yields = DataFrame([Matrix([Y3M Y6M]) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
+    yields = [yield_year[:, 1] yields]
+    rename!(yields, Dict(:x1 => "date"))
 end
 ## Tuning hyper-parameters
 
@@ -35,7 +37,7 @@ begin
         end
     end
 end
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=300, maxtime_NM=300, maxtime_LBFGS=300, isLBFGS=true)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=600, maxtime_NM=600, maxtime_LBFGS=600, isLBFGS=true)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
