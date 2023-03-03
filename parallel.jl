@@ -79,7 +79,6 @@ for i in 1:n_core
         end
     end
 end
-saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 reduced_θ = reducedform(saved_θ)
 sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
