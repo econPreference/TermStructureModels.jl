@@ -9,8 +9,9 @@ addprocs(n_core)
     Pkg.precompile()
 end
 @everywhere begin
-    using GDTSM, BlackBoxOptim, RCall, CSV, DataFrames, Dates, Plots
+    using GDTSM, BlackBoxOptim
 end
+using RCall, CSV, DataFrames, Dates, Plots
 date_start = Date("1987-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
