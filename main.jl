@@ -53,12 +53,12 @@ begin
         end
     end
 end
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=12, maxtime_NM=6)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=1200, maxtime_NM=600)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
-burn_in = 20
-iteration = 105
+burn_in = 2_000
+iteration = 10_500
 issparsity = true
 init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in, tuned; sparsity=issparsity)[1]
 par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(0.5burn_in, burn_in, length=n_core))))[i]]), WorkerPool(collect(2:(n_core+1))), 1:n_core)
