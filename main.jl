@@ -1,5 +1,15 @@
 ## Setting
-using GDTSM, RCall, CSV, DataFrames, Dates, Plots
+using Distributed
+addprocs(7)
+@everywhere begin
+    using Pkg
+    Pkg.activate(@__DIR__)
+    Pkg.instantiate()
+    Pkg.precompile()
+end
+@everywhere begin
+    using GDTSM, RCall, CSV, DataFrames, Dates, Plots
+end
 date_start = Date("1987-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
@@ -42,12 +52,15 @@ begin
         end
     end
 end
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=600, maxtime_NM=600, maxtime_LBFGS=600, isLBFGS=true)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=600, maxtime_NM=600)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
 iteration = 10_000
-saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=true)
+n_core = 8
+par_posteiror = pmap(1:n_core) do i
+    posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=true)
+end
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 reduced_θ = reducedform(saved_θ)

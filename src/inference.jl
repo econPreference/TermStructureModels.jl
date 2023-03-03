@@ -59,35 +59,31 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
         corner_p = best_candidate(LS_opt)[1] == ux[1]
     end
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss, MaxTime=maxtime_EA)
+    EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss, MaxTime=maxtime_EA, Workers=workers())
 
-    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:6]); best_candidate(EA_opt)[7:end]], Int(ux[1]))
-    NM_opt = optimize(obj_NM, best_candidate(EA_opt)[1:6], NelderMead(), Optim.Options(show_trace=true, time_limit=maxtime_NM))
+    function negative_log_marginal_p_Ω0(input, p, Ω0)
+
+        # parameters
+        PCs = PCA(yields, p)[1]
+
+        q = input[1:4]
+        ν0 = input[5] + dP + 1
+
+        return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial observations
+
+    end
+    p = best_candidate(EA_opt)[1] |> Int
+    Ω0 = best_candidate(EA_opt)[7:end]
+    obj_Optim(x) = negative_log_marginal_p_Ω0(abs.(x), p, Ω0)
+    NM_opt = optimize(obj_Optim, best_candidate(EA_opt)[2:6], NelderMead(), Optim.Options(show_trace=true, time_limit=maxtime_NM))
 
     if isLBFGS == true
-        function negative_log_marginal_p_Ω0(input, p, Ω0)
+        LBFGS_opt = optimize(obj_Optim, NM_opt.minimizer, LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
 
-            # parameters
-            PCs = PCA(yields, p)[1]
-
-            q = input[1:4]
-            ν0 = input[5] + dP + 1
-
-            return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial observations
-
-        end
-
-        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1])) |> Int
-        Ω0 = best_candidate(EA_opt)[7:end]
-        obj_LBFGS(x) = negative_log_marginal_p_Ω0(abs.(x), p, Ω0)
-        LBFGS_opt = optimize(obj_LBFGS, NM_opt.minimizer[2:end], LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
-
-        q = (abs.(LBFGS_opt.minimizer))[1:4]
-        ν0 = (abs.(LBFGS_opt.minimizer))[5] + dP + 1
+        q = (abs.(LBFGS_opt.minimizer))[1:(end-1)]
+        ν0 = (abs.(LBFGS_opt.minimizer))[end] + dP + 1
     else
-        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1])) |> Int
-        Ω0 = best_candidate(EA_opt)[7:end]
-        q = (abs.(NM_opt.minimizer))[2:(end-1)]
+        q = (abs.(NM_opt.minimizer))[1:(end-1)]
         ν0 = (abs.(NM_opt.minimizer))[end] + dP + 1
     end
 

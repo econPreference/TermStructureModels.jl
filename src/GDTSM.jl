@@ -2,7 +2,7 @@ module GDTSM
 
 using Base: @kwdef
 using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, Optim, LineSearches, CovarianceMatrices, ProgressMeter
-using BlackBoxOptim: bboptimize, best_candidate, MixedPrecisionRectSearchSpace
+using BlackBoxOptim: bboptimize, best_candidate, MixedPrecisionRectSearchSpace, workers
 import Distributions: TDist
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
