@@ -66,11 +66,11 @@ par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macro
 rmprocs(2:(n_core+1))
 for i in 1:n_core
     if i == 1
-        saved_θ = par_posterior[i][1]
-        acceptPr_C_σ²FF = par_posterior[i][2] * Int(iteration / n_core) / 100
-        acceptPr_ηψ = par_posterior[i][3] * Int(iteration / n_core) / 100
+        global saved_θ = par_posterior[i][1]
+        global acceptPr_C_σ²FF = par_posterior[i][2] * Int(iteration / n_core) / 100
+        global acceptPr_ηψ = par_posterior[i][3] * Int(iteration / n_core) / 100
     else
-        saved_θ = vcat(saved_θ, par_posterior[i][1])
+        global saved_θ = vcat(saved_θ, par_posterior[i][1])
         acceptPr_C_σ²FF += par_posterior[i][2] * Int(iteration / n_core) / 100
         acceptPr_ηψ += par_posterior[i][3] * Int(iteration / n_core) / 100
         if i == n_core
