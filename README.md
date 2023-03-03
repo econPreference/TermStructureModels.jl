@@ -102,12 +102,14 @@ The function uses eigenVectors of cov(yields[p+1:end,:]) to transform yields[1:e
 ### Step 2. sampling the posterior distribution of GDTSM
 
 ```juila
-saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
 ```
 
 When using the function, T by N matrix "yields" and T by M matrix "macros" should contain initial observations ($t$ = 0, -1, -2, $\cdots$). τₙ is a vector that contains observed maturities of "yields". "Iteration" is the number of Gibbs sampling samples. Function "posterior_sampler" generate a vector of struct "Parameter"s that contains posterior samples. The second and third outputs say an MH acceptance probability of { $\phi_{i}$, $σ²_{FF,i}$: $i = 1$, $\cdots$, $d_\mathbb{Q}$ } and ηψ, respectively.
 
 When "sparsity = true", we introduce additional Normal-Gamma(NG) priors on the intercepts and slopes while maintaining the Minnesota prior (Chan, 2021). The NG prior leads to the Generalized Inverse Gaussian posterior distribution. To sample this posterior, we use R package "GIGrvg" (Hörmann and Leydold, 2014).
+
+We provide a default starting point for the sampler. However, if you want to set it, use keyward  "init_param" that should be struct "Parameter".
 
 ## Inference
 
@@ -225,13 +227,14 @@ Here, **both "combinations" and "values" should be type Array{Float64}**. Also, 
 * Joslin, S., Singleton, K. J., and Zhu, H. (2011), “A new perspective on Gaussian dynamic term structure models,” The Review of Financial Studies, Oxford University Press, 24, 926–970.
 * Diebold, F. X., and Li, C. (2006), “Forecasting the term structure of government bond yields,” Journal of econometrics, Elsevier, 130, 337–364.
 * Christensen, J. H. E., Diebold, F. X., and Rudebusch, G. D. (2011), “The affine arbitrage-free class of Nelson – Siegel term structure models,” Journal of Econometrics, Elsevier B.V., 164, 4–20. <https://doi.org/10.1016/j.jeconom.2011.02.011>.
-* Chan, J. C. (2022), “Asymmetric Conjugate Priors for Large Bayesian VARs,” Quantitative Economics. https://doi.org/10.2139/ssrn.3424437.
+* Chan, J. C. (2022), “Asymmetric Conjugate Priors for Large Bayesian VARs,” Quantitative Economics. <https://doi.org/10.2139/ssrn.3424437>.
 * Chan, J. C. C. (2021), “Minnesota-type adaptive hierarchical priors for large Bayesian VARs,” International Journal of Forecasting, Elsevier, 37, 1212–1226. <https://doi.org/10.1016/J.IJFORECAST.2021.01.002>.
 * Hörmann, W., and Leydold, J. (2014), “Generating generalized inverse Gaussian random variates,” Statistics and Computing, 24, 547–557. <https://doi.org/10.1007/s11222-013-9387-3>.
 * Friedman, J., Hastie, T., and Tibshirani, R. (2008), “Sparse inverse covariance estimation with the graphical lasso,” Biostatistics, 9, 432–441. <https://doi.org/10.1093/biostatistics/kxm045>.
 * Hauzenberger, N., Huber, F., and Onorante, L. (2021), “Combining shrinkage and sparsity in conjugate vector autoregressive models,” Journal of Applied Econometrics, n/a. <https://doi.org/10.1002/jae.2807>.
-* Bańbura, M., Giannone, D., and Lenza, M. (2015), “Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections,” International Journal of Forecasting, 31, 739–756. https://doi.org/10.1016/j.ijforecast.2014.08.013.
-* Kim, C.-J., and Nelson, C. R. (2017), State-space models with regime switching: Classical and gibbs-sampling approaches with applications, The MIT Press. https://doi.org/10.7551/mitpress/6444.001.0001.
+* Bańbura, M., Giannone, D., and Lenza, M. (2015), “Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections,” International Journal of Forecasting, 31, 739–756. <https://doi.org/10.1016/j.ijforecast.2014.08.013>.
+* Kim, C.-J., and Nelson, C. R. (2017), State-space models with regime switching: Classical and gibbs-sampling approaches with applications, The MIT Press. <https://doi.org/10.7551/mitpress/6444.001.0001>.
 
 ## To do list
+
 1. make CITATION.bib
