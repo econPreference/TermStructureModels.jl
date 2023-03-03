@@ -1,6 +1,7 @@
 ## Setting
 using Distributed
-addprocs(7)
+n_core = 8
+addprocs(n_core - 1)
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
@@ -8,7 +9,7 @@ addprocs(7)
     Pkg.precompile()
 end
 @everywhere begin
-    using GDTSM, RCall, CSV, DataFrames, Dates, Plots
+    using GDTSM, BlackBoxOptim, RCall, CSV, DataFrames, Dates, Plots
 end
 date_start = Date("1987-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
@@ -52,13 +53,13 @@ begin
         end
     end
 end
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=600, maxtime_NM=600)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=1200, maxtime_NM=600)
+rmprocs(2:n_core)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
 burn_in = 2_000
 iteration = 10_000
-n_core = 8
 issparsity = true
 init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in, tuned; sparsity=issparsity)[1]
 par_posterior = pmap(1:n_core) do i

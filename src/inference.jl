@@ -59,7 +59,7 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
         corner_p = best_candidate(LS_opt)[1] == ux[1]
     end
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss, MaxTime=maxtime_EA, Workers=workers())
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime_EA, Workers=workers()), best_candidate(LS_opt))
 
     function negative_log_marginal_p_Ω0(input, p, Ω0)
 
