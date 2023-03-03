@@ -117,7 +117,7 @@ posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsit
     - iteration: # of posterior samples
 * Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
 
     (; p, q, ν0, Ω0) = HyperParameter_
     N = size(yields, 2) # of maturities
@@ -131,18 +131,22 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
     σ²kQ_infty = 100 # prior variance of kQ_infty
     ################################
 
-    ## initial parameters ##
-    κQ = 0.0609
-    kQ_infty = 0.0
-    ϕ = [zeros(dP) diagm([0.9ones(dQ); ρ]) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
-    ϕ[1:dQ, 2:(dQ+1)] = GQ_XX(; κQ)
-    σ²FF = [Ω0[i] / (ν0 + i - dP) for i in eachindex(Ω0)]
-    ηψ = 1
-    ψ = ones(dP, dP * p)
-    ψ0 = ones(dP)
-    Σₒ = 1 ./ fill(γ_bar, N - dQ)
-    γ = 1 ./ fill(γ_bar, N - dQ)
-    ########################
+    if typeof(init_param) == Parameter
+        (; κQ, kQ_infty, ϕ, σ²FF, ηψ, ψ, ψ0, Σₒ, γ) = init_param
+    else
+        ## initial parameters ##
+        κQ = 0.0609
+        kQ_infty = 0.0
+        ϕ = [zeros(dP) diagm([0.9ones(dQ); ρ]) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
+        ϕ[1:dQ, 2:(dQ+1)] = GQ_XX(; κQ)
+        σ²FF = [Ω0[i] / (ν0 + i - dP) for i in eachindex(Ω0)]
+        ηψ = 1
+        ψ = ones(dP, dP * p)
+        ψ0 = ones(dP)
+        Σₒ = 1 ./ fill(γ_bar, N - dQ)
+        γ = 1 ./ fill(γ_bar, N - dQ)
+        ########################
+    end
 
     isaccept_C_σ²FF = zeros(dQ)
     isaccept_ηψ = 0
