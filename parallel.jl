@@ -64,16 +64,19 @@ issparsity = true
 init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in, tuned; sparsity=issparsity)[1]
 par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(0.5burn_in, burn_in, length=n_core))))[i]]), WorkerPool(collect(2:(n_core+1))), 1:n_core)
 rmprocs(2:(n_core+1))
-saved_θ = par_posterior[1][1]
-acceptPr_C_σ²FF = par_posterior[1][2] * Int(iteration / n_core) / 100
-acceptPr_ηψ = par_posterior[1][3] * Int(iteration / n_core) / 100
-for i in 2:n_core
-    saved_θ = vcat(saved_θ, par_posterior[i][1])
-    acceptPr_C_σ²FF += par_posterior[i][2] * Int(iteration / n_core) / 100
-    acceptPr_ηψ += par_posterior[i][3] * Int(iteration / n_core) / 100
-    if i == n_core
-        acceptPr_C_σ²FF *= 100 / iteration
-        acceptPr_ηψ *= 100 / iteration
+for i in 1:n_core
+    if i == 1
+        saved_θ = par_posterior[i][1]
+        acceptPr_C_σ²FF = par_posterior[i][2] * Int(iteration / n_core) / 100
+        acceptPr_ηψ = par_posterior[i][3] * Int(iteration / n_core) / 100
+    else
+        saved_θ = vcat(saved_θ, par_posterior[i][1])
+        acceptPr_C_σ²FF += par_posterior[i][2] * Int(iteration / n_core) / 100
+        acceptPr_ηψ += par_posterior[i][3] * Int(iteration / n_core) / 100
+        if i == n_core
+            acceptPr_C_σ²FF *= 100 / iteration
+            acceptPr_ηψ *= 100 / iteration
+        end
     end
 end
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
