@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=false)
+function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime_EA=false, maxtime_PSO=NaN, maxtime_LBFGS=NaN)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -60,13 +60,42 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
     end
 
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), best_candidate(GSS_opt))
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime_EA, Workers=workers()), best_candidate(GSS_opt))
 
+    function negative_log_marginal_p_Ω0(input, p, Ω0)
+
+        # parameters
+        PCs = PCA(yields, p)[1]
+
+        q = input[1:4]
+        ν0 = input[5] + dP + 1
+
+        return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial observations
+
+    end
     p = best_candidate(EA_opt)[1] |> Int
-    q = best_candidate(EA_opt)[2:5]
-    ν0 = best_candidate(EA_opt)[6] + dP + 1
-    Ω0 = best_candidate(EA_opt)[7:end]
+    obj_PSO(x) = negative_log_marginal_p_Ω0(abs.(x[1:5]), p, abs.(x[6:end]))
+    PSO_opt = optimize(obj_PSO, best_candidate(EA_opt)[2:end], ParticleSwarm(), Optim.Options(show_trace=true, time_limit=maxtime_PSO))
+    Ω0 = abs.(PSO_opt.minimizer[6:end])
 
+    if isLBFGS == true
+        obj_LBFGS(x) = negative_log_marginal_p_Ω0(abs.(x[1:5]), p, Ω0)
+        LBFGS_opt = optimize(obj_LBFGS, PSO_opt.minimizer[1:5], LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
+
+        q = (abs.(LBFGS_opt.minimizer))[1:(end-1)]
+        ν0 = (abs.(LBFGS_opt.minimizer))[end] + dP + 1
+    else
+        q = (abs.(PSO_opt.minimizer))[1:4]
+        ν0 = (abs.(PSO_opt.minimizer))[5] + dP + 1
+    end
+
+    println("Maximized Marginal Likelihood of each optimizer")
+    println("Generating Set Search: $(-best_fitness(GSS_opt))")
+    println("Evolutionary Algorithm: $(-best_fitness(EA_opt))")
+    println("Particle Swarm Optimizer: $(-PSO_opt.minimum)")
+    if isLBFGS == true
+        println("LBFGS: $(-LBFGS_opt.minimum)")
+    end
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
 end
