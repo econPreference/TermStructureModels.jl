@@ -313,10 +313,10 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
     β₁ = B₁ * (inv_B₀ * β₀ + X'y)
     δ₁ = δ₀ + 0.5 * (y'y + β₀' * inv_B₀ * β₀ - β₁' * inv_B₁ * β₁)
 
-    if δ₁ < eps()
+    if δ₁ < eps() || isposdef(B₁) == false
         idx_deg = []
         diag_B₀ = diag(B₀)
-        while δ₁ < eps()
+        while δ₁ < eps() || isposdef(B₁) == false
             push!(idx_deg, findmin(diag_B₀)[2])
             diag_B₀[findmin(diag_B₀)[2]] = maximum(diag_B₀)
             idx = collect(1:length(β₀))
@@ -337,7 +337,7 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
             β₁ = B₁ * (inv_B₀ * β₀_deg + X_deg'y_deg)
             δ₁ = δ₀ + 0.5 * (y_deg'y_deg + β₀_deg' * inv_B₀ * β₀_deg - β₁' * inv_B₁ * β₁)
 
-            if δ₁ > eps()
+            if δ₁ > eps() && isposdef(B₁)
                 σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
                 β = deepcopy(β₀)
                 β[idx] = rand(MvNormal(β₁, σ² * B₁))
