@@ -89,12 +89,12 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
         ν0 = (abs.(PSO_opt.minimizer))[5] + dP + 1
     end
 
-    println("Minimum of each optimizer")
-    println("Generating Set Search: $(best_fitness(GSS_opt))")
-    println("Evolutionary Algorithm $(best_fitness(EA_opt))")
-    println("Particle Swarm Optimizer: $(PSO_opt.minimum)")
+    println("Maximized Marginal Likelihood of each optimizer")
+    println("Generating Set Search: $(-best_fitness(GSS_opt))")
+    println("Evolutionary Algorithm: $(-best_fitness(EA_opt))")
+    println("Particle Swarm Optimizer: $(-PSO_opt.minimum)")
     if isLBFGS == true
-        println("LBFGS: $(PSO_opt.minimum)")
+        println("LBFGS: $(-LBFGS_opt.minimum)")
     end
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
