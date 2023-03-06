@@ -9,8 +9,7 @@ addprocs(n_core)
     Pkg.precompile()
 end
 @everywhere begin
-    using GDTSM, BlackBoxOptim, Random
-    Random.seed!(1234)
+    using GDTSM, BlackBoxOptim
 end
 using RCall, CSV, DataFrames, Dates, Plots
 date_start = Date("1986-12-01", "yyyy-mm-dd")
@@ -65,7 +64,9 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=1200, maxtime_PSO=600)
+# tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=1200, maxtime_PSO=600)
+saved_tuned = CSV.read("tuned.csv", DataFrame)
+tuned = HyperParameter(p=Int(saved_tuned[1, 1]), q=saved_tuned[2:5, 1], ν0=saved_tuned[6, 1], Ω0=saved_tuned[7:end, 1])
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
