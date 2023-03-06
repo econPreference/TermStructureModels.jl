@@ -64,7 +64,7 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=1200, maxtime_NM=600)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime_EA=1200, maxtime_PSO=600)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]

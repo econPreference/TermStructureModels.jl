@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime_EA=false, maxtime_NM=NaN, maxtime_LBFGS=NaN)
+function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime_EA=false, maxtime_PSO=NaN, maxtime_LBFGS=NaN)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -40,9 +40,9 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
 
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
     obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
-    LS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=60)
-    corner_idx = findall([false; best_candidate(LS_opt)[2:end] .> 0.9ux[2:end]])
-    corner_p = best_candidate(LS_opt)[1] == ux[1]
+    GSS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=60)
+    corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
+    corner_p = best_candidate(GSS_opt)[1] == ux[1]
 
     while ~isempty(corner_idx) || corner_p
         if ~isempty(corner_idx)
@@ -53,13 +53,14 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
         end
         ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
         obj_GSS(x) = negative_log_marginal(x, Int(ux[1]))
-        LS_opt = bboptimize(obj_GSS, best_candidate(LS_opt); SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
+        GSS_opt = bboptimize(obj_GSS, best_candidate(GSS_opt); SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
 
-        corner_idx = findall([false; best_candidate(LS_opt)[2:end] .> 0.9ux[2:end]])
-        corner_p = best_candidate(LS_opt)[1] == ux[1]
+        corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
+        corner_p = best_candidate(GSS_opt)[1] == ux[1]
     end
+
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime_EA, Workers=workers()), best_candidate(LS_opt))
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime_EA, Workers=workers()), best_candidate(GSS_opt))
 
     function negative_log_marginal_p_Ω0(input, p, Ω0)
 
@@ -73,20 +74,28 @@ function tuning_hyperparameter(yields, macros, ρ; isLBFGS=false, medium_τ=12 *
 
     end
     p = best_candidate(EA_opt)[1] |> Int
-    Ω0 = best_candidate(EA_opt)[7:end]
-    obj_Optim(x) = negative_log_marginal_p_Ω0(abs.(x), p, Ω0)
-    NM_opt = optimize(obj_Optim, best_candidate(EA_opt)[2:6], NelderMead(), Optim.Options(show_trace=true, time_limit=maxtime_NM))
+    obj_PSO(x) = negative_log_marginal_p_Ω0(abs.(x[1:5]), p, abs.(x[6:end]))
+    PSO_opt = optimize(obj_PSO, best_candidate(EA_opt)[2:end], ParticleSwarm(), Optim.Options(show_trace=true, time_limit=maxtime_PSO))
+    Ω0 = abs.(PSO_opt.minimizer[6:end])
 
     if isLBFGS == true
-        LBFGS_opt = optimize(obj_Optim, NM_opt.minimizer, LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
+        obj_LBFGS(x) = negative_log_marginal_p_Ω0(abs.(x[1:5]), p, Ω0)
+        LBFGS_opt = optimize(obj_LBFGS, PSO_opt.minimizer[1:5], LBFGS(linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true, time_limit=maxtime_LBFGS))
 
         q = (abs.(LBFGS_opt.minimizer))[1:(end-1)]
         ν0 = (abs.(LBFGS_opt.minimizer))[end] + dP + 1
     else
-        q = (abs.(NM_opt.minimizer))[1:(end-1)]
-        ν0 = (abs.(NM_opt.minimizer))[end] + dP + 1
+        q = (abs.(PSO_opt.minimizer))[1:4]
+        ν0 = (abs.(PSO_opt.minimizer))[5] + dP + 1
     end
 
+    println("Minimum of each optimizer")
+    println("Generating Set Search: $(best_fitness(GSS_opt))")
+    println("Evolutionary Algorithm $(best_fitness(EA_opt))")
+    println("Particle Swarm Optimizer: $(PSO_opt.minimum)")
+    if isLBFGS == true
+        println("LBFGS: $(PSO_opt.minimum)")
+    end
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
 end
