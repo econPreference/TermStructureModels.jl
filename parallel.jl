@@ -9,7 +9,8 @@ addprocs(n_core)
     Pkg.precompile()
 end
 @everywhere begin
-    using GDTSM, BlackBoxOptim
+    using GDTSM, BlackBoxOptim, Random
+    Random.seed!(1234)
 end
 using RCall, CSV, DataFrames, Dates, Plots
 date_start = Date("1986-12-01", "yyyy-mm-dd")
