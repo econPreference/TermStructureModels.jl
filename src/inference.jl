@@ -40,7 +40,7 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
 
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
     obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
-    GSS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=60)
+    GSS_opt = bboptimize(bbsetup(obj_GSS0; SearchSpace=ss, Method=:generating_set_search, MaxTime=60, Workers=workers()), starting)
     corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
     corner_p = best_candidate(GSS_opt)[1] == ux[1]
 
@@ -53,7 +53,7 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
         end
         ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
         obj_GSS(x) = negative_log_marginal(x, Int(ux[1]))
-        GSS_opt = bboptimize(obj_GSS, best_candidate(GSS_opt); SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
+        GSS_opt = bboptimize(bbsetup(obj_GSS; SearchSpace=ss, Method=:generating_set_search, MaxTime=10, Workers=workers()), best_candidate(GSS_opt))
 
         corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
         corner_p = best_candidate(GSS_opt)[1] == ux[1]
