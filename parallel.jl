@@ -17,7 +17,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 begin ## Data: macro data
     R"library(fbi)"
-    raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=false))
+    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
     excluded = ["FEDFUNDS", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
@@ -49,7 +49,7 @@ end
 
 begin ## Data: yield data
     # yield(3 months) and yield(6 months)
-    raw_fred = rcopy(rcall(:fredmd, file="/Users/preference/Dropbox/code/Julia/GDTSM/current.csv", date_start=date_start, date_end=date_end, transform=false))
+    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
     Y3M = raw_fred[:, :TB3MS]
     Y6M = raw_fred[:, :TB6MS]
     # longer than one year
