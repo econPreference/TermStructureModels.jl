@@ -64,7 +64,7 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime=60 * 60 * 12)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ)
 save("tuned.jld2", "tuned", tuned)
 # tuned = load("tuned.jld2")["tuned"]
 
