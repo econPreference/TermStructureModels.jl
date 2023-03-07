@@ -7,11 +7,10 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=false)
+function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=false, p_max=12)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    p_max = 12 # initial guess for the maximum lag
 
     function negative_log_marginal(input, p_max_)
 
@@ -37,10 +36,10 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
     end
 
     lx = 0.0 .+ [1; zeros(5 + dP)]
-    ux = 0.0 .+ [p_max; 1; 1; 10; 100; size(macros, 1); 2starting[7:end]]
+    ux = 0.0 .+ [p_max; 1; 1; 6; 100; size(macros, 1); 2starting[7:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers(), TraceMode=:verbose), starting)
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:5]
