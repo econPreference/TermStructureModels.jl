@@ -6,7 +6,7 @@ addprocs(n_core)
     using Pkg
     Pkg.activate(@__DIR__)
     Pkg.instantiate()
-    Pkg.precompile()
+    # Pkg.precompile()
 end
 @everywhere begin
     using GDTSM
