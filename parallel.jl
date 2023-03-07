@@ -66,7 +66,7 @@ end
 ## Tuning hyper-parameters
 tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime=60 * 60 * 12)
 save("tuned.jld2", "tuned", tuned)
-tuned = load("tuned.jld2")["tuned"]
+# tuned = load("tuned.jld2")["tuned"]
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
@@ -91,7 +91,11 @@ for i in 1:n_core
         end
     end
 end
+save("posterior.jld2", "samples", saved_θ)
+# saved_θ = load("posterior.jld2")["samples"]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 reduced_θ = reducedform(saved_θ)
 sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
+save("sparse.jld2", "samples", sparse_θ)
+# sparse_θ = load("sparse.jld2")["samples"]
 reduced_sparse_θ = reducedform(sparse_θ)
