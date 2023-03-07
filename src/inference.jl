@@ -11,7 +11,7 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    p_max = 4 # initial guess for the maximum lag
+    p_max = 12 # initial guess for the maximum lag
 
     function negative_log_marginal(input, p_max_)
 
@@ -31,36 +31,21 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
     end
 
     PCs = PCA(yields, p_max)[1]
-    starting = [1, 0.1, 0.1, 2, 2, 1]
+    starting = [p_max, 0.1, 0.1, 2, 100, 1]
     for i in 1:dP
         push!(starting, AR_res_var([PCs macros][:, i], p_max))
     end
-    lx = 0.0 .+ [1; zeros(4); 0; zeros(dP)]
-    ux = 0.0 .+ [p_max; [1, 1, 4, 10]; 0.5size(macros, 1); 10starting[7:end]]
 
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-    obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
-    GSS_opt = bboptimize(bbsetup(obj_GSS0; SearchSpace=ss, Method=:generating_set_search, MaxTime=60, Workers=workers()), starting)
-    corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
-    corner_p = best_candidate(GSS_opt)[1] == ux[1]
+    starting[1] = findmin([negative_log_marginal([i; starting[2:end]], p_max) for i in 1:p_max])[2]
 
-    while ~isempty(corner_idx) || corner_p
-        if ~isempty(corner_idx)
-            ux[corner_idx] += ux[corner_idx]
-        end
-        if corner_p
-            ux[1] += 1
-        end
-        ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-        obj_GSS(x) = negative_log_marginal(x, Int(ux[1]))
-        GSS_opt = bboptimize(bbsetup(obj_GSS; SearchSpace=ss, Method=:generating_set_search, MaxTime=10, Workers=workers()), best_candidate(GSS_opt))
+    obj_NM(x) = negative_log_marginal([starting[1]; abs.(x); starting[7:end]], Int(starting[1]))
+    NM_opt = optimize(obj_NM, starting[2:6], NelderMead(), Optim.Options(show_trace=true))
 
-        corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
-        corner_p = best_candidate(GSS_opt)[1] == ux[1]
-    end
-
+    lx = 0.0 .+ [1; zeros(5 + dP)]
+    ux = 0.0 .+ [p_max; 2abs.(NM_opt.minimizer); 2starting[7:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), best_candidate(GSS_opt))
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), [starting[1]; abs.(NM_opt.minimizer); starting[7:end]])
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:5]
