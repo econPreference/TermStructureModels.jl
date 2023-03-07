@@ -5,7 +5,7 @@ addprocs(n_core)
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
-    Pkg.instantiate()
+    # Pkg.instantiate()
     # Pkg.precompile()
 end
 @everywhere begin
