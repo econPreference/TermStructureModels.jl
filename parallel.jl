@@ -63,73 +63,8 @@ begin ## Data: yield data
     yields = yields[2:end, :]
 end
 
-begin ## parallelize hyper-parameter tuning
-    @everywhere macros = $macros
-    @everywhere yields = $yields
-    @everywhere ρ = $ρ
-    @everywhere dQ = dimQ()
-    @everywhere dP = dQ + size(Array(macros[:, 2:end]), 2)
-    p_max = 4 # initial guess for the maximum lag
-    @everywhere medium_τ = 12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-
-    @everywhere function negative_log_marginal(input, p_max_)
-
-        # parameters
-        PCs = PCA(Array(yields[:, 2:end]), p_max_)[1]
-
-        p = Int(input[1])
-        if p < 1
-            return Inf
-        end
-        q = input[2:5]
-        ν0 = input[6] + dP + 1
-        Ω0 = input[7:end]
-
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], Array(macros[(p_max_-p)+1:end, 2:end]), ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
-
-    end
-
-    PCs = PCA(Array(yields[:, 2:end]), p_max)[1]
-    starting = [1, 0.1, 0.1, 2, 2, 1]
-    for i in 1:dP
-        push!(starting, AR_res_var([PCs Array(macros[:, 2:end])][:, i], p_max))
-    end
-    lx = 0.0 .+ [1; zeros(4); 0; zeros(dP)]
-    ux = 0.0 .+ [p_max; [1, 1, 4, 10]; 0.5size(macros, 1); 10starting[7:end]]
-
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-    obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
-    GSS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=60)
-    corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
-    corner_p = best_candidate(GSS_opt)[1] == ux[1]
-
-    while ~isempty(corner_idx) || corner_p
-        if ~isempty(corner_idx)
-            ux[corner_idx] += ux[corner_idx]
-        end
-        if corner_p
-            ux[1] += 1
-        end
-        ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-        obj_GSS(x) = negative_log_marginal(x, Int(ux[1]))
-        GSS_opt = bboptimize(obj_GSS, best_candidate(GSS_opt); SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
-
-        corner_idx = findall([false; best_candidate(GSS_opt)[2:end] .> 0.9ux[2:end]])
-        corner_p = best_candidate(GSS_opt)[1] == ux[1]
-    end
-
-    @everywhere lx = $lx
-    @everywhere ux = $ux
-    @everywhere obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, Workers=workers()), best_candidate(GSS_opt), MaxTime=60 * 60 * 12)
-
-    p = best_candidate(EA_opt)[1] |> Int
-    q = best_candidate(EA_opt)[2:5]
-    ν0 = best_candidate(EA_opt)[6] + dP + 1
-    Ω0 = best_candidate(EA_opt)[7:end]
-
-    tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
-end
+## Tuning hyper-parameters
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ; maxtime=60 * 60 * 12)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 
