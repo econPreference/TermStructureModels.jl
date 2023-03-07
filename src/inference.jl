@@ -31,21 +31,16 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
     end
 
     PCs = PCA(yields, p_max)[1]
-    starting = [p_max, 0.1, 0.1, 2, 100, 1]
+    starting = [1, 0.05, 0.005, 2, 100, 1]
     for i in 1:dP
         push!(starting, AR_res_var([PCs macros][:, i], p_max))
     end
 
-    starting[1] = findmin([negative_log_marginal([i; starting[2:end]], p_max) for i in 1:p_max])[2]
-
-    obj_NM(x) = negative_log_marginal([starting[1]; abs.(x); starting[4:end]], Int(starting[1]))
-    NM_opt = optimize(obj_NM, starting[2:3], NelderMead(), Optim.Options(g_tol=1e-6, show_trace=true))
-
     lx = 0.0 .+ [1; zeros(5 + dP)]
-    ux = 0.0 .+ [p_max; 2abs.(NM_opt.minimizer); [10; 100; size(macros, 1)]; 2starting[7:end]]
+    ux = 0.0 .+ [p_max; 1; 1; 10; 100; size(macros, 1); 2starting[7:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), [starting[1]; abs.(NM_opt.minimizer); starting[4:end]])
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers(), TraceMode=:verbose), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:5]
