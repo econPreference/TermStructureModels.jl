@@ -1,7 +1,7 @@
 ## Setting
 using Distributed
+addprocs(16)
 n_core = nworkers()
-#addprocs(n_core)
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
