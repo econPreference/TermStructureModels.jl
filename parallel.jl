@@ -70,11 +70,11 @@ save("tuned.jld2", "tuned", tuned)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
-burn_in = 2_000
-iteration = 10_000 |> x -> n_core + x - x % n_core
+burn_in = 6_000
+iteration = 20_000 |> x -> n_core + x - x % n_core
 issparsity = true
 init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in, tuned; sparsity=issparsity)[1]
-par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(0.5burn_in, burn_in, length=n_core))))[i]]), 1:n_core)
+par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(burn_in - 1000, burn_in, length=n_core))))[i]]), 1:n_core)
 # rmprocs(2:(n_core+1))
 for i in 1:n_core
     if i == 1
