@@ -5,8 +5,8 @@ n_core = nworkers()
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
-    # Pkg.instantiate()
-    # Pkg.precompile()
+    Pkg.instantiate()
+    Pkg.precompile()
 end
 @everywhere begin
     using GDTSM
