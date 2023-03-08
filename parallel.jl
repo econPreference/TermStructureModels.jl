@@ -11,7 +11,7 @@ end
 @everywhere begin
     using GDTSM
 end
-using RCall, CSV, DataFrames, Dates, Plots
+using RCall, CSV, DataFrames, Dates, Plots, JLD2
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 

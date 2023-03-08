@@ -168,7 +168,7 @@ function sparse_precision(saved_θ, yields, macros, τₙ)
     trace_λ = Vector{Float64}(undef, iteration)
     trace_sparsity = Vector{Float64}(undef, iteration)
     for iter in 1:iteration
-        if (iter % 20) == 0
+        if (iter % ceil(Int, iteration / 1000)) == 0
             println("$(round(100iter/iteration;digits = 2)) (%) done...")
         end
 
@@ -204,7 +204,7 @@ function sparse_precision(saved_θ, yields, macros, τₙ)
         end
 
         obj(x) = glasso(abs(x[1]))[2]
-        optim = optimize(obj, zeros(1), LBFGS())
+        optim = optimize(obj, zeros(1), NelderMead())
         λ_best = abs(optim.minimizer[1])
         trace_λ[iter] = λ_best
 
