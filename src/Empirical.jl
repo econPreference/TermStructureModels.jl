@@ -88,7 +88,7 @@ LDL(X)
     - Decomposed result is X = L*D*L'
 """
 function LDL(X)
-    C = cholesky(X).L
+    C = cholesky(Positive, X).L
     S = Diagonal(diagm(diag(C)))
     L = C / S
     D = S^2
