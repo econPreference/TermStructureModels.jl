@@ -168,7 +168,7 @@ function sparse_precision(saved_θ, yields, macros, τₙ; upper=1.0)
     trace_λ = Vector{Float64}(undef, iteration)
     trace_sparsity = Vector{Float64}(undef, iteration)
     for iter in 1:iteration
-        if (iter % ceil(Int, iteration / 1000)) == 0 && iter > 1
+        if (iter % ceil(Int, iteration / 100)) == 0 && iter > 1
             println("$(round(100iter/iteration;digits = 2)) (%) done...")
             println("penalty: $(trace_λ[iter-1])")
         end
@@ -205,7 +205,7 @@ function sparse_precision(saved_θ, yields, macros, τₙ; upper=1.0)
         end
 
         obj(x) = glasso(x[1])[2]
-        optim = optimize(obj, [0.0], [upper], [1e-15], Fminbox(NelderMead()), Optim.Options(g_tol=1e-1))
+        optim = optimize(obj, [0.0], [upper], [0.5upper], Fminbox(NelderMead()), Optim.Options(g_tol=1e-1))
         λ_best = optim.minimizer[1]
         if λ_best > upper
             error("optimized penalty > upper. You should increase upper.")
