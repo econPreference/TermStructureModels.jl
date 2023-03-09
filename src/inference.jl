@@ -207,6 +207,9 @@ function sparse_precision(saved_θ, yields, macros, τₙ; upper=1.0)
         obj(x) = glasso(x[1])[2]
         optim = optimize(obj, [0.0], [upper], [1e-15], Fminbox(NelderMead()), Optim.Options(g_tol=1e-1))
         λ_best = optim.minimizer[1]
+        if λ_best > upper
+            error("optimized penalty > upper. You should increase upper.")
+        end
         trace_λ[iter] = λ_best
 
         sparse_cov, ~, sparsity = glasso(λ_best)
