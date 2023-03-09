@@ -29,30 +29,14 @@ yields, latents, macros = generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, G�
 diag_G = diag_G[dimQ()+1:end]
 ρ = zeros(dP - dimQ())
 ρ[diag_G.>0.5] .= 0.9
-#tuned = tuning_hyperparameter(yields, macros, ρ)
-
-p = 2
-q = [0.06778180075619433, 0.01712358980272045,
-    0.16303490909229024, 0.27311648301799313]
-ν0 = 46.60257458739129
-Ω0 = [1.3592141383237688, 19.24210450689054,
-    22.688331511246982, 0.34122410461399794,
-    0.42061437205195235, 0.3498781172335415,
-    0.4156960521965484, 0.3096632825829604,
-    0.37509991022806277, 0.5056601394162634,
-    0.4147058583588402, 0.4297294887104122,
-    0.41178393663506574, 0.42325096041491245,
-    0.44012724226730815, 0.3163297825249634,
-    0.37459304166440255, 0.5079296683547024,
-    0.4620037482218426, 0.4388748424064426]
-tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
+tuned = tuning_hyperparameter(yields, macros, ρ)
 
 ## Estimating
 iteration = 10_000
 saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned; sparsity=true)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
-sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, yields, macros, τₙ)
+sparse_θ, trace_sparsity = sparse_precision(saved_θ, size(macros, 1) - tuned.p)
 saved_Xθ = latentspace(saved_θ, yields, τₙ)
 saved_TP = term_premium(120, τₙ, saved_θ, yields, macros)
 reduced_θ = reducedform(saved_θ)
