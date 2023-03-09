@@ -23,7 +23,7 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
         end
         q = input[2:5]
         ν0 = input[6] + dP + 1
-        Ω0 = input[7:end]
+        Ω0 = input[7:end] * input[6]
 
         return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
@@ -44,7 +44,7 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:5]
     ν0 = best_candidate(EA_opt)[6] + dP + 1
-    Ω0 = best_candidate(EA_opt)[7:end]
+    Ω0 = best_candidate(EA_opt)[7:end] * best_candidate(EA_opt)[6]
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
@@ -154,7 +154,7 @@ sparse_precision(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_precision(saved_θ, yields, macros, τₙ; candidate_penalty=0.0:0.01:2.0)
+function sparse_precision(saved_θ, yields, macros, τₙ; penalty_range=(0.0, 2.0))
 
     R"library(glasso)"
     ϕ = saved_θ[:ϕ][1]
@@ -163,15 +163,42 @@ function sparse_precision(saved_θ, yields, macros, τₙ; candidate_penalty=0.0
     T = size(yields, 1) - p
     PCs = PCA(yields, p)[1]
 
+    κQ = mean(saved_θ)[:κQ]
+    kQ_infty = mean(saved_θ)[:kQ_infty]
+    ϕ = mean(saved_θ)[:ϕ]
+    σ²FF = mean(saved_θ)[:σ²FF]
+    Σₒ = mean(saved_θ)[:Σₒ]
+    ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+
+    ΩFF_ = (C \ diagm(σ²FF)) / C'
+    ΩFF_ = 0.5(ΩFF_ + ΩFF_')
+    function BIC(λ)
+
+        glasso_results = rcopy(rcall(:glasso, s=ΩFF_, rho=abs.(λ ./ inv(ΩFF_))))
+        sparse_cov = glasso_results[:w]
+        sparse_prec = glasso_results[:wi]
+
+        inv_sparse_C, sparse_σ²FF = LDL(sparse_cov)
+        sparse_ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
+
+        BIC_ = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF), Σₒ)
+        BIC_ += loglik_tran(PCs, macros; ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF))
+        BIC_ *= -2
+        sparsity = sum(abs.(sparse_prec) .> eps())
+        BIC_ += sparsity * log(T)
+
+        return BIC_
+    end
+
+    obj(x) = BIC(x[1])
+    optim = bboptimize(obj; SearchRange=penalty_range, NumDimensions=1)
+    λ = best_candidate(optim)[1]
+    println("optimized penalty is $λ")
+
     iteration = length(saved_θ)
     sparse_θ = Vector{Parameter}(undef, iteration)
-    trace_λ = Vector{Float64}(undef, iteration)
     trace_sparsity = Vector{Float64}(undef, iteration)
-    for iter in 1:iteration
-        if (iter % ceil(Int, iteration / 100)) == 0 && iter > 1
-            println("$(round(100iter/iteration;digits = 2)) (%) done...")
-            println("penalty: $(trace_λ[iter-1])")
-        end
+    @showprogress 1 "Imposing sparsity on precision..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -186,29 +213,12 @@ function sparse_precision(saved_θ, yields, macros, τₙ; candidate_penalty=0.0
 
         ΩFF_ = (C \ diagm(σ²FF)) / C'
         ΩFF_ = 0.5(ΩFF_ + ΩFF_')
-        function glasso(λ)
 
-            glasso_results = rcopy(rcall(:glasso, s=ΩFF_, rho=abs.(λ ./ inv(ΩFF_))))
-            sparse_cov = glasso_results[:w]
-            sparse_prec = glasso_results[:wi]
+        glasso_results = rcopy(rcall(:glasso, s=ΩFF_, rho=abs.(λ ./ inv(ΩFF_))))
+        sparse_cov = glasso_results[:w]
+        sparse_prec = glasso_results[:wi]
 
-            inv_sparse_C, sparse_σ²FF = LDL(sparse_cov)
-            sparse_ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
-
-            BIC_ = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF), Σₒ)
-            BIC_ += loglik_tran(PCs, macros; ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF))
-            BIC_ *= -2
-            sparsity = sum(abs.(sparse_prec) .> eps())
-            BIC_ += sparsity * log(T)
-
-            return sparse_cov, BIC_, sparsity
-        end
-
-        obj(x) = glasso(x)[2]
-        λ_best = findmin(obj, candidate_penalty)[2] |> x -> candidate_penalty[x]
-        trace_λ[iter] = λ_best
-
-        sparse_cov, ~, sparsity = glasso(λ_best)
+        sparsity = sum(abs.(sparse_prec) .> eps())
         trace_sparsity[iter] = sparsity
         inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
         ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
@@ -217,7 +227,7 @@ function sparse_precision(saved_θ, yields, macros, τₙ; candidate_penalty=0.0
         sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
     end
 
-    return sparse_θ, trace_λ, trace_sparsity
+    return sparse_θ, trace_sparsity, λ
 end
 
 """

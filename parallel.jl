@@ -95,7 +95,7 @@ save("posterior.jld2", "samples", saved_θ)
 # saved_θ = load("posterior.jld2")["samples"]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 reduced_θ = reducedform(saved_θ)
-sparse_θ, trace_λ, trace_sparsity = sparse_precision(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
+sparse_θ, trace_sparsity, penalty = sparse_precision(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
 save("sparse.jld2", "samples", sparse_θ)
 # sparse_θ = load("sparse.jld2")["samples"]
 reduced_sparse_θ = reducedform(sparse_θ)
