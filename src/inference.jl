@@ -154,7 +154,7 @@ sparse_precision(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_precision(saved_θ, yields, macros, τₙ)
+function sparse_precision(saved_θ, yields, macros, τₙ; upper=1.0)
 
     R"library(glasso)"
     ϕ = saved_θ[:ϕ][1]
@@ -203,8 +203,8 @@ function sparse_precision(saved_θ, yields, macros, τₙ)
             return sparse_cov, BIC_, sparsity
         end
 
-        obj(x) = glasso(abs(x[1]))[2]
-        optim = optimize(obj, zeros(1), NelderMead())
+        obj(x) = glasso(x[1])[2]
+        optim = optimize(obj, [0.0], [upper], [1e-15], Fminbox(NelderMead()), Optim.Options(g_tol=1e-1))
         λ_best = abs(optim.minimizer[1])
         trace_λ[iter] = λ_best
 
