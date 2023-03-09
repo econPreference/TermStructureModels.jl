@@ -154,7 +154,7 @@ sparse_precision(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_precision(saved_θ, yields, macros, τₙ; upper=1.0)
+function sparse_precision(saved_θ, yields, macros, τₙ; candidate_penalty=0.0:0.01:2.0)
 
     R"library(glasso)"
     ϕ = saved_θ[:ϕ][1]
@@ -204,12 +204,8 @@ function sparse_precision(saved_θ, yields, macros, τₙ; upper=1.0)
             return sparse_cov, BIC_, sparsity
         end
 
-        obj(x) = glasso(x[1])[2]
-        optim = optimize(obj, [0.0], [upper], [0.5upper], Fminbox(NelderMead()), Optim.Options(g_tol=1e-1))
-        λ_best = optim.minimizer[1]
-        if λ_best > upper
-            error("optimized penalty > upper. You should increase upper.")
-        end
+        obj(x) = glasso(x)[2]
+        λ_best = findmin(obj, candidate_penalty)[2] |> x -> candidate_penalty[x]
         trace_λ[iter] = λ_best
 
         sparse_cov, ~, sparsity = glasso(λ_best)
