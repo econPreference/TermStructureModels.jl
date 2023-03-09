@@ -154,7 +154,7 @@ sparse_precision(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_precision(saved_θ, yields, macros, τₙ; penalty_range=(0.0, 2.0))
+function sparse_precision(saved_θ, yields, macros, τₙ; penalty_range=(0.0, 2.0), maxtime=0.0)
 
     R"library(glasso)"
     ϕ = saved_θ[:ϕ][1]
@@ -191,7 +191,7 @@ function sparse_precision(saved_θ, yields, macros, τₙ; penalty_range=(0.0, 2
     end
 
     obj(x) = BIC(x[1])
-    optim = bboptimize(obj; SearchRange=penalty_range, NumDimensions=1)
+    optim = bboptimize(bbsetup(obj; SearchRange=penalty_range, NumDimensions=1, MaxTime=maxtime, Workers=workers()))
     λ = best_candidate(optim)[1]
     println("optimized penalty is $λ")
 
