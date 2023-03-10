@@ -82,7 +82,7 @@ acceptPr_C_σ²FF = zeros(dimQ())
 acceptPr_ηψ = 0
 saved_θ = Vector{Parameter}(undef, 0)
 totaliteration = 0
-subiteration = 100
+subiteration = 1_000
 seq_θ = init_θ[floor.(Int, collect(range(burn_in, burn_in + init_range, length=n_core)))]
 prog = Progress(iteration; desc="Posterior sampling...")
 while true
