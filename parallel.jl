@@ -72,54 +72,42 @@ tuned = load("tuned.jld2")["tuned"]
 τₙ = [3; 6; collect(12:12:120)]
 burn_in = 5_000
 init_range = 1_000
-iteration = 20_000
+iteration = 20_000 |> x -> n_core + x - x % n_core
 issparsity = true
-init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in + init_range, tuned; sparsity=issparsity)[1]
-save("init_theta.jld2", "samples", init_θ)
-# init_θ = load("init_theta.jld2")["samples"]
-
-acceptPr_C_σ²FF = zeros(dimQ())
-acceptPr_ηψ = 0
-saved_θ = Vector{Parameter}(undef, 0)
-totaliteration = 0
-subiteration = 1_000
-seq_θ = init_θ[floor.(Int, collect(range(burn_in, burn_in + init_range, length=n_core)))]
-prog = Progress(iteration; desc="Posterior sampling...")
-while true
-    update!(prog, totaliteration)
-    par_posterior = pmap(1:n_core) do i
-        posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, subiteration, tuned; sparsity=issparsity, init_param=seq_θ[i])
-    end
-    for i in 1:n_core
-        append!(saved_θ, par_posterior[i][1])
-        acceptPr_C_σ²FF += par_posterior[i][2] * subiteration / 100
-        acceptPr_ηψ += par_posterior[i][3] * subiteration / 100
-        totaliteration += subiteration
-        seq_θ[i] = par_posterior[i][1][end]
-    end
-    if totaliteration >= iteration
-        finish!(prog)
-        break
+# init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in + init_range, tuned; sparsity=issparsity)[1]
+# save("init_theta.jld2", "samples", init_θ)
+init_θ = load("init_theta.jld2")["samples"]
+par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(burn_in, burn_in + init_range, length=n_core))))[i]]), 1:n_core)
+# rmprocs(2:(n_core+1))
+for i in 1:n_core
+    if i == 1
+        global saved_θ = par_posterior[i][1]
+        global acceptPr_C_σ²FF = par_posterior[i][2] * Int(iteration / n_core) / 100
+        global acceptPr_ηψ = par_posterior[i][3] * Int(iteration / n_core) / 100
+    else
+        global saved_θ = vcat(saved_θ, par_posterior[i][1])
+        acceptPr_C_σ²FF += par_posterior[i][2] * Int(iteration / n_core) / 100
+        acceptPr_ηψ += par_posterior[i][3] * Int(iteration / n_core) / 100
+        if i == n_core
+            acceptPr_C_σ²FF *= 100 / iteration
+            acceptPr_ηψ *= 100 / iteration
+        end
     end
 end
-iteration = length(saved_θ)
-acceptPr_C_σ²FF *= 100 / iteration
-acceptPr_ηψ *= 100 / iteration
-# rmprocs(2:(n_core+1))
-save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ])
+save("posterior.jld2", "samples", saved_θ)
 # saved_θ = load("posterior.jld2")["samples"]
+
 saved_θ, accept_rate = stationary_θ(saved_θ)
 iteration = length(saved_θ)
-reduced_θ = reducedform(saved_θ)
 
 par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
     sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p)
 end
-sparse_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
+saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
 trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-save("sparse.jld2", "samples", sparse_θ, "sparsity", trace_sparsity)
+save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
 # sparse_θ = load("sparse.jld2")["samples"]
-reduced_sparse_θ = reducedform(sparse_θ)
+reduced_θ = reducedform(saved_θ)
 
 τ_interest = 120
 par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
