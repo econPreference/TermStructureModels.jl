@@ -9,7 +9,7 @@ n_core = nworkers()
     Pkg.precompile()
 end
 @everywhere begin
-    using GDTSM
+    using GDTSM, ProgressMeter
 end
 using RCall, CSV, DataFrames, Dates, Plots, JLD2
 date_start = Date("1986-12-01", "yyyy-mm-dd")
