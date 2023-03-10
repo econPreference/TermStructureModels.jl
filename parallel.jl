@@ -1,6 +1,6 @@
 ## Setting
 using Distributed
-# addprocs(16)
+# addprocs(8)
 n_core = nworkers()
 @everywhere begin
     using Pkg
