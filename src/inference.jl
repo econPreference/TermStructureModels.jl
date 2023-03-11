@@ -110,6 +110,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
     isaccept_C_σ²FF = zeros(dQ)
     isaccept_ηψ = 0
     saved_θ = Vector{Parameter}(undef, iteration)
+    next_time = ceil(now(), Dates.Second(60))
     @showprogress 1 "Sampling the posterior..." for iter in 1:iteration
         κQ = rand(post_κQ(yields[(p+1):end, :], prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ))
 
@@ -139,6 +140,10 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
 
         saved_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
 
+        if nprocs() > 1 && now() > next_time
+            @warn "We are now paralleling..."
+            next_time = ceil(now(), Dates.Second(60))
+        end
     end
 
     return saved_θ, 100isaccept_C_σ²FF / iteration, 100isaccept_ηψ / iteration
