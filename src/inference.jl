@@ -76,7 +76,7 @@ posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsit
     - iteration: # of posterior samples
 * Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], force_disp=0)
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
 
     (; p, q, ν0, Ω0) = HyperParameter_
     N = size(yields, 2) # of maturities
@@ -139,11 +139,6 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
 
         saved_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
 
-        if force_disp > 0
-            if iter % force_disp == 0.0
-                @warn "We are now paralleling..."
-            end
-        end
     end
 
     return saved_θ, 100isaccept_C_σ²FF / iteration, 100isaccept_ηψ / iteration
