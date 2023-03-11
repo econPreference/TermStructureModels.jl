@@ -63,8 +63,8 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-# tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ)
-# save("tuned.jld2", "tuned", tuned)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ)
+save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 
 ## Estimation
@@ -72,7 +72,7 @@ tuned = load("tuned.jld2")["tuned"]
 iteration = 25_000
 saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=true)
 save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ])
-# saved_θ = load("posterior.jld2")["samples"]
+saved_θ = load("posterior.jld2")["samples"]
 saved_θ = saved_θ[5001:end]
 
 par_stationary_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
@@ -93,7 +93,7 @@ end
 saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
 trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
 save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
-# sparse_θ = load("sparse.jld2")["samples"]
+sparse_θ = load("sparse.jld2")["samples"]
 reduced_θ = reducedform(saved_θ)
 
 τ_interest = 120
@@ -102,4 +102,4 @@ par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
 end
 saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
 save("TP.jld2", "TP", saved_TP)
-# saved_TP = load("TP.jld2")["TP"]
+saved_TP = load("TP.jld2")["TP"]
