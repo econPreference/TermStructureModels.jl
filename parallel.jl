@@ -77,7 +77,7 @@ issparsity = true
 # init_θ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, burn_in + init_range, tuned; sparsity=issparsity)[1]
 # save("init_theta.jld2", "samples", init_θ)
 init_θ = load("init_theta.jld2")["samples"]
-par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(burn_in, burn_in + init_range, length=n_core))))[i]]), 1:n_core)
+par_posterior = pmap(i -> posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, Int(iteration / n_core), tuned; sparsity=issparsity, init_param=init_θ[(floor.(Int, collect(range(burn_in, burn_in + init_range, length=n_core))))[i]], force_disp=10), 1:n_core)
 # rmprocs(2:(n_core+1))
 for i in 1:n_core
     if i == 1
