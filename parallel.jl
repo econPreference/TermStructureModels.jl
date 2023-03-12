@@ -34,7 +34,7 @@ begin ## Data: macro data
             ρ[i] = 0.9
         else
             macros[13:end, i+1] = 100(log.(macros[13:end, i+1]) - log.(macros[1:end-12, i+1]))
-            ρ[i] = 0
+            ρ[i] = 0.9
         end
     end
     macros = macros[13:end, :]
