@@ -70,7 +70,7 @@ save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acce
 saved_θ = load("posterior.jld2")["samples"]
 saved_θ = saved_θ[5001:end]
 
-par_stationary_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
+par_stationary_θ = @showprogress 1 "Stationary filtering..." pmap(1:iteration) do i
     stationary_θ([saved_θ[i]])
 end
 saved_θ = Vector{Parameter}(undef, 0)
