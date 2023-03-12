@@ -11,13 +11,13 @@ end
     using GDTSM, ProgressMeter
 end
 using RCall, CSV, DataFrames, Dates, Plots, JLD2
-date_start = Date("1986-12-01", "yyyy-mm-dd")
+date_start = Date("1986-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 begin ## Data: macro data
     R"library(fbi)"
     raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
-    excluded = ["FEDFUNDS", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM"]
+    excluded = ["FEDFUNDS", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
     for i in axes(macros[:, 2:end], 2)
@@ -30,20 +30,14 @@ begin ## Data: macro data
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["1", "2", "3", "4"]
-            if sum(macros[:, i+1] .<= 0) == 0
-                macros[:, i+1] = log.(macros[:, i+1])
-            end
+        if names(macros[:, i+1:i+1])[1] ∈ ["CUMFNS", "UNRATE", "CP3Mx", "AAA", "BAA"]
             ρ[i] = 0.9
-        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["7"]
-            macros[2:end, i+1] = 1200((macros[2:end, i+1]) ./ (macros[1:end-1, i+1]) .- 1)
-            ρ[i] = 0
         else
-            macros[2:end, i+1] = 1200(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
+            macros[13:end, i+1] = 100(log.(macros[13:end, i+1]) - log.(macros[1:end-12, i+1]))
             ρ[i] = 0
         end
     end
-    macros = macros[2:end, :]
+    macros = macros[13:end, :]
 end
 
 begin ## Data: yield data
@@ -59,7 +53,7 @@ begin ## Data: yield data
     yields = DataFrame([Matrix([Y3M Y6M]) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
     yields = [yield_year[:, 1] yields]
     rename!(yields, Dict(:x1 => "date"))
-    yields = yields[2:end, :]
+    yields = yields[13:end, :]
 end
 
 ## Tuning hyper-parameters
@@ -103,3 +97,20 @@ end
 saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
 save("TP.jld2", "TP", saved_TP)
 saved_TP = load("TP.jld2")["TP"]
+
+## old code
+# ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
+# for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
+#     if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["1", "2", "3", "4"]
+#         if sum(macros[:, i+1] .<= 0) == 0
+#             macros[:, i+1] = log.(macros[:, i+1])
+#         end
+#         ρ[i] = 0.9
+#     elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["7"]
+#         macros[2:end, i+1] = 1200((macros[2:end, i+1]) ./ (macros[1:end-1, i+1]) .- 1)
+#         ρ[i] = 0
+#     else
+#         macros[2:end, i+1] = 1200(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
+#         ρ[i] = 0
+#     end
+# end
