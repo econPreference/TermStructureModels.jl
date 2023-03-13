@@ -56,15 +56,15 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-# tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ)
-# save("tuned.jld2", "tuned", tuned)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ)
+save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
 iteration = 25_000
-# saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=true)
-# save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ])
+saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=true)
+save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ])
 saved_θ = load("posterior.jld2")["samples"]
 saved_θ = saved_θ[5001:end]
 iteration = length(saved_θ)
