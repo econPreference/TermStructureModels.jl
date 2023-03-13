@@ -11,13 +11,13 @@ end
     using GDTSM, ProgressMeter
 end
 using RCall, CSV, DataFrames, Dates, Plots, JLD2
-date_start = Date("1986-12-01", "yyyy-mm-dd")
+date_start = Date("1987-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 begin ## Data: macro data
     R"library(fbi)"
     raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
-    excluded = ["FEDFUNDS", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
+    excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
     for i in axes(macros[:, 2:end], 2)
@@ -27,18 +27,17 @@ begin ## Data: macro data
     end
     macros = macros[:, idx]
     excluded = ["W875RX1", "IPFPNSS", "IPFINAL", "IPCONGD", "IPDCONGD", "IPNCONGD", "IPBUSEQ", "IPMAT", "IPDMAT", "IPNMAT", "IPMANSICS", "IPB51222S", "IPFUELS", "HWIURATIO", "CLF16OV", "CE16OV", "UEMPLT5", "UEMP5TO14", "UEMP15OV", "UEMP15T26", "UEMP27OV", "USGOOD", "CES1021000001", "USCONS", "MANEMP", "DMANEMP", "NDMANEMP", "SRVPRD", "USTPU", "USWTRADE", "USTRADE", "USFIRE", "USGOVT", "AWOTMAN", "AWHMAN", "CES2000000008", "CES3000000008", "HOUSTNE", "HOUSTMW", "HOUSTS", "HOUSTW", "PERMITNE", "PERMITMW", "PERMITS", "PERMITW", "NONBORRES", "DTCOLNVHFNM", "AAAFFM", "BAAFFM", "EXSZUSx", "EXJPUSx", "EXUSUKx", "EXCAUSx", "WPSFD49502", "WPSID61", "WPSID62", "CPIAPPSL", "CPITRNSL", "CPIMEDSL", "CUSR0000SAC", "CUSR0000SAS", "CPIULFSL", "CUSR0000SA0L2", "CUSR0000SA0L5", "DDURRG3M086SBEA", "DNDGRG3M086SBEA", "DSERRG3M086SBEA"]
-    push!(excluded, "REALLN")
+    push!(excluded, "CMRMTSPLx", "RETAILx", "HWI", "UEMPMEAN", "CLAIMSx", "AMDMNOx", "ANDENOx", "AMDMUOx", "BUSINVx", "ISRATIOx", "BUSLOANS", "NONREVSL", "CONSPI", "S&P: indust", "S&P div yield", "S&P PE ratio", "M1SL", "BOGMBASE")
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if names(macros[:, i+1:i+1])[1] ∈ ["CUMFNS", "UNRATE", "CP3Mx", "AAA", "BAA"]
             ρ[i] = 0.9
         else
-            macros[2:end, i+1] = 1200(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
-            ρ[i] = 0.0
+            macros[:, i+1] = log.(macros[:, i+1])
+            ρ[i] = 0.9
         end
     end
-    macros = macros[2:end, :]
 end
 
 begin ## Data: yield data
@@ -54,7 +53,6 @@ begin ## Data: yield data
     yields = DataFrame([Matrix([Y3M Y6M]) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
     yields = [yield_year[:, 1] yields]
     rename!(yields, Dict(:x1 => "date"))
-    yields = yields[2:end, :]
 end
 
 ## Tuning hyper-parameters
