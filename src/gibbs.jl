@@ -272,11 +272,13 @@ Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 """
 function Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 
+    R"library(MASS)"
+
     inv_B₀ = inv(B₀)
     B₁ = Symmetric(inv(inv_B₀ + X'X))
     β₁ = B₁ * (inv_B₀ * β₀ + X'y)
 
-    return rand(MvNormal(β₁, σ² * B₁))
+    return rcopy(Array, rcall(:mvrnorm, mu=β₁, Sigma=σ² * B₁))
 end
 
 # """
@@ -305,6 +307,7 @@ NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
     - posterior sample
 """
 function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
+    R"library(MASS)"
     T = length(y)
 
     inv_B₀ = inv(B₀)
@@ -340,7 +343,7 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
             if δ₁ > eps() && isposdef(B₁)
                 σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
                 β = deepcopy(β₀)
-                β[idx] = rand(MvNormal(β₁, σ² * B₁))
+                β[idx] = rcopy(Array, rcall(:mvrnorm, mu=β₁, Sigma=σ² * B₁))
                 return β, σ²
             end
         end
