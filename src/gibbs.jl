@@ -153,11 +153,14 @@ function post_ηψ(; ηψ, ψ, ψ0)
     p = Int(size(ψ)[2] / dP)
 
     obj(_ηψ) = dlogηψ_dηψ(_ηψ; ψ, ψ0)
-    try
-        ηψ_hat = fzero(obj, ηψ)
-    catch
-        ηψ_hat = ηψ
+    function find_ηψ(obj_, ηψ_)
+        try
+            ηψ_hat_ = fzero(obj_, ηψ_)
+        catch
+            ηψ_hat_ = ηψ_
+        end
     end
+    ηψ_hat = find_ηψ(obj, ηψ)
     ηψ_hess = d2logηψ_dηψ2(ηψ_hat; dP, p)
 
     function log_target(arg_ηψ; ψ, ψ0) # See the posterior kernel formula in terms of distributions not pdfs.
