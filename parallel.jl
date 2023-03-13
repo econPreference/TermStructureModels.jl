@@ -34,7 +34,7 @@ begin ## Data: macro data
         if names(macros[:, i+1:i+1])[1] ∈ ["CUMFNS", "UNRATE", "CP3Mx", "AAA", "BAA"]
             ρ[i] = 0.9
         else
-            macros[:, i+1] = log.(macros[:, i+1])
+            macros[:, i+1] = 12log.(macros[:, i+1])
             ρ[i] = 0.9
         end
     end
