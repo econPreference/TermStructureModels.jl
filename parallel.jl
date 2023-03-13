@@ -87,7 +87,7 @@ end
 saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
 trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
 save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
-sparse_θ = load("sparse.jld2")["samples"]
+saved_θ = load("sparse.jld2")["samples"]
 reduced_θ = reducedform(saved_θ)
 
 τ_interest = 120
