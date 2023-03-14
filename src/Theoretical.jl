@@ -399,7 +399,7 @@ PCA(yields, p; rescaling = false)
     - PCs, OCs: first dQ and the remaining principal components
     - Wₚ, Wₒ: the rotation matrix for PCs and OCs, respectively
 """
-function PCA(yields, p; rescaling=false)
+function PCA(yields, p; rescaling=true)
 
     dQ = dimQ()
     ## z-score case
