@@ -233,6 +233,7 @@ export
     latentspace,
     PCA,
     fitted_YieldCurve,
+    maximum_SR,
 
     # utilities.jl
     getindex,

@@ -426,3 +426,53 @@ function PCA(yields, p; rescaling=false)
         return Matrix((scale_PCs .* PCs')'), Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ
     end
 end
+"""
+maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1_000)
+* It calculate a prior distribution of realized maximum Sharpe ratio. It is unobservable because we do not know true parameters.
+* Input: Data should contains initial conditions
+* Output: Matrix{Float64}(maximum SR, time length, simulation)
+"""
+function maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1_000)
+
+    (; p, q, ν0, Ω0) = HyperParameter_
+    dP = length(Ω0)
+    dQ = dimQ()
+    PCs = PCA(yields, p)[1]
+    factors = [PCs macros]
+    T = size(factors, 1)
+    prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
+    prior_C_ = prior_C(; Ω0)
+    prior_κQ_ = prior_κQ(medium_τ)
+    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
+    kQ_infty_dist = Normal(0, sqrt(q[4] * mean(prior_σ²FF_[1])))
+
+    mSR = Matrix{Float64}(undef, T - p, iteration)
+    @showprogress 1 "Calculating maximum SR..." for iter in 1:iteration
+        σ²FF = rand.(prior_σ²FF_)
+        C = rand.(prior_C_)
+        for i in 2:dP, j in 1:(i-1)
+            C[i, j] *= sqrt(σ²FF[i])
+        end
+        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
+        ϕ0 = rand.(prior_ϕ0_)
+        ϕ0 = sqrt.(σ²FF) .* ϕ0
+
+        ϕ0 = C \ ϕ0
+        KₚF = ϕ0[:, 1]
+        GₚFF = ϕ0[:, 2:end]
+
+        KPQ = zeros(dQ)
+        KPQ[1] = rand(kQ_infty_dist)
+        GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
+        GQPF[:, 1:dQ] = GQ_XX(; κQ=rand(prior_κQ_))
+        λP = KₚF[1:dQ] - KPQ
+        ΛPF = GₚFF[1:dQ, :] - GQPF
+
+        for t in p+1:T
+            Ft = factors' |> x -> vec(x[:, t:-1:t-p+1])
+            mSR[t-p, iter] = cholesky(Positive, ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
+        end
+    end
+
+    return mSR
+end

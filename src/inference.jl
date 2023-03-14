@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0, p_max=12)
+function tuning_hyperparameter(yields, macros, ρ, upper=[1, 100]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0, p_max=12)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -22,29 +22,28 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [1, 1.5, 2, 2.
             return Inf
         end
         q = input[2:5]
+        q[2] = q[1] * q[2]
         ν0 = input[6] + dP + 1
-        Ω0 = input[7:end] * input[6]
+        ΩFF_mean = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
+        Ω0 = ΩFF_mean * input[6]
 
         return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    PCs = PCA(yields, p_max)[1]
-    starting = [1, 0.05, 0.005, 2, 100, 1]
-    for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], p_max))
-    end
-
-    lx = 0.0 .+ [1; zeros(5 + dP)]
-    ux = 0.0 .+ [p_max; 1; 1; 6; 100; size(macros, 1); 2starting[7:end]]
+    starting = [1, upper[1] / 2, 1, 2, upper[2] / 2, 1]
+    lx = 0.0 .+ [1; 0; 0; 2; 0; 0]
+    ux = 0.0 .+ [p_max; upper[1]; 1; 2; upper[2]; size(macros, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:5]
+    q[2] = q[1] * q[2]
     ν0 = best_candidate(EA_opt)[6] + dP + 1
-    Ω0 = best_candidate(EA_opt)[7:end] * best_candidate(EA_opt)[6]
+    ΩFF_mean = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
+    Ω0 = ΩFF_mean * best_candidate(EA_opt)[6]
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
@@ -87,7 +86,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
 
     ## additinoal hyperparameters ##
     γ_bar = prior_γ(yields[(p+1):end, :])
-    σ²kQ_infty = 100 # prior variance of kQ_infty
+    σ²kQ_infty = q[4] * mean(prior_σ²FF(; ν0, Ω0)[1]) # prior variance of kQ_infty
     ################################
 
     if typeof(init_param) == Parameter
