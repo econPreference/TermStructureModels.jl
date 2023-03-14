@@ -16,7 +16,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 begin ## Data: macro data
     R"library(fbi)"
-    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
+    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=true))
     excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
@@ -31,15 +31,12 @@ begin ## Data: macro data
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if names(macros[:, i+1:i+1])[1] ∈ ["CUMFNS", "UNRATE", "CP3Mx", "AAA", "BAA"]
+        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["1", "4"]
             ρ[i] = 0.9
         else
-            macros[:, i+1] = 12log.(macros[:, i+1])
-            ρ[i] = 0.9
+            ρ[i] = 0
         end
     end
-    std_macros = macros[:, 2:end] |> Array |> x -> std(x, dims=1)
-    macros[:, 2:end] = macros[:, 2:end] ./ std_macros
 end
 
 begin ## Data: yield data
@@ -99,20 +96,3 @@ end
 saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
 save("TP.jld2", "TP", saved_TP)
 saved_TP = load("TP.jld2")["TP"]
-
-## old code
-# ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
-# for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-#     if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["1", "2", "3", "4"]
-#         if sum(macros[:, i+1] .<= 0) == 0
-#             macros[:, i+1] = log.(macros[:, i+1])
-#         end
-#         ρ[i] = 0.9
-#     elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["7"]
-#         macros[2:end, i+1] = 1200((macros[2:end, i+1]) ./ (macros[1:end-1, i+1]) .- 1)
-#         ρ[i] = 0
-#     else
-#         macros[2:end, i+1] = 1200(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
-#         ρ[i] = 0
-#     end
-# end
