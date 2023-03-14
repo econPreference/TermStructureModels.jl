@@ -38,6 +38,8 @@ begin ## Data: macro data
             ρ[i] = 0.9
         end
     end
+    std_macros = macros[:, 2:end] |> Array |> x -> std(x, dims=1)
+    macros[:, 2:end] = macros[:, 2:end] ./ std_macros
 end
 
 begin ## Data: yield data
