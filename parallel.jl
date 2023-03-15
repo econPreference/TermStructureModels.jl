@@ -37,8 +37,8 @@ begin ## Data: macro data
             ρ[i] = 0
         end
     end
-    # mean_macro = mean(Array(macros[:, 2:end]), dims=1)
-    # macros[:, 2:end] .-= mean_macro
+    mean_macro = mean(Array(macros[:, 2:end]), dims=1)
+    macros[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
 end
 
@@ -58,7 +58,7 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [1, 0.01])
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [1, 1, 0.01])
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, ρ)

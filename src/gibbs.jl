@@ -388,7 +388,7 @@ function post_ψ_ψ0(ρ, prior_κQ_; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 
     for i in 1:dP # intercepts
         m = priormean_ϕ0_[i, 1]
-        if i < dQ + 1
+        if i < dimQ() + 1
             V = q[4] * σ²FF[i]
         else
             V = q[5] * σ²FF[i]
