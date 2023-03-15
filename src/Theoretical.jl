@@ -448,25 +448,19 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_
 
     mSR = Vector{Float64}(undef, iteration)
     @showprogress 1 "Calculating maximum SR..." for iter in 1:iteration
-        ΩFF = Matrix{Float64}(undef, dP, dP)
-        KₚF = Vector{Float64}(undef, dP)
-        GₚFF = Matrix{Float64}(undef, dP, dP * p)
-        while true
-            σ²FF = rand.(prior_σ²FF_)
-            C = rand.(prior_C_)
-            for i in 2:dP, j in 1:(i-1)
-                C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(x)
-            end
-            ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-            ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
-            ϕ0 = C \ ϕ0
-            KₚF = ϕ0[:, 1]
-            GₚFF = ϕ0[:, 2:end]
-            if isstationary(GₚFF) == true
-                break
-            end
+        σ²FF = rand.(prior_σ²FF_)
+        C = rand.(prior_C_)
+        for i in 2:dP, j in 1:(i-1)
+            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(x)
         end
+        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
+        ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
+
+        ϕ0 = C \ ϕ0
+        KₚF = ϕ0[:, 1]
+        GₚFF = ϕ0[:, 2:end]
+
         KPQ = zeros(dQ)
         KPQ[1] = rand(kQ_infty_dist)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
