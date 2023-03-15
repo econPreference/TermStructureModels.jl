@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0)
+function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -31,9 +31,9 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100]; medium_τ
 
     end
 
-    starting = [1, upper[2] / 2, 1, 2, upper[3] / 2, 1]
+    starting = [1, upper[2] / 2, 1, 2, 1, 1]
     lx = 0.0 .+ [1; 0; 0; 2; 0; 0]
-    ux = 0.0 .+ [upper[1]; upper[2]; 1; 2; upper[3]; size(yields, 1)]
+    ux = 0.0 .+ [upper[1]; upper[2]; 1; 2; 100; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
