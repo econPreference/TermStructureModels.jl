@@ -451,11 +451,10 @@ function maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_
         σ²FF = rand.(prior_σ²FF_)
         C = rand.(prior_C_)
         for i in 2:dP, j in 1:(i-1)
-            C[i, j] *= sqrt(σ²FF[i])
+            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(x)
         end
         ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-        ϕ0 = rand.(prior_ϕ0_)
-        ϕ0 = sqrt.(σ²FF) .* ϕ0
+        ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
         ϕ0 = C \ ϕ0
         KₚF = ϕ0[:, 1]
@@ -470,7 +469,7 @@ function maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_
 
         for t in p+1:T
             Ft = factors' |> x -> vec(x[:, t:-1:t-p+1])
-            mSR[t-p, iter] = cholesky(Positive, ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
+            mSR[t-p, iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
         end
     end
 
