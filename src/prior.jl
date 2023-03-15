@@ -105,7 +105,7 @@ function prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
         end
     end
     for i in (dQ+1):dP
-        ϕ0[i, 1] = Normal(0, sqrt(ψ0[i] * q[4]))
+        ϕ0[i, 1] = Normal(0, sqrt(ψ0[i] * q[5]))
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1

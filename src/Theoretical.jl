@@ -432,11 +432,14 @@ maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_τ=12 * [
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(HyperParameter_::HyperParameter, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1_000)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1_000)
 
     (; p, q, ν0, Ω0) = HyperParameter_
+    PCs = PCA(yields, p)[1]
+    factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
+
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
@@ -471,16 +474,18 @@ function maximum_SR(HyperParameter_::HyperParameter, ρ; medium_τ=12 * [1, 1.5,
         λP = KₚF[1:dQ] - KPQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
-        # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
-        μT = [KₚF
-            zeros(dP * (p - 1))]
-        G = [GₚFF
-            I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
-        Ω = [ΩFF zeros(dP, dP * (p - 1))
-            zeros(dP * (p - 1), dP * p)]
-        mean_Ft = (I(length(μT)) - G) \ μT
-        var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
-        Ft = rand(MvNormal(mean_Ft, var_Ft))
+        # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
+        # μT = [KₚF
+        #     zeros(dP * (p - 1))]
+        # G = [GₚFF
+        #     I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
+        # Ω = [ΩFF zeros(dP, dP * (p - 1))
+        #     zeros(dP * (p - 1), dP * p)]
+        # mean_Ft = (I(length(μT)) - G) \ μT
+        # var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
+        # Ft = rand(MvNormal(mean_Ft, var_Ft))
+
+        Ft = rand(p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
         mSR[iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
     end
 
