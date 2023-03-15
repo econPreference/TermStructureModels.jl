@@ -37,7 +37,8 @@ begin ## Data: macro data
             ρ[i] = 0
         end
     end
-    macros[:, 2:end] .-= mean(Array(macros[:, 2:end]), dims=1)
+    mean_macro = mean(Array(macros[:, 2:end]), dims=1)
+    macros[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
 end
 
