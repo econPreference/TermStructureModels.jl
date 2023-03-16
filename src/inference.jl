@@ -160,7 +160,7 @@ sparse_precision(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_precision(saved_θ, T)
+function sparse_precision(saved_θ, T; gamma=0.5)
 
     R"library(qgraph)"
     ϕ = saved_θ[:ϕ][1]
@@ -186,7 +186,7 @@ function sparse_precision(saved_θ, T)
         ΩFF_ = 0.5(ΩFF_ + ΩFF_')
 
         std_ = sqrt.(diag(ΩFF_))
-        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, threshold=true, returnAllResults=true))
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, threshold=true, returnAllResults=true, gamma=gamma))
         sparse_prec = glasso_results[:optwi]
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
