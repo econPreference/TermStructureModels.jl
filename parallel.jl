@@ -58,15 +58,15 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [4, 0.01, 1])
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [4, 0.01, 0.01])
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
-mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, ρ)
+# mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, ρ)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
 iteration = 25_000
-saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=true)
+saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=false)
 save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ])
 saved_θ = load("posterior.jld2")["samples"]
 saved_θ = saved_θ[5001:end]
@@ -84,14 +84,14 @@ end
 accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
 iteration = length(saved_θ)
 
-par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
-    sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p)
-end
-saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
-trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
-saved_θ = load("sparse.jld2")["samples"]
-reduced_θ = reducedform(saved_θ)
+# par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
+#     sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p)
+# end
+# saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
+# trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
+# save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
+# saved_θ = load("sparse.jld2")["samples"]
+# reduced_θ = reducedform(saved_θ)
 
 τ_interest = 120
 par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
