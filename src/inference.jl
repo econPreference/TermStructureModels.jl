@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0, mSR_threshold=3)
+function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0, mSR_threshold=2.0)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -24,8 +24,7 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100]; medium_τ
         q = input[2:6]
         q[2] = q[1] * q[2]
         ν0 = input[7] + dP + 1
-        ΩFF_mean = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
-        Ω0 = ΩFF_mean * input[7]
+        Ω0 = input[8:end] * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
         mSR = maximum_SR(yields, macros, tuned, ρ)
@@ -36,21 +35,22 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100]; medium_τ
         return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
-
+    PCs = PCA(yields, Int(upper[1]))[1]
     starting = [1, upper[2] / 2, 1, 2, upper[3] / 2, 1, 1]
-    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0]
-    ux = 0.0 .+ [upper[1]; upper[2]; 1; 2; upper[3]; 100; size(yields, 1)]
+    for i in 1:dP
+        push!(starting, AR_res_var([PCs macros][:, i], Int(upper[1])))
+    end
+    lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
+    ux = 0.0 .+ [upper[1]; upper[2]; 1; 6; upper[3]; 100; size(yields, 1); 2starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:6]
     q[2] = q[1] * q[2]
     ν0 = best_candidate(EA_opt)[7] + dP + 1
-    PCs = PCA(yields, p)[1]
-    ΩFF_mean = [AR_res_var([PCs macros][:, i], p) for i in 1:dP]
-    Ω0 = ΩFF_mean * best_candidate(EA_opt)[7]
+    Ω0 = best_candidate(EA_opt)[8:end] * best_candidate(EA_opt)[7]
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
 
