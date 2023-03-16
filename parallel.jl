@@ -61,7 +61,7 @@ end
 tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [12, 0.1, 0.05, 10])
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
-# mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, ρ)
+# mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, ρ; iteration =1000)
 
 ## Estimation
 τₙ = [3; 6; collect(12:12:120)]
