@@ -432,7 +432,7 @@ maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_τ=12 * [
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=300)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
     (; p, q, ν0, Ω0) = HyperParameter_
     PCs = PCA(yields, p)[1]
@@ -446,7 +446,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
     kQ_infty_dist = Normal(0, sqrt(q[4] * mean(prior_σ²FF_[1])))
 
-    mSR = Vector{Float64}(undef, iteration)
+    mSR = Matrix{Float64}(undef, size(factors, 1) - p, iteration)
     @showprogress 1 "Calculating maximum SR..." for iter in 1:iteration
 
         σ²FF = rand.(prior_σ²FF_)
@@ -468,19 +468,10 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_
         λP = KₚF[1:dQ] - KPQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
-        # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
-        # μT = [KₚF
-        #     zeros(dP * (p - 1))]
-        # G = [GₚFF
-        #     I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
-        # Ω = [ΩFF zeros(dP, dP * (p - 1))
-        #     zeros(dP * (p - 1), dP * p)]
-        # mean_Ft = (I(length(μT)) - G) \ μT
-        # var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
-        # Ft = rand(MvNormal(mean_Ft, var_Ft))
-
-        Ft = rand(p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
-        mSR[iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
+        for t in p+1:size(factors, 1)
+            Ft = factors'[:, t:-1:t-p+1] |> vec
+            mSR[t-p, iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
+        end
     end
 
     return mSR
