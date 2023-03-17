@@ -30,7 +30,7 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100, 2]; medium
         mSR = maximum_SR(yields, macros, tuned, ρ)
         upper_mSR = quantile(mSR, 0.95)
 
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) + mSR_λ * upper_mSR
+        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) + mSR_λ * exp(upper_mSR)
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
