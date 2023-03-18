@@ -40,8 +40,8 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100, 2]; medium
     for i in 1:dP
         push!(starting, AR_res_var([PCs macros][:, i], Int(upper[1])))
     end
-    lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
-    ux = 0.0 .+ [upper[1]; upper[2]; 1; 6; upper[3]; 100; size(yields, 1); upper[4] * starting[8:end]]
+    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0; zeros(dP)]
+    ux = 0.0 .+ [upper[1]; upper[2]; 1; 2; upper[3]; 100; size(yields, 1); upper[4] * starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
