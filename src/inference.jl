@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100, 2]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0, mSR_λ=1)
+function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100, 2]; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], maxtime=0.0, mSR_threshold=3)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -27,10 +27,12 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100, 2]; medium
         Ω0 = input[8:end] * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
-        mSR = mean(maximum_SR(yields, macros, tuned, ρ), dims=2)
+        mSR = maximum_SR(yields, macros, tuned, ρ)
+        if sum(mSR .< mSR_threshold) / length(mSR) < 0.95
+            return Inf
+        end
 
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) + mSR_λ * sum(mSR)
-        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
     PCs = PCA(yields, Int(upper[1]))[1]
