@@ -28,7 +28,7 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[12, 1, 100, 2]; medium
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
         mSR = maximum_SR(yields, macros, tuned, ρ)
-        if sum(mSR .< mSR_tail) / length(mSR) < 0.95 || sum(mSR .< mSR_median) / length(mSR) < 0.5
+        if quantile(mSR, 0.95) > mSR_tail || quantile(mSR, 0.5) > mSR_median
             return Inf
         end
 
