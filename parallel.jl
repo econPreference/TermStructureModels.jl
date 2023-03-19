@@ -102,5 +102,5 @@ save("TP.jld2", "TP", saved_TP)
 saved_TP = load("TP.jld2")["TP"]
 saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
 fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
-plot(mean(fitted)[:yields][:, 1])
-plot!(yields[tuned.p+1:end, 4+1] - mean(saved_TP)[:TP])
+plot(mean(fitted)[:yields][tuned.p+1:end, 1])
+plot!(mean(fitted)[:yields][tuned.p+1:end, 4] - mean(saved_TP)[:TP])

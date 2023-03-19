@@ -227,7 +227,7 @@ term_premium(τ, τₙ, saved_θ, yields, macros)
 * Input: targeted maturity τ, all observed maturities τₙ = [1;3;6;...], the Gibbs sampling samples "saved_θ", and the data that contains initial observations.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "TP", "timevarying\\_TP", "const\\_TP", "jensen" ∈ Output[i]
-    - The object in the output can be loaded by function "load_object."
+    - Outputs exclude initial observations.
 """
 function term_premium(τ, τₙ, saved_θ, yields, macros)
 
@@ -270,7 +270,7 @@ latentspace(saved_θ, yields, τₙ)
 * Input: the Gibb sampling result "saved_θ", and the data should include initial observations.
 * Output: Vector{Dict}(posterior samples, length(saved_θ)). 
     - "latents", "κQ", "kQ_infty", "KₚXF", "GₚXFXF", "ΩXFXF", "ηψ", "ψ", "ψ0", "Σₒ", "γ" ∈ Output[i]
-    - The object in the output can be loaded by function "load_object."
+    - latent factors contain initial observations.
 """
 function latentspace(saved_θ, yields, τₙ)
 
@@ -360,6 +360,7 @@ fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
 * Input: τ0 is a set of maturities of interest. saved_Xθ is a transformed posterior sample using function latentspace.
     - τ0 does not need to be the same as the one used for the estimation.
 * Output: Vector{YieldCurve}(,# of iteration)
+    - yields and factors contain initial observations.
 """
 function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
 
