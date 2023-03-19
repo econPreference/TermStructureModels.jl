@@ -101,6 +101,6 @@ saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
 save("TP.jld2", "TP", saved_TP)
 saved_TP = load("TP.jld2")["TP"]
 saved_Xθ = latentspace(saved_θ, yields, τₙ)
-fitted = fitted_YieldCurve(τₙ, saved_Xθ)
-plot(mean(fitted)[:yields][:, 4])
-plot!(yields[:,4]-mean(saved_TP)[:TP])
+fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
+plot(mean(fitted)[:yields][:, 1])
+plot!(yields[:, 4] - mean(saved_TP)[:TP])
