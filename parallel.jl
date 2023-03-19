@@ -58,7 +58,7 @@ begin ## Data: yield data
 end
 
 ## Tuning hyper-parameters
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [6, 0.005, 0.05, 20])
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), ρ, [4, 0.0001, 0.05, 30])
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, ρ; iteration =1000)
@@ -93,10 +93,14 @@ iteration = length(saved_θ)
 # saved_θ = load("sparse.jld2")["samples"]
 # reduced_θ = reducedform(saved_θ)
 
-τ_interest = 120
+τ_interest = 24
 par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
     term_premium(τ_interest, τₙ, [saved_θ[i]], Array(yields[:, 2:end]), Array(macros[:, 2:end]))
 end
 saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
 save("TP.jld2", "TP", saved_TP)
 saved_TP = load("TP.jld2")["TP"]
+saved_Xθ = latentspace(saved_θ, yields, τₙ)
+fitted = fitted_YieldCurve(τₙ, saved_Xθ)
+plot(mean(fitted)[:yields][:, 4])
+plot!(yields[:,4]-mean(saved_TP)[:TP])
