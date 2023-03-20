@@ -93,7 +93,7 @@ iteration = length(saved_θ)
 # saved_θ = load("sparse.jld2")["samples"]
 # reduced_θ = reducedform(saved_θ)
 
-τ_interest = 24
+τ_interest = 120
 par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
     term_premium(τ_interest, τₙ, [saved_θ[i]], Array(yields[:, 2:end]), Array(macros[:, 2:end]))
 end
@@ -103,4 +103,4 @@ saved_TP = load("TP.jld2")["TP"]
 saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
 fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
 plot(mean(fitted)[:yields][tuned.p+1:end, 1])
-plot!(mean(fitted)[:yields][tuned.p+1:end, 4] - mean(saved_TP)[:TP])
+plot!(mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP])
