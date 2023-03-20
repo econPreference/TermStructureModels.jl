@@ -163,7 +163,7 @@ _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
     - jensen: Jensen's Ineqaulity part in TP
     - Although input has initial observations, output excludes the time period for the initial observations.  
 """
-function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
+function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
 
     T1P_ = inv(T1X_)
     # Jensen's Ineqaulity term
@@ -175,8 +175,9 @@ function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF,
 
     # Constant term
     dQ = dimQ()
-    KₚQ = zeros(dQ)
-    KₚQ[1] = kQ_infty
+    KₓQ = zeros(dQ)
+    KₓQ[1] = kQ_infty
+    KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
     λₚ = KₚP - KₚQ
     const_TP = 0
     for i = 1:(τ-1)
@@ -198,7 +199,7 @@ function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF,
     datas = [PCs macros]
     for t in (p+1):T # ranges for the dependent variables. The whole range includes initial observations.
         # prediction part
-        predicted_X = datas[t:-1:(t-p+1), :]
+        predicted_X = datas[t:-1:1, :]
         for horizon = 1:(τ-2)
             regressors = vec(predicted_X[1:p, :]')
             predicted = GₚFF * regressors
@@ -210,7 +211,7 @@ function _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF,
         for i = 1:(τ-1), l = 1:p
             weight = bτ_[:, τ-i]' * (T1P_Λ_PF)
             for j = 1:dP
-                timevarying_TP[t-p, j] += weight[j] * predicted_X[i-l+p, j] # first row in predicted_X = (time = t-p+1)
+                timevarying_TP[t-p, j] += weight[(l-1)*dP+j] * predicted_X[t+i-l, j] # first row in predicted_X = (time = t-p+1)
             end
         end
     end
@@ -255,7 +256,11 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
-        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
+
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
         saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
     end
@@ -428,15 +433,15 @@ function PCA(yields, p; rescaling=false)
     end
 end
 """
-maximum_SR(yields, macros, ρ, HyperParameter_::HyperParameter; medium_τ=12 * [2, 2.5, 3], iteration=1_000)
+maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], iteration=1_000)
 * It calculate a prior distribution of realized maximum Sharpe ratio. It is unobservable because we do not know true parameters.
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_τ=12 * [2, 2.5, 3], iteration=300)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], iteration=300)
 
     (; p, q, ν0, Ω0) = HyperParameter_
-    PCs = PCA(yields, p)[1]
+    PCs, ~, Wₚ = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
@@ -444,7 +449,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
-    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
+    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
     σ²kQ_infty = q[4] * 2scale(prior_σ²FF(; ν0, Ω0)[1]) / (2shape(prior_σ²FF(; ν0, Ω0)[1]) - 2) # prior variance of kQ_infty
     kQ_infty_dist = Normal(0, sqrt(σ²kQ_infty))
 
@@ -463,11 +468,21 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_
         KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
 
-        KPQ = zeros(dQ)
-        KPQ[1] = rand(kQ_infty_dist)
+        κQ = rand(prior_κQ_)
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = rand(kQ_infty_dist)
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(κQ) - I(dQ)) * T0P_)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
-        GQPF[:, 1:dQ] = GQ_XX(; κQ=rand(prior_κQ_))
-        λP = KₚF[1:dQ] - KPQ
+        GQPF[:, 1:dQ] = T1X_ * GQ_XX(; κQ) / T1X_
+        λP = KₚF[1:dQ] - KₚQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
         # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector

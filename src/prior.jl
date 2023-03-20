@@ -60,7 +60,7 @@ function prior_C(; Ω0::Vector)
 end
 
 """
-prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
+prior_ϕ0(ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
 * This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
 * Input:
     - ρ = Vector{Float64}(0 or near 1, dP-dQ) benchmark persistencies of macro variables. For growth variables and level variables, ρ[i] should be 0 and nearly 1, respectively.
@@ -73,7 +73,7 @@ prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
     - prior variance for ϕ[i,:] = σ²FF[i]*variance of output[i,:]
     - Unlike MvNormal, the second arg of "Normal" is a standard deviation.
 """
-function prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
+function prior_ϕ0(ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
 
     dP, dPp = size(ψ) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
@@ -83,9 +83,13 @@ function prior_ϕ0(ρ::Vector, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
     κQ_candidate = support(prior_κQ_)
     κQ_prob = probs(prior_κQ_)
     GQ_XX_mean = zeros(dQ, dQ)
+
     for i in eachindex(κQ_candidate)
         κQ = κQ_candidate[i]
-        GQ_XX_mean += GQ_XX(; κQ) .* κQ_prob[i]
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        GQ_XX_mean += (T1X_ * GQ_XX(; κQ) / T1X_) .* κQ_prob[i]
     end
 
     for i in 1:dQ

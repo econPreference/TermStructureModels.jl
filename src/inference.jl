@@ -1,13 +1,13 @@
 
 """
-tuning_hyperparameter(yields, macros, ρ; gradient=false)
+tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
 * It derives the hyperparameters that maximize the marginal likelhood. First, the generating set search algorithm detemines the search range that do not make a final solution as a corner solution. Second, the evolutionary algorithm and Nelder-Mead algorithm find the global optimum. Lastly, the LBFGS algorithm calibrate the global optimum. 
 * Input: Data should contain initial observations.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables.
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=0.4, mSR_tail=1.2, upper_lag=6, upper_q=[0.05, 0.01], upper_Ω0=50)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=0.4, mSR_tail=1.2, upper_lag=6, upper_q=[0.05, 0.01], upper_Ω0=50)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -27,12 +27,12 @@ function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [2, 2.5, 3], m
         Ω0 = input[8:end] * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0)
-        mSR = maximum_SR(yields, macros, tuned, ρ)
+        mSR = maximum_SR(yields, macros, tuned, τₙ, ρ)
         if quantile(mSR, 0.95) > mSR_tail || mean(mSR) > mSR_mean
             return Inf
         end
 
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
     PCs = PCA(yields, Int(upper_lag))[1]
@@ -88,7 +88,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    PCs = PCA(yields, p)[1]
+    PCs, ~, Wₚ = PCA(yields, p)
     prior_κQ_ = prior_κQ(medium_τ)
 
     ## additinoal hyperparameters ##
@@ -103,7 +103,10 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
         κQ = 0.0609
         kQ_infty = 0.0
         ϕ = [zeros(dP) diagm([0.9ones(dQ); ρ]) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
-        ϕ[1:dQ, 2:(dQ+1)] = GQ_XX(; κQ)
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        ϕ[1:dQ, 2:(dQ+1)] = T1X_ * GQ_XX(; κQ) / T1X_
         σ²FF = [Ω0[i] / (ν0 + i - dP) for i in eachindex(Ω0)]
         ηψ = 1
         ψ = ones(dP, dP * p)
@@ -132,10 +135,10 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
             isaccept_ηψ += isaccept
         end
 
-        ϕ, σ²FF = post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
+        ϕ, σ²FF = post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
 
         if sparsity == true
-            ψ0, ψ = post_ψ_ψ0(ρ, prior_κQ_; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
+            ψ0, ψ = post_ψ_ψ0(ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
         end
 
         Σₒ = rand.(post_Σₒ(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ΩPP=ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF), γ))

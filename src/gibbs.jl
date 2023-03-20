@@ -226,13 +226,13 @@ function d2logηψ_dηψ2(ηψ; dP, p)
 end
 
 """
-post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
+post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
 * Posterior sampler for ϕ and σ²FF that are not sampled by the MH. 
 * Input: data should contain initial observations.
 * Output(2): ϕ, σ²FF
     - It gives a posterior sample, and it is updated for the remaining elements that are not in MH block.
 """
-function post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
+function post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
 
     dQ = dimQ()
     dP = size(ψ, 1)
@@ -240,7 +240,7 @@ function post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²
 
     yϕ, Xϕ, Xϕ0, XC = yϕ_Xϕ(PCs, macros, p)
     ~, ~, C0 = ϕ_2_ϕ₀_C(; ϕ)
-    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
+    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
     prior_ϕ_ = [prior_ϕ0_ prior_C(; Ω0)]
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
 
@@ -363,17 +363,17 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 end
 
 """
-post_ψ_ψ0(ρ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
+post_ψ_ψ0(ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 * posterior sampler for the sparsity parameters
 * Output(2): ψ0, ψ
     - posterior samples
 """
-function post_ψ_ψ0(ρ, prior_κQ_; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
+function post_ψ_ψ0(ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 
     R"library(GIGrvg)"
     dP = size(ψ, 1)
     p = Int(size(ψ, 2) / dP)
-    priormean_ϕ0_ = mean.(prior_ϕ0(ρ, prior_κQ_; ψ0, ψ, q, ν0, Ω0))
+    priormean_ϕ0_ = mean.(prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0))
     post_ψ = similar(ψ)
     post_ψ0 = similar(ψ0)
 

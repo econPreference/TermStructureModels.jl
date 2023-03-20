@@ -196,9 +196,13 @@ reducedform(saved_θ)
 * It generate posterior samples of the statistical parameters in struct "ReducedForm". 
 * Input: "saved_θ" comes from function "posterior_sampler".
 """
-function reducedform(saved_θ)
+function reducedform(saved_θ, yields, τₙ)
 
     dQ = dimQ()
+    dP = size(saved_θ[:ϕ][1], 1)
+    p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
+    Wₚ = PCA(yields, p)[3]
+
     iteration = length(saved_θ)
     reduced_θ = Vector{ReducedForm}(undef, iteration)
     @showprogress 1 "Moving to the reduced form..." for iter in 1:iteration
@@ -215,11 +219,20 @@ function reducedform(saved_θ)
         GₚFF = ϕ0[:, 2:end]
         ΩFF = (C \ diagm(σ²FF)) / C'
 
-        KPQ = zeros(dQ)
-        KPQ[1] = kQ_infty
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(κQ) - I(dQ)) * T0P_)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
-        GQPF[:, 1:dQ] = GQ_XX(; κQ)
-        λP = KₚF[1:dQ] - KPQ
+        GQPF[:, 1:dQ] = T1X_ * GQ_XX(; κQ) / T1X_
+        λP = KₚF[1:dQ] - KₚQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
         reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF)
