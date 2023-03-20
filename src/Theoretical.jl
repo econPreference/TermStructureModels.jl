@@ -445,7 +445,8 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, ρ; medium_
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
-    kQ_infty_dist = Normal(0, sqrt(q[4] * mean(prior_σ²FF_[1])))
+    σ²kQ_infty = q[4] * 2scale(prior_σ²FF(; ν0, Ω0)[1]) / (2shape(prior_σ²FF(; ν0, Ω0)[1]) - 2) # prior variance of kQ_infty
+    kQ_infty_dist = Normal(0, sqrt(σ²kQ_infty))
 
     mSR = Vector{Float64}(undef, iteration)
     @showprogress 1 "Calculating maximum SR..." for iter in 1:iteration

@@ -93,7 +93,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
 
     ## additinoal hyperparameters ##
     γ_bar = prior_γ(yields[(p+1):end, :])
-    σ²kQ_infty = q[4] * mean(prior_σ²FF(; ν0, Ω0)[1]) # prior variance of kQ_infty
+    σ²kQ_infty = q[4] * 2scale(prior_σ²FF(; ν0, Ω0)[1]) / (2shape(prior_σ²FF(; ν0, Ω0)[1]) - 2) # prior variance of kQ_infty
     ################################
 
     if typeof(init_param) == Parameter
