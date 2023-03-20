@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=0.4, mSR_tail=1.2, upper_lag=6, upper_q=[0.05, 0.01], upper_Ω0=50)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=0.4, mSR_tail=1.2, upper_lag=12, upper_q=[1, 100], upper_Ω0=2)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -15,7 +15,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [2, 2.5
     function negative_log_marginal(input, p_max_)
 
         # parameters
-        PCs = PCA(yields, p_max_)[1]
+        PCs, ~, Wₚ = PCA(yields, p_max_)
 
         p = Int(input[1])
         if p < 1

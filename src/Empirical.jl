@@ -192,16 +192,19 @@ function stationary_θ(saved_θ)
 end
 
 """
-reducedform(saved_θ)
+reducedform(saved_θ, yields, macros, τₙ)
 * It generate posterior samples of the statistical parameters in struct "ReducedForm". 
 * Input: "saved_θ" comes from function "posterior_sampler".
+    - Input data includes initial observations.
+* Output: the market prices of risks does not have initial observations
 """
-function reducedform(saved_θ, yields, τₙ)
+function reducedform(saved_θ, yields, macros, τₙ)
 
     dQ = dimQ()
     dP = size(saved_θ[:ϕ][1], 1)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
-    Wₚ = PCA(yields, p)[3]
+    PCs, ~, Wₚ = PCA(yields, p)
+    factors = [PCs macros]
 
     iteration = length(saved_θ)
     reduced_θ = Vector{ReducedForm}(undef, iteration)
@@ -217,7 +220,7 @@ function reducedform(saved_θ, yields, τₙ)
         ϕ0 = C \ ϕ0
         KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
-        ΩFF = (C \ diagm(σ²FF)) / C'
+        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
 
 
         bτ_ = bτ(τₙ[end]; κQ)
@@ -229,13 +232,18 @@ function reducedform(saved_θ, yields, τₙ)
 
         KₓQ = zeros(dQ)
         KₓQ[1] = kQ_infty
-        KₚQ = T1X_ * (KₓQ + (GQ_XX(κQ) - I(dQ)) * T0P_)
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
         GQPF[:, 1:dQ] = T1X_ * GQ_XX(; κQ) / T1X_
         λP = KₚF[1:dQ] - KₚQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
-        reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF)
+        mpr = Matrix{Float64}(undef, size(factors, 1) - p, dP)
+        for t in p+1:size(factors, 1)
+            Ft = factors'[:, t:-1:t-p+1] |> vec
+            mpr[t-p, :] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)]
+        end
+        reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF, mpr=mpr)
 
     end
 

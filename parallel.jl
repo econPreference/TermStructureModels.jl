@@ -59,7 +59,7 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag=6, upper_Ω0=50, upper_q=[0.001, 0.01])
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration =1000)
@@ -91,7 +91,7 @@ iteration = length(saved_θ)
 # trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
 # save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
 # saved_θ = load("sparse.jld2")["samples"]
-# reduced_θ = reducedform(saved_θ)
+# reduced_θ = reducedform(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
 
 τ_interest = 120
 par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i

@@ -77,6 +77,7 @@ end
     - Σₒ::Vector{Float64}
     - λP::Vector{Float64}
     - ΛPF::Matrix{Float64}
+    - mpr::Matrix{Float64}
 * It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. λP and ΛPF are paramters in the market prices of risks equation, and they only contain non-zero elements. 
 """
 @kwdef struct ReducedForm <: PosteriorSample
@@ -88,6 +89,7 @@ end
     Σₒ::Vector{Float64}
     λP::Vector{Float64}
     ΛPF::Matrix{Float64}
+    mpr::Matrix{Float64}
 end
 
 """
