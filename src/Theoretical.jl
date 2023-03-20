@@ -473,13 +473,14 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
 
+        kQ_infty = rand(kQ_infty_dist)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ)
 
         KₓQ = zeros(dQ)
-        KₓQ[1] = rand(kQ_infty_dist)
-        KₚQ = T1X_ * (KₓQ + (GQ_XX(κQ) - I(dQ)) * T0P_)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
         GQPF[:, 1:dQ] = T1X_ * GQ_XX(; κQ) / T1X_
         λP = KₚF[1:dQ] - KₚQ
