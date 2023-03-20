@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, ρ, upper=[6, 0.05, 0.01, 50]; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=0.4, mSR_tail=1.2)
+function tuning_hyperparameter(yields, macros, ρ; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=0.4, mSR_tail=1.2, upper_lag=6, upper_q=[0.05, 0.01], upper_Ω0=50)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -35,13 +35,13 @@ function tuning_hyperparameter(yields, macros, ρ, upper=[6, 0.05, 0.01, 50]; me
         return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned; medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
-    PCs = PCA(yields, Int(upper[1]))[1]
-    starting = [1, upper[2] / 2, 1, 2, upper[3] / 2, 1, 1]
+    PCs = PCA(yields, Int(upper_lag))[1]
+    starting = [1, upper_q[1] / 2, 1, 2, upper_q[2] / 2, 1, 1]
     for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], Int(upper[1])))
+        push!(starting, AR_res_var([PCs macros][:, i], Int(upper_lag)))
     end
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
-    ux = 0.0 .+ [upper[1]; upper[2]; 1; 6; upper[3]; 100; size(yields, 1); upper[4] * starting[8:end]]
+    ux = 0.0 .+ [upper_lag; upper_q[1]; 1; 6; upper_q[2]; 100; size(yields, 1); upper_Ω0 * starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
