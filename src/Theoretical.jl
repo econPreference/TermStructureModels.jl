@@ -433,12 +433,12 @@ function PCA(yields, p; rescaling=false)
     end
 end
 """
-maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], iteration=1_000)
+maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=1_000)
 * It calculate a prior distribution of realized maximum Sharpe ratio. It is unobservable because we do not know true parameters.
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], iteration=300)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=300)
 
     (; p, q, ν0, Ω0) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)

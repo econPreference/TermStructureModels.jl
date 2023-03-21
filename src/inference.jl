@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [2, 2.5, 3], maxtime=0.0, mSR_mean=Inf, mSR_tail=Inf, upper_lag=12, upper_q=[1, 100], upper_Ω0=2)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxtime=0.0, mSR_mean=Inf, mSR_tail=Inf, upper_lag=12, upper_q=[1, 100], upper_Ω0=2)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -77,14 +77,14 @@ end
 
 
 """
-posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsity=false, medium_τ=12 * [2, 2.5, 3])
+posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5])
 * This is a posterior distribution sampler. It needs data and hyperparameters. 
 * Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
     - iteration: # of posterior samples
 * Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [2, 2.5, 3], init_param=[])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], init_param=[])
 
     (; p, q, ν0, Ω0) = HyperParameter_
     N = size(yields, 2) # of maturities
