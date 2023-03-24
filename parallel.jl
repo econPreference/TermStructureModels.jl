@@ -60,7 +60,8 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3, upper_lag=12, upper_q=[0.001, 0.001]) # the largest search space given mSR and ΩFF
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3, upper_lag=8, upper_q=[0.001, 0.0005]) # the largest search space given mSR and ΩFF
+# tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3, upper_lag=12, upper_q=[0.001, 0.001]) # the largest search space given mSR and ΩFF
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration =1000)
