@@ -11,12 +11,12 @@ end
     using GDTSM, ProgressMeter
 end
 using RCall, CSV, DataFrames, Dates, Plots, JLD2
-date_start = Date("1987-01-01", "yyyy-mm-dd")
+date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 begin ## Data: macro data
     R"library(fbi)"
-    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=true))
+    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
     excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
@@ -32,11 +32,14 @@ begin ## Data: macro data
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["1", "4"]
+            macros[:, i+1] = log.(macros[:, i+1])
             ρ[i] = 0.9
         else
+            macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
             ρ[i] = 0
         end
     end
+    macros = macros[2:end, :]
     mean_macro = mean(Array(macros[:, 2:end]), dims=1)
     macros[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
@@ -56,12 +59,12 @@ begin ## Data: yield data
     yields = DataFrame([Matrix(yield_month) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
     yields = [yield_year[:, 1] yields]
     rename!(yields, Dict(:x1 => "date"))
+    yields = yields[2:end, :]
 end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3, upper_lag=8, upper_q=[0.001, 0.0005]) # the largest search space given mSR and ΩFF
-# tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3, upper_lag=12, upper_q=[0.001, 0.001]) # the largest search space given mSR and ΩFF
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=2.0, mSR_tail=3.0, upper_lag=12, upper_q=[0.001, 0.001]) # the largest search space given mSR and ΩFF
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration =1000)
