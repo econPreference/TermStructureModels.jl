@@ -32,10 +32,10 @@ begin ## Data: macro data
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :tcode][i] ∈ ["1", "4"]
-            macros[:, i+1] = log.(macros[:, i+1])
+            macros[:, i+1] = 12log.(macros[:, i+1])
             ρ[i] = 0.9
         else
-            macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
+            macros[2:end, i+1] = 1200(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
             ρ[i] = 0
         end
     end
@@ -64,7 +64,7 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=2.0, mSR_tail=3.0, upper_lag=12, upper_q=[0.001, 0.001]) # the largest search space given mSR and ΩFF
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3.0, upper_lag=6, upper_q=[0.0001, 0.0001]) # the largest search space given mSR and ΩFF
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration =1000)
