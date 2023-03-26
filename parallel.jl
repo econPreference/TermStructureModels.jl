@@ -40,8 +40,8 @@ begin ## Data: macro data
         end
     end
     macros = macros[2:end, :]
-    # mean_macro = mean(Array(macros[:, 2:end]), dims=1)
-    # macros[:, 2:end] .-= mean_macro
+    mean_macro = mean(Array(macros[:, 2:end]), dims=1)
+    macros[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
 end
 
