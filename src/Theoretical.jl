@@ -456,24 +456,24 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     mSR = Vector{Float64}(undef, iteration)
     @showprogress 1 "Calculating maximum SR..." for iter in 1:iteration
 
-        σ²FF = rand.(prior_σ²FF_)
+        σ²FF = mean.(prior_σ²FF_)
         C = rand.(prior_C_)
         for i in 2:dP, j in 1:(i-1)
-            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(x)
+            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> mean(x)
         end
         ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
         ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
         ϕ0 = C \ ϕ0
-        KₚF = ϕ0[:, 1]
+        KₚF = zeros(dP)
         GₚFF = ϕ0[:, 2:end]
 
-        κQ = rand(prior_κQ_)
+        κQ = mean(prior_κQ_)
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
 
-        kQ_infty = rand(kQ_infty_dist)
+        kQ_infty = mean(kQ_infty_dist)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ)
