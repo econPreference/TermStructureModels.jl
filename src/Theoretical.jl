@@ -486,7 +486,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
         GQPP = T1X_ * GQ_XX(; κQ) / T1X_
         GQPF[:, 1:dQ] = GQPP
-        λP = -(KₚQ + mean_PCs - GQPP * mean_PCs)
+        λP = -(KₚQ - mean_PCs + GQPP * mean_PCs)
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
         # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
