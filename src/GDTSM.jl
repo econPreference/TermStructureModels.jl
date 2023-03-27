@@ -35,6 +35,7 @@ using RCall
     q::Vector{Float64}
     ν0::Float64
     Ω0::Vector{Float64}
+    σ²kQ_infty::Float64
 end
 
 """

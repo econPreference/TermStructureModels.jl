@@ -440,10 +440,8 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 """
 function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=300)
 
-    (; p, q, ν0, Ω0) = HyperParameter_
+    (; p, q, ν0, Ω0, σ²kQ_infty) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)
-    PCs .-= mean(PCs[p+1:end, :], dims=1)
-    macros .-= mean(macros[p+1:end, :], dims=1)
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
@@ -452,8 +450,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
-    # σ²kQ_infty = q[4] * 2scale(prior_σ²FF(; ν0, Ω0)[1]) / (2shape(prior_σ²FF(; ν0, Ω0)[1]) - 2) # prior variance of kQ_infty
-    # kQ_infty_dist = Normal(0, sqrt(σ²kQ_infty))
+    kQ_infty_dist = Normal(0, sqrt(σ²kQ_infty))
 
     mSR = Vector{Float64}(undef, iteration)
     @showprogress 1 "Calculating maximum SR..." for iter in 1:iteration
@@ -467,7 +464,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
         ϕ0 = C \ ϕ0
-        # KₚF = ϕ0[:, 1]
+        KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
 
         κQ = rand(prior_κQ_)
@@ -475,17 +472,17 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
 
-        # kQ_infty = rand(kQ_infty_dist)
-        # aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
-        # Aₓ_ = Aₓ(aτ_, τₙ)
-        # T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+        kQ_infty = rand(kQ_infty_dist)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ)
 
-        # KₓQ = zeros(dQ)
-        # KₓQ[1] = kQ_infty
-        # KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
         GQPF[:, 1:dQ] = T1X_ * GQ_XX(; κQ) / T1X_
-        λP = zeros(dQ)
+        λP = KₚF[1:dQ] - KₚQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
         # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
