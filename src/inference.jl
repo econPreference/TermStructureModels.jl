@@ -191,7 +191,7 @@ function sparse_precision(saved_θ, T; lower_penalty=1e-2, nlambda=100)
         ΩFF_ = 0.5(ΩFF_ + ΩFF_')
 
         std_ = sqrt.(diag(ΩFF_))
-        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, threshold=true, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))
         sparse_prec = glasso_results[:optwi]
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
