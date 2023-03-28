@@ -4,8 +4,8 @@ using Distributed
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
-    Pkg.instantiate()
-    Pkg.precompile()
+    # Pkg.instantiate()
+    # Pkg.precompile()
 end
 @everywhere begin
     using GDTSM, ProgressMeter
@@ -64,10 +64,10 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_median=1.5, mSR_tail=3.0, upper_lag=6, upper_q1=1e-2) # the largest search space given mSR and ΩFF
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_tail=3.0, mSR_median=1.5, upper_lag=6, upper_q1=0.01, σ²kQ_infty=0.05^2)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
-# mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration =1000)
+# mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
 ## Estimation
 iteration = 25_000
@@ -90,7 +90,7 @@ accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_�
 iteration = length(saved_θ)
 
 # par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
-#     sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p)
+#     sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p; lower_penalty=1e-4, nlambda=1000)
 # end
 # saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
 # trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
