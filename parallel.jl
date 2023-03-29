@@ -10,7 +10,8 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, Gadfly, JLD2, LinearAlgebra
+import Plots
+using RCall, CSV, DataFrames, Dates, Gadfly, JLD2, LinearAlgebra, Cairo, Fontconfig
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
@@ -133,9 +134,5 @@ plot(
     Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=-1:2:12)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR.pdf")
 
-plot(
-    layer(x=mSR, Geom.histogram(; density=true), color=[colorant"blue"]),
-    layer(x=[], y=[]),
-    layer(x=realized_SR, Geom.histogram(; density=true, bincount=3), color=[colorant"red"]),
-    Guide.manual_color_key("", ["maximum SR", " ", "realized SR"], ["blue", "white", "red"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("density"), Guide.xlabel("Sharpe ratio"), Coord.cartesian(; xmin=0, xmax=3)
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR_hist.pdf")
+Plots.histogram(mSR, bins=range(0, 3, length=31), normalize=:pdf, labels="maximum SR", alpha=0.9)
+Plots.histogram!(rand(realized_SR, length(mSR)), bins=range(0, 3, length=31), normalize=:pdf, labels="realized SR", xlabel="Sharpe ratio", ylabel="density", alpha=0.9) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR_hist.pdf")
