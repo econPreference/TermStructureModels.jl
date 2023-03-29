@@ -137,5 +137,5 @@ plot(
     layer(x=mSR, Geom.histogram(; density=true), color=[colorant"blue"]),
     layer(x=[], y=[]),
     layer(x=realized_SR, Geom.histogram(; density=true, bincount=3), color=[colorant"red"]),
-    Guide.manual_color_key("", ["maximum SR", " ", "realized SR"], ["blue", "white", "red"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("count"), Guide.xlabel("Sharpe ratio"), Coord.cartesian(; xmin=0, xmax=3)
+    Guide.manual_color_key("", ["maximum SR", " ", "realized SR"], ["blue", "white", "red"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("density"), Guide.xlabel("Sharpe ratio"), Coord.cartesian(; xmin=0, xmax=3)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR_hist.pdf")
