@@ -90,7 +90,7 @@ accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_�
 iteration = length(saved_θ)
 
 par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
-    sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p; lower_penalty=1e-4, nlambda=1000)
+    sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p)
 end
 saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
 trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
