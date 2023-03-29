@@ -143,7 +143,7 @@ starting = []
 for i in 1:dP
     push!(starting, AR_res_var([PCs Array(macros[:, 2:end])][:, i], tuned.p))
 end
-Plots.histogram(tuned.Ω0 / (tuned.ν0 - dP - 1) |> x -> x ./ starting, bins=range(0, 2, length=21), label="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/Optimized_Omega.pdf")
+Plots.histogram(tuned.Ω0 / (tuned.ν0 - dP - 1) |> x -> x ./ starting, bins=range(0, 2, length=21), label="", ylabel="counts") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/Optimized_Omega.pdf")
 
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"
