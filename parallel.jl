@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, Plots, JLD2, LinearAlgebra
+using RCall, CSV, DataFrames, Dates, Gadfly, JLD2, LinearAlgebra
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
@@ -96,7 +96,7 @@ iteration = length(saved_θ)
 # trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
 # save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
 # saved_θ = load("sparse.jld2")["samples"]
-# reduced_θ = reducedform(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
+reduced_θ = reducedform(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
 
 τ_interest = 120
 par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
@@ -105,13 +105,37 @@ end
 saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
 save("TP.jld2", "TP", saved_TP)
 saved_TP = load("TP.jld2")["TP"]
-# saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
-# fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
-# plot(mean(fitted)[:yields][tuned.p+1:end, 1])
-# plot!(mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP])
+saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
+fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
+
+rec_dates = DateTime.(["1990-07-01" "1991-03-01"
+    "2001-03-01" "2001-11-01"
+    "2007-12-01" "2009-06-01"
+    "2020-02-01" "2020-04-01"])
+plot(
+    layer(x=yields[tuned.p+1:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, 1], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[tuned.p+1:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, linestyle=[:dash], color=[colorant"red"]),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
+    Guide.manual_color_key("", ["one month yield", "expected one month yield over 10 years", "NBER recessions"], ["blue", "red", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=-1:3:10)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_EH10.pdf")
 
 fitted = fitted_YieldCurve(collect(1:120), saved_Xθ)
 fitted_yield = mean(fitted)[:yields] / 1200
 log_price = -collect(1:120)' .* fitted_yield[tuned.p+1:end, :]
 xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
 realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
+mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
+
+plot(
+    layer(x=yields[tuned.p+1:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
+    layer(x=[], y=[]),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
+    Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=-1:2:12)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR.pdf")
+
+plot(
+    layer(x=mSR, Geom.histogram(; density=true), color=[colorant"blue"]),
+    layer(x=[], y=[]),
+    layer(x=realized_SR, Geom.histogram(; density=true, bincount=3), color=[colorant"red"]),
+    Guide.manual_color_key("", ["maximum SR", " ", "realized SR"], ["blue", "white", "red"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("count"), Guide.xlabel("Sharpe ratio"), Coord.cartesian(; xmin=0, xmax=3)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR_hist.pdf")
