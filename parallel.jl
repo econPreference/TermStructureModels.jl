@@ -136,3 +136,21 @@ plot(
 
 Plots.histogram(mSR, bins=range(0, 3, length=31), normalize=:pdf, labels="maximum SR", alpha=0.9)
 Plots.histogram!(rand(realized_SR, length(mSR)), bins=range(0, 3, length=31), normalize=:pdf, labels="realized SR", xlabel="Sharpe ratio", ylabel="density", alpha=0.9) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR_hist.pdf")
+
+dP = size(macros, 2) - 1 + dimQ()
+PCs = PCA(Array(yields[:, 2:end]), tuned.p)[1]
+starting = []
+for i in 1:dP
+    push!(starting, AR_res_var([PCs Array(macros[:, 2:end])][:, i], tuned.p))
+end
+Plots.histogram(tuned.Ω0 / (tuned.ν0 - dP - 1) |> x -> x ./ starting, bins=range(0, 2, length=21), label="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/Optimized_Omega.pdf")
+
+rec_dates = DateTime.(["1990-07-01" "1991-03-01"
+    "2001-03-01" "2001-11-01"
+    "2007-12-01" "2009-06-01"
+    "2020-02-01" "2020-04-01"])
+plot(
+    layer(x=yields[tuned.p+1:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"blue"]),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
+    Guide.manual_color_key("", ["term premium", "", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=-2:2:2)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/TP.pdf")
