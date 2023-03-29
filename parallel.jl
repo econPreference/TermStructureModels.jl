@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, Plots, JLD2
+using RCall, CSV, DataFrames, Dates, Plots, JLD2, LinearAlgebra
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
@@ -109,3 +109,9 @@ saved_TP = load("TP.jld2")["TP"]
 # fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
 # plot(mean(fitted)[:yields][tuned.p+1:end, 1])
 # plot!(mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP])
+
+fitted = fitted_YieldCurve(collect(1:120), saved_Xθ)
+fitted_yield = mean(fitted)[:yields] / 1200
+log_price = -collect(1:120)' .* fitted_yield[tuned.p+1:end, :]
+xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
+realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
