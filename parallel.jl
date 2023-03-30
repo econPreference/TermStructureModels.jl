@@ -167,4 +167,4 @@ Plots.histogram!(mSR_prior, bins=range(0, 5, length=41), normalize=:pdf, label="
 plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Scale.x_log, Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("counts"), Guide.xlabel("E[ψ|data] in log scale")) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/psi_hist.pdf")
 
 dP = size(macros, 2) - 1 + dimQ()
-Plots.histogram(trace_sparsity / dP^2, label="", xlabel="Ratio of non-zeros", ylabel="counts", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prec_hist.pdf")
+Plots.histogram(100 * trace_sparsity / dP^2, label="", xlabel="Ratio of non-zeros (%)", ylabel="counts", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prec_hist.pdf")
