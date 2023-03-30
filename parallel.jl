@@ -68,7 +68,7 @@ end
 tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; mSR_tail=3.0, mSR_median=1.5, upper_lag=6, upper_q1=0.01, σ²kQ_infty=0.05^2)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
-# mSR = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
+mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
 ## Estimation
 iteration = 25_000
@@ -109,6 +109,13 @@ saved_TP = load("TP.jld2")["TP"]
 saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
 fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
 
+fitted = fitted_YieldCurve(collect(1:120), saved_Xθ)
+fitted_yield = mean(fitted)[:yields] / 1200
+log_price = -collect(1:120)' .* fitted_yield[tuned.p+1:end, :]
+xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
+realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
+mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
+
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"
     "2007-12-01" "2009-06-01"
@@ -119,13 +126,6 @@ plot(
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["one month yield", "expected one month yield over 10 years", "NBER recessions"], ["blue", "red", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=-1:3:10)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_EH10.pdf")
-
-fitted = fitted_YieldCurve(collect(1:120), saved_Xθ)
-fitted_yield = mean(fitted)[:yields] / 1200
-log_price = -collect(1:120)' .* fitted_yield[tuned.p+1:end, :]
-xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
-realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
-mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
 
 plot(
     layer(x=yields[tuned.p+1:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
@@ -154,3 +154,9 @@ plot(
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["term premium", "", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=-2:2:2)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/TP.pdf")
+
+Plots.histogram(mSR_prior0, normalize=:pdf, label="", xlabel="Sharpe ratio", ylabel="density", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prior_mSR1.pdf")
+Plots.histogram(mSR_prior1, normalize=:pdf, label="", xlabel="Sharpe ratio", ylabel="density", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prior_mSR2.pdf")
+
+Plots.histogram(mSR, bins=range(0, 5, length=41), normalize=:pdf, label="posterior", alpha=0.9)
+Plots.histogram!(mSR_prior, bins=range(0, 5, length=41), normalize=:pdf, label="prior", xlabel="Sharpe ratio", ylabel="density", tickfont=(10), alpha=0.6) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/post_mSR.pdf")
