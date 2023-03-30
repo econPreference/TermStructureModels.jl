@@ -97,6 +97,7 @@ iteration = length(saved_θ)
 # trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
 # save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
 # saved_θ = load("sparse.jld2")["samples"]
+# trace_sparsity = load("sparse.jld2")["sparsity"]
 reduced_θ = reducedform(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
 
 τ_interest = 120
@@ -164,3 +165,6 @@ Plots.histogram(mSR, bins=range(0, 5, length=41), normalize=:pdf, label="posteri
 Plots.histogram!(mSR_prior, bins=range(0, 5, length=41), normalize=:pdf, label="prior", xlabel="Sharpe ratio", ylabel="density", tickfont=(10), alpha=0.6) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/post_mSR.pdf")
 
 plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Scale.x_log, Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("counts"), Guide.xlabel("E[ψ|data] in log scale")) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/psi_hist.pdf")
+
+dP = size(macros, 2) - 1 + dimQ()
+Plots.histogram(trace_sparsity / dP^2, label="", xlabel="Ratio of non-zeros", ylabel="counts", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/sparse_hist.pdf")
