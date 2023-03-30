@@ -116,6 +116,8 @@ xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned
 realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
 mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
 
+
+## Graphs
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"
     "2007-12-01" "2009-06-01"
@@ -160,3 +162,5 @@ Plots.histogram(mSR_prior1, normalize=:pdf, label="", xlabel="Sharpe ratio", yla
 
 Plots.histogram(mSR, bins=range(0, 5, length=41), normalize=:pdf, label="posterior", alpha=0.9)
 Plots.histogram!(mSR_prior, bins=range(0, 5, length=41), normalize=:pdf, label="prior", xlabel="Sharpe ratio", ylabel="density", tickfont=(10), alpha=0.6) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/post_mSR.pdf")
+
+plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Scale.x_log, Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("counts"), Guide.xlabel("E[ψ|data] in log scale")) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/psi_hist.pdf")
