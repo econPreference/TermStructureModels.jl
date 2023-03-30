@@ -11,7 +11,7 @@ end
     using GDTSM, ProgressMeter
 end
 import Plots
-using RCall, CSV, DataFrames, Dates, Gadfly, JLD2, LinearAlgebra, Cairo, Fontconfig
+using RCall, CSV, DataFrames, Dates, Gadfly, JLD2, LinearAlgebra, Cairo, Fontconfig, Colors
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
@@ -168,3 +168,17 @@ plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Sc
 
 dP = size(macros, 2) - 1 + dimQ()
 Plots.histogram(100 * trace_sparsity / dP^2, label="", xlabel="Ratio of non-zeros (%)", ylabel="counts", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prec_hist.pdf")
+
+rec_dates = DateTime.(["1990-07-01" "1991-03-01"
+    "2001-03-01" "2001-11-01"
+    "2007-12-01" "2009-06-01"
+    "2020-02-01" "2020-04-01"])
+plot(
+    layer(x=yields[tuned.p+1:end, 1], y=mean(load("mSR/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[tuned.p+1:end, 1], y=mean(load("mSR+sparsity/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
+    layer(x=yields[tuned.p+1:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
+    Guide.manual_color_key("", ["restricted SR", "sparse slope", "", "", "sparse precision", "NBER recessions", ""], ["blue", "red", RGBA(1, 1, 1, 0.2), RGBA(1, 1, 1, 0.1), "green", "grey", RGBA(1, 1, 1, 0)]),
+    Theme(line_width=1.5pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt),
+    Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=0:2:4)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/extended_TP.pdf")
