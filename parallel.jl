@@ -10,9 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-import Plots
-import StatsPlots: @df
-using RCall, CSV, DataFrames, Dates, Gadfly, JLD2, LinearAlgebra, Cairo, Fontconfig, Colors
+using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
