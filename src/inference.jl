@@ -90,7 +90,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     weightedfitness(f) = f[1] + weight * f[2]
-    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness)) |> pareto_frontier
+    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, ϵ=0.01, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness)) |> pareto_frontier
 
     best_obj1, idx_obj1 = findmin(map(elm -> fitness(elm)[2], EA_opt))
     bo1_solution = BlackBoxOptim.params(EA_opt[idx_obj1])
