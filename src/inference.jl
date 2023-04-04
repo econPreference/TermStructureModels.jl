@@ -45,6 +45,8 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2
     q = best_candidate(EA_opt)[2:6]
     q[2] = q[1] * q[2]
     ν0 = best_candidate(EA_opt)[7] + dP + 1
+
+    PCs = PCA(yields, p)[1]
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
         Ω0[i] = AR_res_var([PCs macros][:, i], p) * best_candidate(EA_opt)[7]
