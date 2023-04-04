@@ -57,7 +57,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=12, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=12, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
+function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, weight=1.0, mSR_mean=1.0, upper_lag=12, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -80,7 +80,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
         end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return (-log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mSR_scale * mean(maximum_SR(yields, macros, tuned, τₙ, ρ))) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return (-log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), abs(mean(maximum_SR(yields, macros, tuned, τₙ, ρ)) - mSR_mean)) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
@@ -89,9 +89,10 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 6; upper_q45; upper_q45; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
-    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true)) |> pareto_frontier
+    weightedfitness(f) = f[1] + weight * f[2]
+    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness)) |> pareto_frontier
 
-    best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] / mSR_scale - mSR_mean), EA_opt))
+    best_obj1, idx_obj1 = findmin(map(elm -> fitness(elm)[2], EA_opt))
     bo1_solution = BlackBoxOptim.params(EA_opt[idx_obj1])
     println("deviations from the target mSR: $best_obj1")
 
