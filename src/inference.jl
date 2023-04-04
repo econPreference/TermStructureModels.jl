@@ -36,7 +36,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2
 
     starting = [1, upper_q1 / 2, 1, 2, upper_q45 / 2, upper_q45 / 2, 1]
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 6; upper_q45; upper_q45; size(yields, 1)]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxTime=maxtime, Workers=workers()), starting)
@@ -86,7 +86,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
 
     starting = [1, upper_q1 / 2, 1, 2, upper_q45 / 2, upper_q45 / 2, 1]
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 6; upper_q45; upper_q45; size(yields, 1)]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     weightedfitness(f) = f[1] + weight * f[2]
