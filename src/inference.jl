@@ -99,6 +99,8 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
     q = bo1_solution[2:6]
     q[2] = q[1] * q[2]
     ν0 = bo1_solution[7] + dP + 1
+
+    PCs = PCA(yields, p)[1]
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
         Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
