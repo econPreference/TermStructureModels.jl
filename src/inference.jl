@@ -74,7 +74,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
         Ω0 = input[8:end] * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return (-log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), abs(mean(maximum_SR(yields, macros, tuned, τₙ, ρ)) - mSR_mean)) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return (-log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
@@ -91,9 +91,9 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
     EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, ϵ=0.01, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness))
 
     pf = pareto_frontier(EA_opt)
-    best_obj1, idx_obj1 = findmin(map(elm -> fitness(elm)[2], pf))
+    best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] - mSR_mean), pf))
     bo1_solution = BlackBoxOptim.params(pf[idx_obj1])
-    println("deviations from the target mSR: $best_obj1")
+    println("deviations from the target mSR(= $(mSR_mean)): $best_obj1")
 
     p = bo1_solution[1] |> Int
     q = bo1_solution[2:6]
