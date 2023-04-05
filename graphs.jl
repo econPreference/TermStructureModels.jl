@@ -1,5 +1,4 @@
 using GDTSM
-import Plots
 import StatsPlots: @df
 using Gadfly, LinearAlgebra, Cairo, Fontconfig, Colors
 ## Graphs

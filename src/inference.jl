@@ -144,7 +144,7 @@ function mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
         set_fits[i, :] = [fitness(pf[i])[1] fitness(pf[i])[2]]
     end
 
-    scat = scatter(set_fits[:, 2], -set_fits[:, 1], ylabel="marginal likelhood", xlabel="maximum SR")
+    scat = scatter(set_fits[:, 2], -set_fits[:, 1], ylabel="marginal likelhood", xlabel="maximum SR", label="")
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), scat
 
 end

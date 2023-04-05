@@ -11,6 +11,7 @@ end
     using GDTSM, ProgressMeter
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra
+import Plots
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
@@ -64,12 +65,13 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-# tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
-# save("tuned.jld2", "tuned", tuned)
-tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1E+6, mSR_mean=0.75, upper_lag=8, upper_q1=0.1, upper_q45=50, σ²kQ_infty=0.01^2)
-save("tuned.jld2", "tuned", tuned, "EA_opt", EA_opt)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag=8, upper_q1=0.1, upper_q45=50, σ²kQ_infty=0.01^2, weight=1E+5, mSR_mean=1.0)
+save("tuned.jld2", "tuned", tuned)
+# tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1E+6, mSR_mean=0.75, upper_lag=8, upper_q1=0.1, upper_q45=50, σ²kQ_infty=0.01^2)
+# save("tuned.jld2", "tuned", tuned, "EA_opt", EA_opt)
 tuned = load("tuned.jld2")["tuned"]
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
+# EA_opt = load("tuned.jld2")["EA_opt"]
 # tuned, p = mSR_ML_frontier(EA_opt, size(macros, 2) - 1; mSR_mean=0.75, σ²kQ_infty=0.01^2)
 # Plots.plot(p)
 
