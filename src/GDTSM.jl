@@ -1,7 +1,7 @@
 module GDTSM
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, BlackBoxOptim, Distributed, PositiveFactorizations
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, BlackBoxOptim, Distributed, PositiveFactorizations, Plots
 import Distributions: TDist
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
@@ -218,6 +218,7 @@ export
     tuning_hyperparameter,
     tuning_hyperparameter_mSR,
     AR_res_var,
+    mSR_ML_frontier,
     generative,
     ineff_factor,
     posterior_sampler,

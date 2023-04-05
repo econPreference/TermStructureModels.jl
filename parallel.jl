@@ -70,6 +70,8 @@ tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[
 save("tuned.jld2", "tuned", tuned, "EA_opt", EA_opt)
 tuned = load("tuned.jld2")["tuned"]
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
+# tuned, p = mSR_ML_frontier(EA_opt, size(macros, 2) - 1; mSR_mean=0.75, σ²kQ_infty=0.01^2)
+# Plots.plot(p)
 
 ## Estimation
 iteration = 25_000

@@ -122,6 +122,32 @@ function AR_res_var(TS::Vector, p)
     return var(M * Y)
 end
 
+"""
+mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
+"""
+function mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
+
+    dP = dM + dimQ()
+    pf = pareto_frontier(EA_opt)
+    best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] - mSR_mean), pf))
+    bo1_solution = BlackBoxOptim.params(pf[idx_obj1])
+    println("deviations from the target mSR(= $(mSR_mean)): $best_obj1")
+
+    p = bo1_solution[1] |> Int
+    q = bo1_solution[2:6]
+    q[2] = q[1] * q[2]
+    ν0 = bo1_solution[7] + dP + 1
+    Ω0 = bo1_solution[8:end] * bo1_solution[7]
+
+    set_fits = Matrix{Float64}(undef, length(pf), 2)
+    for i in axes(set_fits, 1)
+        set_fits[i, :] = [fitness(pf[i])[1] fitness(pf[i])[2]]
+    end
+
+    scat = scatter(set_fits[:, 2], -set_fits[:, 1], ylabel="marginal likelhood", xlabel="maximum SR")
+    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), scat
+
+end
 
 """
 posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5])
