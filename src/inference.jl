@@ -92,10 +92,11 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     weightedfitness(f) = f[1] + weight * f[2]
-    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, ϵ=0.01, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness)) |> pareto_frontier
+    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, ϵ=0.01, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness))
 
-    best_obj1, idx_obj1 = findmin(map(elm -> fitness(elm)[2], EA_opt))
-    bo1_solution = BlackBoxOptim.params(EA_opt[idx_obj1])
+    pf = pareto_frontier(EA_opt)
+    best_obj1, idx_obj1 = findmin(map(elm -> fitness(elm)[2], pf))
+    bo1_solution = BlackBoxOptim.params(pf[idx_obj1])
     println("deviations from the target mSR: $best_obj1")
 
     p = bo1_solution[1] |> Int
@@ -109,7 +110,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
         Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
     end
 
-    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), EA_opt
 
 end
 
