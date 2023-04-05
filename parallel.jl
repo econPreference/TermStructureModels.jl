@@ -65,8 +65,9 @@ end
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
 tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
-# tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=10_000, weight=10_000, mSR_mean=0.75, upper_lag=6, upper_q1=0.1, upper_q45=1, σ²kQ_infty=0.01^2)
 save("tuned.jld2", "tuned", tuned)
+# tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=10_000, weight=10_000, mSR_mean=0.75, upper_lag=6, upper_q1=0.1, upper_q45=1, σ²kQ_infty=0.01^2)
+# save("tuned.jld2", "tuned", tuned, "EA_opt", EA_opt)
 tuned = load("tuned.jld2")["tuned"]
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
