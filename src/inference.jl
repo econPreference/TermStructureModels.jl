@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, upper_lag=9, upper_q1=1, upper_q45=100, upper_ΩFF=2, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q45=100, upper_ΩFF=2, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -39,7 +39,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1); upper_ΩFF * starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers()), starting)
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:6]
@@ -54,7 +54,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, upper_ΩFF=2, σ²kQ_infty=1)
+function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, upper_ΩFF=2, σ²kQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -88,7 +88,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
     weightedfitness(f) = f[1] + weight * f[2]
-    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, ϵ=0.01, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness))
+    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, ϵ=0.01, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness), PopulationSize=populationsize)
 
     pf = pareto_frontier(EA_opt)
     best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] - mSR_mean), pf))
