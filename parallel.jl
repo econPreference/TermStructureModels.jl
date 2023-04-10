@@ -113,7 +113,6 @@ saved_TP = load("TP.jld2")["TP"]
 exit()
 
 saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
-fitted = fitted_YieldCurve([1; τₙ], saved_Xθ)
 fitted = fitted_YieldCurve(collect(1:120), saved_Xθ)
 fitted_yield = mean(fitted)[:yields] / 1200
 log_price = -collect(1:120)' .* fitted_yield[tuned.p+1:end, :]
