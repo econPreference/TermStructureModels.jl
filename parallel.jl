@@ -33,10 +33,10 @@ begin ## Data: macro data
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
-            ρ[i] = 0.9
+            ρ[i] = 1.0
         else
             macros[:, i+1] = 12log.(macros[:, i+1])
-            ρ[i] = 0.9
+            ρ[i] = 1.0
         end
     end
     mean_macro = mean(Array(macros[:, 2:end]), dims=1)
