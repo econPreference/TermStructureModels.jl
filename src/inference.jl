@@ -39,7 +39,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize), starting)
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(best_candidate(x)[1]), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:6]
