@@ -134,9 +134,9 @@ end
 """
 mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
 """
-function mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
+function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1)
 
-    dP = dM + dimQ()
+    dP = size(macros, 2) + dimQ()
     pf = pareto_frontier(EA_opt)
     best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] - mSR_mean), pf))
     bo1_solution = BlackBoxOptim.params(pf[idx_obj1])
@@ -146,7 +146,12 @@ function mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
     q = bo1_solution[2:6]
     q[2] = q[1] * q[2]
     ν0 = bo1_solution[7] + dP + 1
-    Ω0 = bo1_solution[8:end] * bo1_solution[7]
+
+    PCs = PCA(yields, p)[1]
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
+    end
 
     set_fits = Matrix{Float64}(undef, length(pf), 2)
     for i in axes(set_fits, 1)
