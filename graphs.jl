@@ -70,6 +70,6 @@ plot(
 yield_res = max.(mean(prediction)[:yields], 0)
 yield_res[:, 1:3] .= 0
 Plots.surface(τₙ, DateTime("2020-03-01"):Month(1):DateTime("2020-12-01"), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_yield.pdf")
-macro_res = mean(prediction)[:factors][:, 4:end] .+ mean_macro |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
+macro_res = mean(prediction)[:factors][:, 4:end] |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
 rename!(macro_res, Dict("S&P 500" => "SP500"))
 @df macro_res[1:4, :] Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST], xlabel="time", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "SP500" "INVEST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")

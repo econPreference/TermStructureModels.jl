@@ -40,8 +40,8 @@ begin ## Data: macro data
         end
     end
     macros = macros[2:end, :]
-    mean_macro = mean(Array(macros[:, 2:end]), dims=1)
-    macros[:, 2:end] .-= mean_macro
+    # mean_macro = mean(Array(macros[:, 2:end]), dims=1)
+    # macros[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
 end
 
@@ -67,11 +67,11 @@ end
 tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, populationsize=100, σ²kQ_infty=0.02^2)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
-# tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1E+6, σ²kQ_infty=0.02^2, populationsize = 100)
+# tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1_000_000, σ²kQ_infty=0.02^2, populationsize = 100)
 # save("tuned_pf.jld2", "tuned", tuned, "EA_opt", EA_opt)
 # tuned = load("tuned_pf.jld2")["tuned"]
 # EA_opt = load("tuned_pf.jld2")["EA_opt"]
-# tuned, p = mSR_ML_frontier(EA_opt, size(macros, 2) - 1; mSR_mean=1.0, σ²kQ_infty=0.02^2)
+# tuned, p = mSR_ML_frontier(EA_opt, size(macros, 2) - 1; mSR_mean=2.0, σ²kQ_infty=0.02^2)
 # Plots.plot(p)
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
