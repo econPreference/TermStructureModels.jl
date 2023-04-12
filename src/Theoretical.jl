@@ -442,9 +442,6 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
 
     (; p, q, ν0, Ω0, σ²kQ_infty) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)
-    mean_PCs = mean(PCs, dims=1)
-    PCs .-= mean_PCs
-    mean_PCs = mean_PCs[1, :]
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
@@ -467,7 +464,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
         ϕ0 = C \ ϕ0
-        # KₚF = ϕ0[:, 1]
+        KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
 
         κQ = rand(prior_κQ_)
@@ -486,7 +483,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
         GQPP = T1X_ * GQ_XX(; κQ) / T1X_
         GQPF[:, 1:dQ] = GQPP
-        λP = -(KₚQ - mean_PCs + GQPP * mean_PCs)
+        λP = KₚF[1:dQ] - KₚQ
         ΛPF = GₚFF[1:dQ, :] - GQPF
 
         # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
