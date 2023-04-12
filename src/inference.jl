@@ -33,13 +33,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     PCs = PCA(yields, Int(upper_lag))[1]
     starting = [1, upper_q1 / 2, 1, 2, upper_q45 / 2, upper_q45 / 2, 1]
     for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], Int(upper_lag)))
+        push!(starting, AR_res_var([PCs macros][:, i], 1))
     end
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1); upper_ΩFF * starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(best_candidate(x)[1]), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
+    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[1])), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:6]
