@@ -71,7 +71,7 @@ tuned = load("tuned.jld2")["tuned"]
 # save("tuned_pf.jld2", "tuned", tuned, "EA_opt", EA_opt)
 # tuned = load("tuned_pf.jld2")["tuned"]
 # EA_opt = load("tuned_pf.jld2")["EA_opt"]
-# tuned, p = mSR_ML_frontier(EA_opt, size(macros, 2) - 1; mSR_mean=2.0, σ²kQ_infty=0.02^2)
+# tuned, p = mSR_ML_frontier(EA_opt, size(macros, 2) - 1; mSR_mean=1.0, σ²kQ_infty=0.02^2)
 # Plots.plot(p)
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
