@@ -36,7 +36,7 @@ begin ## Data: macro data
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
         else
-            macros[2:end, i+1] = 1200(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
+            macros[2:end, i+1] = 100(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
             ρ[i] = 0.0
         end
     end
