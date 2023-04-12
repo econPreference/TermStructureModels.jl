@@ -81,7 +81,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50,
     PCs = PCA(yields, Int(upper_lag))[1]
     starting = [1, upper_q1 / 2, 1, 2, upper_q45 / 2, upper_q45 / 2, 1]
     for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], Int(upper_lag)))
+        push!(starting, AR_res_var([PCs macros][:, i], 1))
     end
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1); upper_ΩFF * starting[8:end]]
