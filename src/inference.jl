@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q45=100, upper_ΩFF=2, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, upper_ΩFF=2, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -31,12 +31,12 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
 
     end
     PCs = PCA(yields, Int(upper_lag))[1]
-    starting = [1, upper_q1 / 2, 1, 2, upper_q45 / 2, upper_q45 / 2, 1]
+    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
     for i in 1:dP
         push!(starting, AR_res_var([PCs macros][:, i], 1))
     end
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1); upper_ΩFF * starting[8:end]]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1); upper_ΩFF * starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[1])), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
@@ -54,7 +54,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, upper_ΩFF=2, σ²kQ_infty=1)
+function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, upper_ΩFF=2, σ²kQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -79,12 +79,12 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50,
     end
 
     PCs = PCA(yields, Int(upper_lag))[1]
-    starting = [1, upper_q1 / 2, 1, 2, upper_q45 / 2, upper_q45 / 2, 1]
+    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
     for i in 1:dP
         push!(starting, AR_res_var([PCs macros][:, i], 1))
     end
     lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 0; zeros(dP)]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q45; upper_q45; size(yields, 1); upper_ΩFF * starting[8:end]]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1); upper_ΩFF * starting[8:end]]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
     weightedfitness(f) = f[1] + weight * f[2]
