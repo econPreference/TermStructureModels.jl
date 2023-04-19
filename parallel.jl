@@ -27,8 +27,8 @@ begin ## Data: macro data
         end
     end
     macros = macros[:, idx]
-    excluded = ["W875RX1", "IPFPNSS", "IPFINAL", "IPCONGD", "IPDCONGD", "IPNCONGD", "IPBUSEQ", "IPMAT", "IPDMAT", "IPNMAT", "IPMANSICS", "IPB51222S", "IPFUELS", "HWIURATIO", "CLF16OV", "CE16OV", "UEMPLT5", "UEMP5TO14", "UEMP15OV", "UEMP15T26", "UEMP27OV", "USGOOD", "CES1021000001", "USCONS", "MANEMP", "DMANEMP", "NDMANEMP", "SRVPRD", "USTPU", "USWTRADE", "USTRADE", "USFIRE", "USGOVT", "AWOTMAN", "AWHMAN", "CES2000000008", "CES3000000008", "HOUSTNE", "HOUSTMW", "HOUSTS", "HOUSTW", "PERMITNE", "PERMITMW", "PERMITS", "PERMITW", "NONBORRES", "DTCOLNVHFNM", "AAAFFM", "BAAFFM", "EXSZUSx", "EXJPUSx", "EXUSUKx", "EXCAUSx", "WPSFD49502", "WPSID61", "WPSID62", "CPIAPPSL", "CPITRNSL", "CPIMEDSL", "CUSR0000SAC", "CUSR0000SAS", "CUSR0000SA0L2", "CUSR0000SA0L5", "DNDGRG3M086SBEA", "DSERRG3M086SBEA"]
-    push!(excluded, "CMRMTSPLx", "RETAILx", "HWI", "UEMPMEAN", "CLAIMSx", "AMDMNOx", "ANDENOx", "AMDMUOx", "ISRATIOx", "BUSLOANS", "NONREVSL", "CONSPI", "S&P div yield", "S&P PE ratio", "M1SL", "BOGMBASE")
+    excluded = ["W875RX1", "IPFPNSS", "IPFINAL", "IPCONGD", "IPDCONGD", "IPNCONGD", "IPBUSEQ", "IPMAT", "IPDMAT", "IPNMAT", "IPMANSICS", "IPB51222S", "IPFUELS", "HWIURATIO", "CLF16OV", "CE16OV", "UEMPLT5", "UEMP5TO14", "UEMP15OV", "UEMP15T26", "UEMP27OV", "USGOOD", "CES1021000001", "USCONS", "MANEMP", "DMANEMP", "NDMANEMP", "SRVPRD", "USTPU", "USWTRADE", "USTRADE", "USFIRE", "USGOVT", "AWOTMAN", "AWHMAN", "CES2000000008", "CES3000000008", "HOUSTNE", "HOUSTMW", "HOUSTS", "HOUSTW", "PERMITNE", "PERMITMW", "PERMITS", "PERMITW", "NONBORRES", "DTCOLNVHFNM", "AAAFFM", "BAAFFM", "EXSZUSx", "EXJPUSx", "EXUSUKx", "EXCAUSx", "WPSFD49502", "WPSID61", "WPSID62", "CPIAPPSL", "CPITRNSL", "CPIMEDSL", "CUSR0000SAC", "CUSR0000SAS", "CPIULFSL", "CUSR0000SA0L2", "CUSR0000SA0L5", "DDURRG3M086SBEA", "DNDGRG3M086SBEA", "DSERRG3M086SBEA"]
+    push!(excluded, "CMRMTSPLx", "RETAILx", "HWI", "UEMPMEAN", "CLAIMSx", "AMDMNOx", "ANDENOx", "AMDMUOx", "BUSINVx", "ISRATIOx", "BUSLOANS", "NONREVSL", "CONSPI", "S&P: indust", "S&P div yield", "S&P PE ratio", "M1SL", "BOGMBASE")
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
@@ -65,7 +65,7 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, σ²kQ_infty=0.02^2, upper_q4=1.0, upper_q5=1.0)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # tuned, EA_opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1_000_000, σ²kQ_infty=0.02^2)
@@ -141,16 +141,16 @@ begin ## Data: macro data
     macros_extended = macros_extended[:, findall(x -> !(x ∈ excluded), names(macros_extended))]
     ρ = Vector{Float64}(undef, size(macros_extended[:, 2:end], 2))
     for i in axes(macros_extended[:, 2:end], 2) # i'th macro variable (excluding date)
-        if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE"]
-            macros_extended[:, i+1] = log.(macros_extended[:, i+1])
-            ρ[i] = 0.9
+        if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
+            macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+            ρ[i] = 0.0
         else
-            macros_extended[2:end, i+1] = 1200(log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1]))
-            ρ[i] = 0
+            macros_extended[2:end, i+1] = 100(log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1]))
+            ρ[i] = 0.0
         end
     end
     macros_extended = macros_extended[2:end, :]
-    macros_extended[:, 2:end] .-= mean_macro
+    # macros_extended[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
 end
 
