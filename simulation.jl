@@ -28,7 +28,7 @@ yields, latents, macros = generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, G�
 ## Turing hyper-parameters
 diag_G = diag_G[dimQ()+1:end]
 ρ = zeros(dP - dimQ())
-ρ[diag_G.>0.5] .= 0.9
+ρ[diag_G.>0.5] .= 1.0
 tuned = tuning_hyperparameter(yields, macros, τₙ, ρ)
 
 ## Estimating

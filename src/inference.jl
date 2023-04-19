@@ -26,7 +26,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         ν0 = input[7] + dP + 1
         Ω0 = Vector{Float64}(undef, dP)
         for i in eachindex(Ω0)
-            Ω0[i] = AR_res_var([PCs macros][:, i], p) * input[7]
+            Ω0[i] = AR_res_var([PCs macros][:, i], 1) * input[7]
         end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
@@ -49,7 +49,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     PCs = PCA(yields, p)[1]
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
-        Ω0[i] = AR_res_var([PCs macros][:, i], p) * best_candidate(EA_opt)[7]
+        Ω0[i] = AR_res_var([PCs macros][:, i], 1) * best_candidate(EA_opt)[7]
     end
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
@@ -78,7 +78,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50,
         ν0 = input[7] + dP + 1
         Ω0 = Vector{Float64}(undef, dP)
         for i in eachindex(Ω0)
-            Ω0[i] = AR_res_var([PCs macros][:, i], p) * input[7]
+            Ω0[i] = AR_res_var([PCs macros][:, i], 1) * input[7]
         end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
@@ -107,7 +107,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50,
     PCs = PCA(yields, p)[1]
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
-        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
+        Ω0[i] = AR_res_var([PCs macros][:, i], 1) * bo1_solution[7]
     end
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), EA_opt
@@ -150,7 +150,7 @@ function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1)
     PCs = PCA(yields, p)[1]
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
-        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
+        Ω0[i] = AR_res_var([PCs macros][:, i], 1) * bo1_solution[7]
     end
 
     set_fits = Matrix{Float64}(undef, length(pf), 2)
