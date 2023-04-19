@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, upper_ΩFF=2, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -24,28 +24,33 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         q = input[2:6]
         q[2] = q[1] * q[2]
         ν0 = input[7] + dP + 1
-        Ω0 = input[8:end] * input[7]
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = AR_res_var([PCs macros][:, i], p) * input[7]
+        end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ) + weight * max(0.0, mean(maximum_SR(yields, macros, tuned, τₙ, ρ)) - mSR_mean) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
-    PCs = PCA(yields, Int(upper_lag))[1]
+
     starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
-    for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], 1))
-    end
-    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0; zeros(dP)]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1); upper_ΩFF * starting[8:end]]
+    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[1])), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
 
     p = best_candidate(EA_opt)[1] |> Int
     q = best_candidate(EA_opt)[2:6]
     q[2] = q[1] * q[2]
     ν0 = best_candidate(EA_opt)[7] + dP + 1
-    Ω0 = best_candidate(EA_opt)[8:end] * best_candidate(EA_opt)[7]
+
+    PCs = PCA(yields, p)[1]
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * best_candidate(EA_opt)[7]
+    end
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
 
@@ -54,7 +59,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, upper_ΩFF=2, σ²kQ_infty=1)
+function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -71,22 +76,21 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50,
         q = input[2:6]
         q[2] = q[1] * q[2]
         ν0 = input[7] + dP + 1
-        Ω0 = input[8:end] * input[7]
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = AR_res_var([PCs macros][:, i], p) * input[7]
+        end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         return (-log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ; iteration=100))) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    PCs = PCA(yields, Int(upper_lag))[1]
     starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
-    for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], 1))
-    end
-    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0; zeros(dP)]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1); upper_ΩFF * starting[8:end]]
+    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1)]
     obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6 + dP)])
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     weightedfitness(f) = f[1] + weight * f[2]
     EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness), PopulationSize=populationsize)
 
@@ -99,7 +103,12 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50,
     q = bo1_solution[2:6]
     q[2] = q[1] * q[2]
     ν0 = bo1_solution[7] + dP + 1
-    Ω0 = bo1_solution[8:end] * bo1_solution[7]
+
+    PCs = PCA(yields, p)[1]
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
+    end
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), EA_opt
 
@@ -137,7 +146,12 @@ function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1)
     q = bo1_solution[2:6]
     q[2] = q[1] * q[2]
     ν0 = bo1_solution[7] + dP + 1
-    Ω0 = bo1_solution[8:end] * bo1_solution[7]
+
+    PCs = PCA(yields, p)[1]
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
+    end
 
     set_fits = Matrix{Float64}(undef, length(pf), 2)
     for i in axes(set_fits, 1)
