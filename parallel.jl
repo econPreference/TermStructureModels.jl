@@ -69,7 +69,7 @@ tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:en
 save("tuned.jld2", "tuned", tuned, "opt", opt)
 tuned = load("tuned.jld2")["tuned"]
 opt = load("tuned.jld2")["opt"]
-# pf, pf_input, opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
+# pf, pf_input, opt = tuning_hyperparameter_MOEA(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
 # save("tuned_pf.jld2", "pf", pf, "pf_input", pf_input, "opt", opt)
 # pf = load("tuned.jld2")["pf"]
 # pf_input = load("tuned.jld2")["pf_input"]

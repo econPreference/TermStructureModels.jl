@@ -56,7 +56,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, AR_res_lag=4)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, AR_res_lag=4)
 
 
     dQ = dimQ()
@@ -81,17 +81,16 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100
         Ω0 = AR_res * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))
+        return [-log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
     bounds = boxconstraints(lb=lx, ub=ux)
     function obj(input)
-        fa, fb = negative_log_marginal(input)
-        return [fa, fb], zeros(1), zeros(1)
+        return negative_log_marginal(input), zeros(1), zeros(1)
     end
-    opt = optimize(obj, bounds, NSGA3(; N=populationsize, options=Options(debug=true, iterations=maxiter)))
+    opt = optimize(obj, bounds, NSGA3(; N=populationsize, options=Options(; verbose=true, iterations=maxiter)))
 
     pf = pareto_front(opt)
     pf_input = Vector{HyperParameter}(undef, size(pf, 1))
