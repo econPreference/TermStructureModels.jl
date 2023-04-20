@@ -216,7 +216,7 @@ export
 
     # inference.jl
     tuning_hyperparameter,
-    tuning_hyperparameter_mSR,
+    tuning_hyperparameter_MOEA,
     AR_res_var,
     mSR_ML_frontier,
     generative,
