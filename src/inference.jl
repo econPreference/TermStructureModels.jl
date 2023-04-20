@@ -18,9 +18,9 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     function negative_log_marginal(input)
 
-        input = max.(input, lx)
-        input = min.(input, ux)
-
+        if sum(input .< lx) + sum(ux .< input) > 0
+            return Inf
+        end
         # parameters
         p = max(1, ceil(Int, input[1]))
         q = input[2:6]
@@ -67,8 +67,9 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100
 
     function negative_log_marginal(input)
 
-        input = max.(input, lx)
-        input = min.(input, ux)
+        if sum(input .< lx) + sum(ux .< input) > 0
+            return Inf
+        end
 
         # parameters
         p = max(1, ceil(Int, input[1]))
@@ -104,7 +105,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100
         pf_input[i] = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
     end
 
-    return pf, pf_input, opt
+    return [-pf[:, 1], pf[:, 2]], pf_input, opt
 
 end
 
