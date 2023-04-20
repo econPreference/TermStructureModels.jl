@@ -45,6 +45,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     p = minimizer(opt)[1] |> x -> max(1, ceil(Int, x))
     q = minimizer(opt)[2:6]
     q[2] = q[1] * q[2]
+    q[3] = 2
     ν0 = minimizer(opt)[7] + dP + 1
     Ω0 = AR_res * minimizer(opt)[7]
 
