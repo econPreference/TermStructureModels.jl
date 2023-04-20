@@ -131,7 +131,7 @@ function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1, u
     q[2] = q[1] * q[2]
     ν0 = bo1_solution[7] + dP + 1
 
-    PCs, ~, Wₚ = PCA(yields, upper_lag)
+    PCs = PCA(yields, upper_lag)[1]
     AR_res_var_vec = Vector{Float64}(undef, dP)
     for i in eachindex(AR_res_var_vec)
         AR_res_var_vec[i] = AR_res_var([PCs macros][:, i], AR_res_lag)
