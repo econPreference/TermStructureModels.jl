@@ -7,12 +7,12 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=1, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf, AR_res_lag=4)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, upper_lag)
-    AR_res = [AR_res_var([PCs macros][:, i], 1) for i in 1:dP]
+    AR_res = [AR_res_var([PCs macros][:, i], AR_res_lag) for i in 1:dP]
     lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); eps()]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 2 + eps(); upper_q4; upper_q5; size(yields, 1)]
 
@@ -55,13 +55,13 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100, maxiter=1, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
+function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, AR_res_lag=4)
 
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, upper_lag)
-    AR_res = [AR_res_var([PCs macros][:, i], 1) for i in 1:dP]
+    AR_res = [AR_res_var([PCs macros][:, i], AR_res_lag) for i in 1:dP]
     lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); eps()]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 2 + eps(); upper_q4; upper_q5; size(yields, 1)]
 
