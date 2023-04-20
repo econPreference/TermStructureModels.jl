@@ -13,7 +13,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, upper_lag)
     AR_res = [AR_res_var([PCs macros][:, i], AR_res_lag) for i in 1:dP]
-    lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); eps()]
+    lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); 1]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 2 + eps(); upper_q4; upper_q5; size(yields, 1)]
 
     function negative_log_marginal(input)
@@ -63,7 +63,7 @@ function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, upper_lag)
     AR_res = [AR_res_var([PCs macros][:, i], AR_res_lag) for i in 1:dP]
-    lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); eps()]
+    lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); 1]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 2 + eps(); upper_q4; upper_q5; size(yields, 1)]
 
     function negative_log_marginal(input)
