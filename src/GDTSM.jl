@@ -1,7 +1,7 @@
 module GDTSM
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, BlackBoxOptim, Distributed, PositiveFactorizations, Plots
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, Distributed, PositiveFactorizations, Plots, Metaheuristics
 import Distributions: TDist
 import Base: getindex
 import Statistics: mean, median, std, var, quantile

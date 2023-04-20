@@ -7,110 +7,104 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=1, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
+    PCs, ~, Wₚ = PCA(yields, upper_lag)
+    AR_res = [AR_res_var([PCs macros][:, i], 1) for i in 1:dP]
+    lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); eps()]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2 + eps(); upper_q4; upper_q5; size(yields, 1)]
 
-    function negative_log_marginal(input, p_max_)
+    function negative_log_marginal(input)
+
+        input = max.(input, lx)
+        input = min.(input, ux)
 
         # parameters
-        PCs, ~, Wₚ = PCA(yields, p_max_)
-
-        p = Int(input[1])
-        if p < 1
-            return Inf
-        end
+        p = max(1, ceil(Int, input[1]))
         q = input[2:6]
         q[2] = q[1] * q[2]
+        q[3] = 2
         ν0 = input[7] + dP + 1
-        Ω0 = Vector{Float64}(undef, dP)
-        for i in eachindex(Ω0)
-            Ω0[i] = AR_res_var([PCs macros][:, i], 1) * input[7]
-        end
+        Ω0 = AR_res * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ) + weight * max(0.0, mean(maximum_SR(yields, macros, tuned, τₙ, ρ)) - mSR_mean) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))
+        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
-    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1)]
-    obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
-    EA_opt = bboptimize(bbsetup(obj_EA; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[1])), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
+    bounds = boxconstraints(lb=lx, ub=ux)
+    function obj(input)
+        fx, gx = negative_log_marginal(input)
+        fx, [gx - mSR_mean], zeros(1)
+    end
+    opt = optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter)))
 
-    p = best_candidate(EA_opt)[1] |> Int
-    q = best_candidate(EA_opt)[2:6]
+    p = minimizer(opt)[1] |> x -> max(1, ceil(Int, x))
+    q = minimizer(opt)[2:6]
     q[2] = q[1] * q[2]
-    ν0 = best_candidate(EA_opt)[7] + dP + 1
+    ν0 = minimizer(opt)[7] + dP + 1
+    Ω0 = AR_res * minimizer(opt)[7]
 
-    PCs = PCA(yields, p)[1]
-    Ω0 = Vector{Float64}(undef, dP)
-    for i in eachindex(Ω0)
-        Ω0[i] = AR_res_var([PCs macros][:, i], 1) * best_candidate(EA_opt)[7]
-    end
-
-    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
 
 end
 
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
+function tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; populationsize=100, maxiter=1, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
+
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
+    PCs, ~, Wₚ = PCA(yields, upper_lag)
+    AR_res = [AR_res_var([PCs macros][:, i], 1) for i in 1:dP]
+    lx = 0.0 .+ [eps(); eps(); eps(); 2; eps(); eps(); eps()]
+    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2 + eps(); upper_q4; upper_q5; size(yields, 1)]
 
-    function negative_log_marginal(input, p_max_)
+    function negative_log_marginal(input)
+
+        input = max.(input, lx)
+        input = min.(input, ux)
 
         # parameters
-        PCs, ~, Wₚ = PCA(yields, p_max_)
-
-        p = Int(input[1])
-        if p < 1
-            return Inf
-        end
+        p = max(1, ceil(Int, input[1]))
         q = input[2:6]
         q[2] = q[1] * q[2]
+        q[3] = 2
         ν0 = input[7] + dP + 1
-        Ω0 = Vector{Float64}(undef, dP)
-        for i in eachindex(Ω0)
-            Ω0[i] = AR_res_var([PCs macros][:, i], 1) * input[7]
-        end
+        Ω0 = AR_res * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return (-log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ; iteration=100))) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        return -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))
+        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
-    lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 0]
-    ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1)]
-    obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
-    weightedfitness(f) = f[1] + weight * f[2]
-    EA_opt = bboptimize(obj_EA, starting; Method=:borg_moea, SearchSpace=ss, MaxSteps=maxstep, FitnessScheme=ParetoFitnessScheme{2}(is_minimizing=true, aggregator=weightedfitness), PopulationSize=populationsize)
+    bounds = boxconstraints(lb=lx, ub=ux)
+    function obj(input)
+        fa, fb = negative_log_marginal(input)
+        return [fa, fb], zeros(1), zeros(1)
+    end
+    opt = optimize(obj, bounds, NSGA3(; N=populationsize, options=Options(debug=true, iterations=maxiter)))
 
-    pf = pareto_frontier(EA_opt)
-    best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] - mSR_mean), pf))
-    bo1_solution = BlackBoxOptim.params(pf[idx_obj1])
-    println("deviations from the target mSR(= $(mSR_mean)): $best_obj1")
-
-    p = bo1_solution[1] |> Int
-    q = bo1_solution[2:6]
-    q[2] = q[1] * q[2]
-    ν0 = bo1_solution[7] + dP + 1
-
-    PCs = PCA(yields, p)[1]
-    Ω0 = Vector{Float64}(undef, dP)
-    for i in eachindex(Ω0)
-        Ω0[i] = AR_res_var([PCs macros][:, i], 1) * bo1_solution[7]
+    pf = pareto_front(opt)
+    pf_input = Vector{HyperParameter}(undef, size(pf, 1))
+    for i in eachindex(pf_input)
+        input = opt.population[i].x
+        p = max(1, ceil(Int, input[1]))
+        q = input[2:6]
+        q[2] = q[1] * q[2]
+        q[3] = 2
+        ν0 = input[7] + dP + 1
+        Ω0 = AR_res * input[7]
+        pf_input[i] = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
     end
 
-    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), EA_opt
+    return pf, pf_input, opt
 
 end
 
@@ -129,38 +123,6 @@ function AR_res_var(TS::Vector, p)
     end
     M = I(T) - X * ((X'X) \ X')
     return var(M * Y)
-end
-
-"""
-mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
-"""
-function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1)
-
-    dP = size(macros, 2) + dimQ()
-    pf = pareto_frontier(EA_opt)
-    best_obj1, idx_obj1 = findmin(map(elm -> abs(fitness(elm)[2] - mSR_mean), pf))
-    bo1_solution = BlackBoxOptim.params(pf[idx_obj1])
-    println("deviations from the target mSR(= $(mSR_mean)): $best_obj1")
-
-    p = bo1_solution[1] |> Int
-    q = bo1_solution[2:6]
-    q[2] = q[1] * q[2]
-    ν0 = bo1_solution[7] + dP + 1
-
-    PCs = PCA(yields, p)[1]
-    Ω0 = Vector{Float64}(undef, dP)
-    for i in eachindex(Ω0)
-        Ω0[i] = AR_res_var([PCs macros][:, i], 1) * bo1_solution[7]
-    end
-
-    set_fits = Matrix{Float64}(undef, length(pf), 2)
-    for i in axes(set_fits, 1)
-        set_fits[i, :] = [fitness(pf[i])[1] fitness(pf[i])[2]]
-    end
-
-    scat = scatter(set_fits[:, 2], -set_fits[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
-    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), scat
-
 end
 
 """
