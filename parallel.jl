@@ -66,14 +66,15 @@ end
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
 tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
-save("tuned.jld2", "tuned", tuned)
+save("tuned.jld2", "tuned", tuned, "opt", opt)
 tuned = load("tuned.jld2")["tuned"]
+opt = load("tuned.jld2")["opt"]
 # pf, pf_input, opt = tuning_hyperparameter_mSR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
-# save("tuned_pf.jld2", "tuned", tuned, "EA_opt", EA_opt)
-# tuned = load("tuned_pf.jld2")["tuned"]
-# EA_opt = load("tuned_pf.jld2")["EA_opt"]
-# tuned, p = mSR_ML_frontier(EA_opt, Array(yields[:, 2:end]), Array(macros[:, 2:end]); mSR_mean=1.0, σ²kQ_infty=0.02^2)
-# Plots.plot(p)
+# save("tuned_pf.jld2", "pf", pf, "pf_input", pf_input, "opt", opt)
+# pf = load("tuned.jld2")["pf"]
+# pf_input = load("tuned.jld2")["pf_input"]
+# opt = load("tuned.jld2")["opt"]
+# Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
 ## Estimation
