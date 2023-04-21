@@ -9,8 +9,8 @@ using Conda, Pkg
 ENV["R_HOME"] = "C:/Program Files/R/R-4.2.3" # For my windows computer
 Pkg.build("RCall")
 using RCall
-R"install.packages('MASS', repos='https://cloud.r-project.org/', type = 'binary')"
-R"install.packages('qgraph', repos='https://cloud.r-project.org/', type = 'binary')"
-R"install.packages('GIGrvg', repos='https://cloud.r-project.org/', type = 'binary')"
-println("All R packages are installed.")
+# R"install.packages('MASS', repos='https://cloud.r-project.org/', type = 'binary')"
+# R"install.packages('qgraph', repos='https://cloud.r-project.org/', type = 'binary')"
+# R"install.packages('GIGrvg', repos='https://cloud.r-project.org/', type = 'binary')"
+# println("All R packages are installed.")
 ######################
