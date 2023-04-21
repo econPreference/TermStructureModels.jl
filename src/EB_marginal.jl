@@ -19,7 +19,7 @@ function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, W
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     T = size(yϕ, 1)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
-    if mean(vec(var.(prior_ϕ0_[:, end-dP+1:end]))) < 1e-6
+    if mean(vec(var.(prior_ϕ0_[:, end-dP+1:end]))) < (0.001)^2
         return -Inf
     end
     prior_C_ = prior_C(; Ω0)
