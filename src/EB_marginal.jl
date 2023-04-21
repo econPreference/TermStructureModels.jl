@@ -19,6 +19,9 @@ function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, W
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     T = size(yϕ, 1)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
+    if max(vec(var.(prior_ϕ0_[:, end-dP+1:end]))) < 1e-8
+        return -Inf
+    end
     prior_C_ = prior_C(; Ω0)
     prior_ϕ = hcat(prior_ϕ0_, prior_C_)
     m = mean.(prior_ϕ)
