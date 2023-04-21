@@ -7,14 +7,14 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf, upper_Omega=2)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
+    lx = 0.0 .+ [eps(); eps(); eps(); eps(); eps(); 1]
+    ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag) for i in 1:dP]
-    lx = 0.0 .+ [eps(); eps(); eps(); eps(); eps(); 1; eps() * ones(dP)]
-    ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1); upper_Omega * AR_re_var_vec]
 
     function negative_log_marginal(input)
 
@@ -22,7 +22,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         q = input[1:5]
         q[2] = q[1] * q[2]
         ν0 = input[6] + dP + 1
-        Ω0 = input[7:end] * input[6]
+        Ω0 = AR_re_var_vec * input[6]
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         if isinf(mSR_mean)
@@ -44,7 +44,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     q = minimizer(opt)[1:5]
     q[2] = q[1] * q[2]
     ν0 = minimizer(opt)[6] + dP + 1
-    Ω0 = minimizer(opt)[7:end] * minimizer(opt)[6]
+    Ω0 = AR_re_var_vec * minimizer(opt)[6]
 
     return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
 
@@ -53,14 +53,14 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, upper_Omega=2)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
+    lx = 0.0 .+ [eps(); eps(); eps(); eps(); eps(); 1]
+    ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag) for i in 1:dP]
-    lx = 0.0 .+ [eps(); eps(); eps(); eps(); eps(); 1; eps() * ones(dP)]
-    ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1); upper_Omega * AR_re_var_vec]
 
     function negative_log_marginal(input)
 
@@ -68,7 +68,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         q = input[1:5]
         q[2] = q[1] * q[2]
         ν0 = input[6] + dP + 1
-        Ω0 = input[7:end] * input[6]
+        Ω0 = AR_re_var_vec * input[6]
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))]
@@ -89,7 +89,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         q = input[1:5]
         q[2] = q[1] * q[2]
         ν0 = input[6] + dP + 1
-        Ω0 = input[7:end] * input[6]
+        Ω0 = AR_re_var_vec * input[6]
 
         pf_input[i] = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
     end
