@@ -14,11 +14,12 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra
 import Plots
 
 ## Setting
+τₙ = [3; 6; collect(12:12:120)]
 date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
-τₙ = [3; 6; collect(12:12:120)]
+
 p_max = 12
-step = 0
+step = 1
 lag = 1
 iteration = 25_000
 burnin = 5000
