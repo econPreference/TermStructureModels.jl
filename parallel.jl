@@ -12,7 +12,7 @@ end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra
 import Plots
-date_start = Date("1986-12-01", "yyyy-mm-dd")
+date_start = Date("1986-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 begin ## Data: macro data
@@ -33,14 +33,14 @@ begin ## Data: macro data
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
-            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
-            ρ[i] = 0.0
+            macros[13:end, i+1] = macros[13:end, i+1] - macros[1:end-12, i+1]
+            ρ[i] = 0.9
         else
-            macros[2:end, i+1] = 100(log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]))
-            ρ[i] = 0.0
+            macros[13:end, i+1] = 100(log.(macros[13:end, i+1]) - log.(macros[1:end-12, i+1]))
+            ρ[i] = 0.9
         end
     end
-    macros = macros[2:end, :]
+    macros = macros[13:end, :]
     # mean_macro = mean(Array(macros[:, 2:end]), dims=1)
     # macros[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
@@ -60,12 +60,12 @@ begin ## Data: yield data
     yields = DataFrame([Matrix(yield_month) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
     yields = [yield_year[:, 1] yields]
     rename!(yields, Dict(:x1 => "date"))
-    yields = yields[2:end, :]
+    yields = yields[13:end, :]
 end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000)
+tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
 # tuned, opt = tuning_hyperparameter_MOEA(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1_000_000)
@@ -126,7 +126,7 @@ mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
 ## Scenario
 begin ## Data: macro data
     R"library(fbi)"
-    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1986-12-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
+    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1986-01-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
     excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
     macros_extended = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
@@ -142,14 +142,14 @@ begin ## Data: macro data
     ρ = Vector{Float64}(undef, size(macros_extended[:, 2:end], 2))
     for i in axes(macros_extended[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
-            macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+            macros_extended[13:end, i+1] = macros_extended[13:end, i+1] - macros_extended[1:end-12, i+1]
             ρ[i] = 0.0
         else
-            macros_extended[2:end, i+1] = 100(log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1]))
+            macros_extended[13:end, i+1] = 100(log.(macros_extended[13:end, i+1]) - log.(macros_extended[1:end-12, i+1]))
             ρ[i] = 0.0
         end
     end
-    macros_extended = macros_extended[2:end, :]
+    macros_extended = macros_extended[13:end, :]
     # macros_extended[:, 2:end] .-= mean_macro
     # macros[:, 2:end] ./= std(Array(macros[:, 2:end]), dims=1)
 end
