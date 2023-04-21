@@ -65,11 +65,22 @@ end
 
 ## Tuning hyper-parameters
 τₙ = [3; 6; collect(12:12:120)]
-tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
+p_max = 12
+par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
+    tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i)
+end
+tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
+opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
 save("tuned.jld2", "tuned", tuned, "opt", opt)
 tuned = load("tuned.jld2")["tuned"]
 opt = load("tuned.jld2")["opt"]
-# pf, pf_input, opt = tuning_hyperparameter_MOEA(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
+
+# par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
+#     tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i)
+# end
+# pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
+# pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
+# opt = [par_tuned[i][3] for i in eachindex(par_tuned)]
 # save("tuned_pf.jld2", "pf", pf, "pf_input", pf_input, "opt", opt)
 # pf = load("tuned.jld2")["pf"]
 # pf_input = load("tuned.jld2")["pf_input"]
