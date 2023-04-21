@@ -143,10 +143,10 @@ begin ## Data: macro data
     for i in axes(macros_extended[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
             macros_extended[13:end, i+1] = macros_extended[13:end, i+1] - macros_extended[1:end-12, i+1]
-            ρ[i] = 0.0
+            ρ[i] = 0.9
         else
             macros_extended[13:end, i+1] = 100(log.(macros_extended[13:end, i+1]) - log.(macros_extended[1:end-12, i+1]))
-            ρ[i] = 0.0
+            ρ[i] = 0.9
         end
     end
     macros_extended = macros_extended[13:end, :]
