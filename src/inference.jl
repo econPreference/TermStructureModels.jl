@@ -19,7 +19,11 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         q = starting[2:6]
         q[2] = q[1] * q[2]
         ν0 = starting[7] + dP + 1
-        Ω0 = AR_res_var_vec * starting[7]
+
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = AR_res_var([PCs macros][:, i], p) * starting[7]
+        end
 
         weight = 10^(ndigits(Int(floor(Int, -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), τₙ, Wₚ; medium_τ)))) + 1)
     end
@@ -80,7 +84,11 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50
         q = starting[2:6]
         q[2] = q[1] * q[2]
         ν0 = starting[7] + dP + 1
-        Ω0 = AR_res_var_vec * starting[7]
+
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = AR_res_var([PCs macros][:, i], p) * starting[7]
+        end
 
         weight = 10^(ndigits(Int(floor(Int, -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), τₙ, Wₚ; medium_τ)))) + 1)
     end
