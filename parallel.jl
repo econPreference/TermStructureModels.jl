@@ -82,9 +82,9 @@ opt = load("tuned.jld2")["opt"]
 # pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
 # opt = [par_tuned[i][3] for i in eachindex(par_tuned)]
 # save("tuned_pf.jld2", "pf", pf, "pf_input", pf_input, "opt", opt)
-# pf = load("tuned.jld2")["pf"]
-# pf_input = load("tuned.jld2")["pf_input"]
-# opt = load("tuned.jld2")["opt"]
+# pf = load("tuned_pf.jld2")["pf"]
+# pf_input = load("tuned_pf.jld2")["pf_input"]
+# opt = load("tuned_pf.jld2")["opt"]
 # Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
