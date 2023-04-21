@@ -12,7 +12,12 @@ import Statistics: mean, median, std, var, quantile
 # 3. In R, run " install.packages("GIGrvg") " and " install.packages("glasso") " to install the packages
 # 4. In Juila, run  " ENV["R_HOME"]="...the address in step 2..." "
 # 5. In Juila, run " using Pkg " and " Pkg.add("RCall") "
+using Conda
+ENV["R_HOME"] = "*"
 using RCall
+R"install.packages('MASS', repos='https://cloud.r-project.org/')"
+R"install.packages('qgraph', repos='https://cloud.r-project.org/')"
+R"install.packages('GIGrvg', repos='https://cloud.r-project.org/')"
 ######################
 
 """
