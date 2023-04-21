@@ -9,7 +9,7 @@ log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[
 function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
 
     (; p, ν0, Ω0, q) = HyperParameter_
-    if q[1] / (p^q[3]) < (0.001)^2
+    if q[1] / (p^q[3]) < (0.1)^2
         return -Inf
     end
 

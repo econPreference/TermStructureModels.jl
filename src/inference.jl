@@ -7,15 +7,11 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=12, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, weight=[], mSR_mean=Inf, AR_res_lag=4)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=12, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, weight=[], mSR_mean=Inf)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, upper_lag)
-    AR_res_var_vec = Vector{Float64}(undef, dP)
-    for i in eachindex(AR_res_var_vec)
-        AR_res_var_vec[i] = AR_res_var([PCs macros][:, i], AR_res_lag)
-    end
 
     starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
     if isempty(weight)
@@ -35,7 +31,10 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         q = input[2:6]
         q[2] = q[1] * q[2]
         ν0 = input[7] + dP + 1
-        Ω0 = AR_res_var_vec * input[7]
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = AR_res_var([PCs macros][:, i], p) * input[7]
+        end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         if isinf(mSR_mean)
@@ -56,7 +55,11 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     q = best_candidate(EA_opt)[2:6]
     q[2] = q[1] * q[2]
     ν0 = best_candidate(EA_opt)[7] + dP + 1
-    Ω0 = AR_res_var_vec * best_candidate(EA_opt)[7]
+
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * best_candidate(EA_opt)[7]
+    end
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
 
@@ -65,15 +68,11 @@ end
 """
 tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=[], mSR_mean=1.0, upper_lag=12, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, AR_res_lag=4)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=[], mSR_mean=1.0, upper_lag=12, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, upper_lag)
-    AR_res_var_vec = Vector{Float64}(undef, dP)
-    for i in eachindex(AR_res_var_vec)
-        AR_res_var_vec[i] = AR_res_var([PCs macros][:, i], AR_res_lag)
-    end
 
     starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
     if isempty(weight)
@@ -93,7 +92,10 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50
         q = input[2:6]
         q[2] = q[1] * q[2]
         ν0 = input[7] + dP + 1
-        Ω0 = AR_res_var_vec * input[7]
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = AR_res_var([PCs macros][:, i], p) * input[7]
+        end
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         return (-log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ; iteration=100))) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -115,7 +117,11 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50
     q = bo1_solution[2:6]
     q[2] = q[1] * q[2]
     ν0 = bo1_solution[7] + dP + 1
-    Ω0 = AR_res_var_vec * bo1_solution[7]
+
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
+    end
 
     return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), EA_opt
 
@@ -141,7 +147,7 @@ end
 """
 mSR_ML_frontier(EA_opt, dM; mSR_mean=1.0, σ²kQ_infty=1)
 """
-function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1, upper_lag=9, AR_res_lag=4)
+function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1, upper_lag=12)
 
     dP = size(macros, 2) + dimQ()
     pf = pareto_frontier(EA_opt)
@@ -155,11 +161,10 @@ function mSR_ML_frontier(EA_opt, yields, macros; mSR_mean=1.0, σ²kQ_infty=1, u
     ν0 = bo1_solution[7] + dP + 1
 
     PCs = PCA(yields, upper_lag)[1]
-    AR_res_var_vec = Vector{Float64}(undef, dP)
-    for i in eachindex(AR_res_var_vec)
-        AR_res_var_vec[i] = AR_res_var([PCs macros][:, i], AR_res_lag)
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = AR_res_var([PCs macros][:, i], p) * bo1_solution[7]
     end
-    Ω0 = AR_res_var_vec * bo1_solution[7]
 
     set_fits = Matrix{Float64}(undef, length(pf), 2)
     for i in axes(set_fits, 1)
