@@ -14,7 +14,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     PCs, ~, Wₚ = PCA(yields, lag)
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag) for i in 1:dP]
     lx = 0.0 .+ [eps(), eps(), eps(), eps(), eps(), 1, eps() * ones(dP)]
-    ux = 0.0 .+ [upper_q1, 1, 10, upper_q4, upper_q5, size(yields, 1); upper_Omega * AR_re_var_vec]
+    ux = 0.0 .+ [upper_q1, 1, 10, upper_q4, upper_q5, size(yields, 1), upper_Omega * AR_re_var_vec]
 
     function negative_log_marginal(input)
 
@@ -60,7 +60,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     PCs, ~, Wₚ = PCA(yields, lag)
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag) for i in 1:dP]
     lx = 0.0 .+ [eps(), eps(), eps(), eps(), eps(), 1, eps() * ones(dP)]
-    ux = 0.0 .+ [upper_q1, 1, 10, upper_q4, upper_q5, size(yields, 1); upper_Omega * AR_re_var_vec]
+    ux = 0.0 .+ [upper_q1, 1, 10, upper_q4, upper_q5, size(yields, 1), upper_Omega * AR_re_var_vec]
 
     function negative_log_marginal(input)
 
