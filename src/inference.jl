@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, weight=0.0, mSR_mean=1.0, AR_res_lag=4)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, weight=[], mSR_mean=Inf, AR_res_lag=4)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -17,10 +17,20 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         AR_res_var_vec[i] = AR_res_var([PCs macros][:, i], AR_res_lag)
     end
 
+    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
+    if isempty(weight)
+        p = Int(starting[1])
+        q = starting[2:6]
+        q[2] = q[1] * q[2]
+        ν0 = starting[7] + dP + 1
+        Ω0 = AR_res_var_vec * starting[7]
+
+        weight = 10^(ndigits(Int(floor(Int, -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), τₙ, Wₚ; medium_τ)))) + 1)
+    end
+
     function negative_log_marginal(input)
 
         # parameters
-
         p = Int(input[1])
         q = input[2:6]
         q[2] = q[1] * q[2]
@@ -28,11 +38,15 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         Ω0 = AR_res_var_vec * input[7]
 
         tuned = HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ) + weight * max(0.0, mean(maximum_SR(yields, macros, tuned, τₙ, ρ)) - mSR_mean) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        if isinf(mSR_mean)
+            return -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ)
+        else
+            return -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, tuned, τₙ, Wₚ; medium_τ) + weight * max(0.0, mean(maximum_SR(yields, macros, tuned, τₙ, ρ)) - mSR_mean)
+        end
+        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
     lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 1]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1)]
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
@@ -51,7 +65,7 @@ end
 """
 tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, AR_res_lag=4)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], weight=[], mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, AR_res_lag=4)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -61,10 +75,20 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50
         AR_res_var_vec[i] = AR_res_var([PCs macros][:, i], AR_res_lag)
     end
 
+    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
+    if isempty(weight)
+        p = Int(starting[1])
+        q = starting[2:6]
+        q[2] = q[1] * q[2]
+        ν0 = starting[7] + dP + 1
+        Ω0 = AR_res_var_vec * starting[7]
+
+        weight = 10^(ndigits(Int(floor(Int, -log_marginal(PCs[(upper_lag-p)+1:end, :], macros[(upper_lag-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), τₙ, Wₚ; medium_τ)))) + 1)
+    end
+
     function negative_log_marginal(input)
 
         # parameters
-
         p = Int(input[1])
         q = input[2:6]
         q[2] = q[1] * q[2]
@@ -76,7 +100,6 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50
 
     end
 
-    starting = [1, upper_q1 / 2, 1, 2, upper_q4 / 2, upper_q5 / 2, 1]
     lx = 0.0 .+ [1; 0; 0; 2; 0; 0; 1]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 2; upper_q4; upper_q5; size(yields, 1)]
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])

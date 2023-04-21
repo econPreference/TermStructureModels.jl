@@ -34,10 +34,10 @@ begin ## Data: macro data
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
             macros[13:end, i+1] = macros[13:end, i+1] - macros[1:end-12, i+1]
-            ρ[i] = 0.9
+            ρ[i] = 1.0
         else
             macros[13:end, i+1] = 100(log.(macros[13:end, i+1]) - log.(macros[1:end-12, i+1]))
-            ρ[i] = 0.9
+            ρ[i] = 1.0
         end
     end
     macros = macros[13:end, :]
@@ -68,7 +68,7 @@ end
 tuned = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ)
 save("tuned.jld2", "tuned", tuned)
 tuned = load("tuned.jld2")["tuned"]
-# tuned, opt = tuning_hyperparameter_MOEA(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000, weight=1_000_000)
+# tuned, opt = tuning_hyperparameter_MOEA(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; maxstep=50_000)
 # save("tuned_pf.jld2", "tuned", tuned, "opt", opt)
 # tuned = load("tuned_pf.jld2")["tuned"]
 # opt = load("tuned_pf.jld2")["opt"]
