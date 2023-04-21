@@ -10,9 +10,8 @@ import Statistics: mean, median, std, var, quantile
 # 1. Install R form internet
 # 2. In R, run " R.home() " and copy the home address
 # 3. In R, run " install.packages("GIGrvg") " and " install.packages("glasso") " to install the packages
-# 4. In Juila, run  " ENV["R_HOME"]="" "
-# 5. In Juila, run  " ENV["PATH"]="...the address in step 2..." "
-# 6. In Juila, run " using Pkg " and " Pkg.add("RCall") "
+# 4. In Juila, run  " ENV["R_HOME"]="...the address in step 2..." "
+# 5. In Juila, run " using Pkg " and " Pkg.add("RCall") "
 using RCall
 ######################
 
