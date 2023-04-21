@@ -80,7 +80,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     function obj(input)
         return negative_log_marginal(input), zeros(1), zeros(1)
     end
-    opt = optimize(obj, bounds, NSGA3(; N=populationsize, options=Options(; verbose=true, iterations=maxiter)))
+    opt = optimize(obj, bounds, CCMO(NSGA2(; N=populationsize); options=Options(; verbose=true, iterations=maxiter)))
 
     pf = pareto_front(opt)
     pf_input = Vector{HyperParameter}(undef, size(pf, 1))
