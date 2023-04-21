@@ -47,7 +47,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
 
     end
 
-    lx = 0.0 .+ [1; 0; 0; 1; 0; 0; 1]
+    lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 1]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     EA_opt = bboptimize(bbsetup(negative_log_marginal; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[1])), q = $(best_candidate(x)[2:6].*[1,best_candidate(x)[2],1,1,1]), ν0 = $(best_candidate(x)[7] + dP + 1)")), starting)
@@ -100,7 +100,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=50
 
     end
 
-    lx = 0.0 .+ [1; 0; 0; 1; 0; 0; 1]
+    lx = 0.0 .+ [1; 0; 0; 0; 0; 0; 1]
     ux = 0.0 .+ [upper_lag; upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 6)])
     weightedfitness(f) = f[1] + weight * f[2]
