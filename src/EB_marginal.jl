@@ -9,6 +9,10 @@ log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[
 function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
 
     (; p, ν0, Ω0, q) = HyperParameter_
+    if q[1] / (p^q[3]) < (0.01)^2
+        return -Inf
+    end
+
     prior_κQ_ = prior_κQ(medium_τ)
     dP = length(Ω0)
     if isempty(ψ) || isempty(ψ0)
@@ -19,10 +23,6 @@ function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, W
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     T = size(yϕ, 1)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
-    if minimum(vec(var.(prior_ϕ0_))) < 1e-10
-        return -Inf
-    end
-
     prior_C_ = prior_C(; Ω0)
     prior_ϕ = hcat(prior_ϕ0_, prior_C_)
     m = mean.(prior_ϕ)
