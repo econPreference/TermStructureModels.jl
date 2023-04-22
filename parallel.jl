@@ -19,7 +19,7 @@ date_start = Date("1986-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 1
+step = 0
 lag = 1
 iteration = 25_000
 burnin = 5000
@@ -206,9 +206,9 @@ elseif step == 3 ## Statistical inference
     vals[4:end] = macros_extended[end-9, 2:end] |> Array
     push!(scene, Scenario(combinations=combs, values=vals))
     for h = 2:10
-        combs = zeros(3, dP - dimQ() + length(τₙ))
-        combs[1:3, 1:3] = I(3)
-        vals = zeros(3)
+        local combs = zeros(3, dP - dimQ() + length(τₙ))
+        local combs[1:3, 1:3] = I(3)
+        local vals = zeros(3)
         push!(scene, Scenario(combinations=combs, values=vals))
     end
     prediction = scenario_sampler(scene, 24, 10, saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
