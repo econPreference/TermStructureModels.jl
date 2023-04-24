@@ -25,7 +25,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         Ω0 = AR_re_var_vec * input[6]
 
         if minimum([q; ν0 - dP + 1; Ω0]) <= 0
-            return Inf
+            return Inf, Inf
         end
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
