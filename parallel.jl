@@ -15,7 +15,7 @@ import Plots
 
 ## Setting
 τₙ = [3; 6; collect(12:12:120)]
-date_start = Date("1986-12-01", "yyyy-mm-dd")
+date_start = Date("1985-12-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
@@ -97,7 +97,7 @@ elseif step == 1 ## Tuning hyperparameter
 elseif step == 2 ## Estimation
 
     tuned = load("tuned.jld2")["tuned"][lag]
-    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ, iteration, tuned; sparsity=issparse_coef)
+    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; sparsity=issparse_coef)
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
@@ -124,7 +124,7 @@ elseif step == 2 ## Estimation
     end
 
     par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
-        term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[:, 2:end]), Array(macros[:, 2:end]))
+        term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]))
     end
     saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
     save("TP.jld2", "TP", saved_TP)
@@ -141,7 +141,7 @@ elseif step == 3 ## Statistical inference
     tuned_set = load("tuned.jld2")["tuned"]
     tuned = tuned_set[lag]
     opt = load("tuned.jld2")["opt"]
-    mSR_prior = maximum_SR(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tuned, τₙ, ρ; iteration=1000)
+    mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
     # from step 2
     if issparse_prec == true
@@ -156,19 +156,19 @@ elseif step == 3 ## Statistical inference
     end
     saved_TP = load("TP.jld2")["TP"]
 
-    saved_Xθ = latentspace(saved_θ, Array(yields[:, 2:end]), τₙ)
+    saved_Xθ = latentspace(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
     fitted_yield = mean(fitted)[:yields] / 1200
     log_price = -collect(1:τₙ[end])' .* fitted_yield[tuned.p+1:end, :]
     xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
-    reduced_θ = reducedform(saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
+    reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
     mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
 
     ## Scenario Analysis
     begin ## Data: macro data
         R"library(fbi)"
-        raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1986-12-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
+        raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1985-12-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
         excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
         macros_extended = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
         idx = ones(Int, 1)
@@ -211,5 +211,5 @@ elseif step == 3 ## Statistical inference
         local vals = zeros(3)
         push!(scene, Scenario(combinations=combs, values=vals))
     end
-    prediction = scenario_sampler(scene, 24, 10, saved_θ, Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ)
+    prediction = scenario_sampler(scene, 24, 10, saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
 end
