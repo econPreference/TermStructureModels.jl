@@ -438,7 +438,7 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=300)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=100)
 
     (; p, q, ν0, Ω0, σ²kQ_infty) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)
