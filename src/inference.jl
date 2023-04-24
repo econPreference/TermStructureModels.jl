@@ -12,7 +12,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); 1]
+    lx = 0.0 .+ [0; 0; 1; 0; 0; 1]
     ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag) for i in 1:dP]
 
@@ -23,6 +23,10 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         q[2] = q[1] * q[2]
         ν0 = input[6] + dP + 1
         Ω0 = AR_re_var_vec * input[6]
+
+        if minimum([q; ν0 - dP + 1; Ω0]) <= 0
+            return Inf
+        end
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         if isinf(mSR_mean)
@@ -58,7 +62,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); 1]
+    lx = 0.0 .+ [0; 0; 1; 0; 0; 1]
     ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag) for i in 1:dP]
 
@@ -70,6 +74,10 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         ν0 = input[6] + dP + 1
         Ω0 = AR_re_var_vec * input[6]
 
+        if minimum([q; ν0 - dP + 1; Ω0]) <= 0
+            return [Inf, Inf]
+        end
+
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -80,7 +88,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     function obj(input)
         return negative_log_marginal(input), zeros(1), zeros(1)
     end
-    opt = optimize(obj, bounds, CCMO(NSGA2(; N=populationsize); options=Options(; verbose=true, iterations=maxiter)))
+    opt = optimize(obj, bounds, NSGA3(; N=populationsize, options=Options(; verbose=true, iterations=maxiter)))
 
     pf = pareto_front(opt)
     pf_input = Vector{HyperParameter}(undef, size(pf, 1))
