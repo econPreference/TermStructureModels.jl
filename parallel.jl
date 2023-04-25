@@ -53,10 +53,10 @@ begin ## Data: macro data
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
-        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["RPI", "INDPRO", "PAYEMS", "M2SL", "TOTRESNS", "SP500", "TWEXAFEGSMTHx", "OILPRICEx", "PPICMM", "DTCTHFNM", "INVEST"]
+        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["DPCERA3M086SBEA", "RPI", "INDPRO", "PAYEMS", "M2SL", "TOTRESNS", "S&P 500", "TWEXAFEGSMTHx", "OILPRICEx", "PPICMM", "DTCTHFNM", "INVEST"]
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
             ρ[i] = 0.0
-        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["DPCERA3M086SBEA", "HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008"]
+        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
@@ -202,10 +202,10 @@ elseif step == 3 ## Statistical inference
                 macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
                 macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
                 ρ[i] = 0.0
-            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["RPI", "INDPRO", "PAYEMS", "M2SL", "TOTRESNS", "SP500", "TWEXAFEGSMTHx", "OILPRICEx", "PPICMM", "DTCTHFNM", "INVEST"]
+            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["DPCERA3M086SBEA", "RPI", "INDPRO", "PAYEMS", "M2SL", "TOTRESNS", "S&P 500", "TWEXAFEGSMTHx", "OILPRICEx", "PPICMM", "DTCTHFNM", "INVEST"]
                 macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
                 ρ[i] = 0.0
-            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["DPCERA3M086SBEA", "HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008"]
+            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
                 macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
                 macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
                 ρ[i] = 0.0
