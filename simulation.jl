@@ -2,7 +2,7 @@ using Distributions, LinearAlgebra
 using GDTSM
 
 ## Simulating sample data
-T = 200
+T = 1000
 dP = 20
 τₙ = [1, 3, 6, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120]
 p = 2
