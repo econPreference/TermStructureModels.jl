@@ -48,6 +48,10 @@ begin ## Data: macro data
         if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA", "UNRATE"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
+        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
+            macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
+            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
+            ρ[i] = 0.0
         else
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
             ρ[i] = 0.0
