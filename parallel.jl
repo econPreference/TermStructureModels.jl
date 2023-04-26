@@ -20,6 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
 step = 1
+maxiter_global = 10
 lag = 1
 iteration = 25_000
 burnin = 5000
@@ -44,15 +45,7 @@ begin ## Data: macro data
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA"]
-            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
-            ρ[i] = 0.0
-        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["UNRATE"]
-            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
-            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
-            ρ[i] = 0.0
-        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
-            macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
+        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA", "UNRATE"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
         else
@@ -93,7 +86,7 @@ if step == 0 ## Drawing pareto frontier
 elseif step == 1 ## Tuning hyperparameter
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]

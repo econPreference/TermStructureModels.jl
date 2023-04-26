@@ -71,9 +71,9 @@ aτ(N, bτ_; kQ_infty, ΩXX, annual=1)
     - For N, the DE is solved for one to N maturities. bτ_ is an output of function bτ.
 * Output: Vector(Float64)(aτ,N)
 """
-function aτ(N, bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+function aτ(N, bτ_, τₙ, Wₚ; kQ_infty, ΩPP::AbstractMatrix{T}) where {T}
 
-    a = zeros(N)
+    a = zeros(T, N)
     T1X_ = T1X(Bₓ(bτ_, τₙ), Wₚ)
     for i in 2:N
         a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP) + (i - 1) * kQ_infty
@@ -452,27 +452,27 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
     kQ_infty_dist = Normal(0, sqrt(σ²kQ_infty))
 
-    mSR = Vector{Float64}(undef, iteration)
+    mSR = Vector{typeof(Ω0[1])}(undef, iteration)
     for iter in 1:iteration
 
-        σ²FF = rand.(prior_σ²FF_)
-        C = rand.(prior_C_)
+        σ²FF = rand.(MersenneTwister(1 + iteration), prior_σ²FF_)
+        C = rand.(MersenneTwister(2 + iteration), prior_C_)
         for i in 2:dP, j in 1:(i-1)
-            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(x)
+            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(MersenneTwister(3 + iteration * i * j), x)
         end
         ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-        ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
+        ϕ0 = rand.(MersenneTwister(4 + iteration), [Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
         ϕ0 = C \ ϕ0
         KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
 
-        κQ = rand(prior_κQ_)
+        κQ = rand(MersenneTwister(5 + iteration), prior_κQ_)
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
 
-        kQ_infty = rand(kQ_infty_dist)
+        kQ_infty = rand(MersenneTwister(6 + iteration), kQ_infty_dist)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ)
@@ -495,9 +495,9 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         #     zeros(dP * (p - 1), dP * p)]
         # mean_Ft = (I(length(μT)) - G) \ μT
         # var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
-        # Ft = rand(MvNormal(mean_Ft, var_Ft))
+        # Ft = rand(MersenneTwister(7+iteration), MvNormal(mean_Ft, var_Ft))
 
-        Ft = rand(p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
+        Ft = rand(MersenneTwister(8 + iteration), p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
         mSR[iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
     end
 

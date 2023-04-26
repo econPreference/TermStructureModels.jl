@@ -1,7 +1,7 @@
 module GDTSM
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, Distributed, PositiveFactorizations, Plots, Metaheuristics
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, Distributed, PositiveFactorizations, Plots, Metaheuristics, Optimization, OptimizationOptimJL, ForwardDiff, Random
 import Distributions: TDist
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
@@ -22,11 +22,11 @@ using RCall
 * ν0(d.f.), Ω0(scale): hyper-parameters of the Inverse-Wishart prior distribution for the error covariance matrix in the transition equation
 """
 @kwdef struct HyperParameter
-    p::Int64
-    q::Vector{Float64}
-    ν0::Float64
-    Ω0::Vector{Float64}
-    σ²kQ_infty::Float64
+    p
+    q
+    ν0
+    Ω0
+    σ²kQ_infty
 end
 
 """

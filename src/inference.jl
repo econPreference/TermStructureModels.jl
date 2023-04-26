@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter_global=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf, maxiter_local=1000)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -25,32 +25,63 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         Ω0 = AR_re_var_vec * input[6]
 
         if minimum([q; ν0 - dP + 1; Ω0]) <= 0
-            return Inf, Inf
+            return Inf
+        end
+
+        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+        return -log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ)
+
+        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+
+    end
+    function constraint(input)
+
+        # parameters
+        q = input[1:5]
+        q[2] = q[1] * q[2]
+        ν0 = input[6] + dP + 1
+        Ω0 = AR_re_var_vec * input[6]
+
+        if minimum([q; ν0 - dP + 1; Ω0]) <= 0
+            return Inf
         end
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
         if isinf(mSR_mean)
-            return -log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), 0.0
+            return 0.0
         else
-            return -log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))
+            return mean(maximum_SR(yields, macros, tuned, τₙ, ρ))
         end
-        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
     bounds = boxconstraints(lb=lx, ub=ux)
     function obj(input)
-        fx, gx = negative_log_marginal(input)
+        fx, gx = negative_log_marginal(input), constraint(input)
         fx, [gx - mSR_mean], zeros(1)
     end
-    opt = optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter)))
+    opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
 
-    q = minimizer(opt)[1:5]
-    q[2] = q[1] * q[2]
-    ν0 = minimizer(opt)[6] + dP + 1
-    Ω0 = AR_re_var_vec * minimizer(opt)[6]
+    if maxiter_local > 0
+        cons(res, x, p) = (res .= [constraint(x); x])
+        optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
+        prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_mean; ux])
+        sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
 
-    return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
+        q = sol.u[1:5]
+        q[2] = q[1] * q[2]
+        ν0 = sol.u[6] + dP + 1
+        Ω0 = AR_re_var_vec * sol.u[6]
+
+        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
+    else
+        q = minimizer(opt)[1:5]
+        q[2] = q[1] * q[2]
+        ν0 = minimizer(opt)[6] + dP + 1
+        Ω0 = AR_re_var_vec * minimizer(opt)[6]
+
+        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
+    end
 
 end
 
