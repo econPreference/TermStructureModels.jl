@@ -19,7 +19,7 @@ date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 2
+step = 0
 maxiter_global = 10
 mSR_mean = Inf
 lag = 6
