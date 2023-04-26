@@ -79,7 +79,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         ν0 = sol.u[6] + dP + 1
         Ω0 = AR_re_var_vec * sol.u[6]
 
-        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
+        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), (opt, prob.f(sol.u, []))
     else
         q = minimizer(opt)[1:5]
         q[2] = q[1] * q[2]
