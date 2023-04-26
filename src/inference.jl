@@ -63,10 +63,16 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
 
     if maxiter_local > 0
-        cons(res, x, p) = (res .= [constraint(x); x])
-        optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
-        prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_mean; ux])
-        sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
+        if isinf(mSR_mean)
+            optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
+            prob = OptimizationProblem(optprob, minimizer(opt); lb=lx, ub=ux)
+            sol = solve(prob, LBFGS(); show_trace=true, iterations=maxiter_local)
+        else
+            cons(res, x, p) = (res .= [constraint(x); x])
+            optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
+            prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_mean; ux])
+            sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
+        end
 
         q = sol.u[1:5]
         q[2] = q[1] * q[2]
