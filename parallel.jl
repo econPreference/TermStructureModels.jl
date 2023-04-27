@@ -19,9 +19,9 @@ date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 0
+step = 1
 maxiter_global = 10
-mSR_mean = Inf
+mSR_mean = 1.0
 lag = 6
 iteration = 25_000
 burnin = 5000

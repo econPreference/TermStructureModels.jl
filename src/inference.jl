@@ -55,14 +55,14 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     end
 
-    bounds = boxconstraints(lb=lx, ub=ux)
-    function obj(input)
-        fx, gx = negative_log_marginal(input), constraint(input)
-        fx, [gx - mSR_mean], zeros(1)
-    end
-    opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
-
     if maxiter_local > 0
+        bounds = boxconstraints(lb=lx, ub=ux)
+        function obj(input)
+            fx, gx = negative_log_marginal(input), constraint(input)
+            fx, [gx - (mSR_mean - 0.01)], zeros(1)
+        end
+        opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
+
         if isinf(mSR_mean)
             optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
             prob = OptimizationProblem(optprob, minimizer(opt); lb=lx, ub=ux)
@@ -81,6 +81,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
         return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), (opt, prob.f(sol.u, []))
     else
+        bounds = boxconstraints(lb=lx, ub=ux)
+        function obj(input)
+            fx, gx = negative_log_marginal(input), constraint(input)
+            fx, [gx - mSR_mean], zeros(1)
+        end
+        opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
+
         q = minimizer(opt)[1:5]
         q[2] = q[1] * q[2]
         ν0 = minimizer(opt)[6] + dP + 1
