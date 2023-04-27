@@ -57,11 +57,11 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     if maxiter_local > 0
         bounds = boxconstraints(lb=lx, ub=ux)
-        function obj(input)
+        function obj_modified(input)
             fx, gx = negative_log_marginal(input), constraint(input)
             fx, [gx - (mSR_mean - 0.01)], zeros(1)
         end
-        opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
+        opt = Metaheuristics.optimize(obj_modified, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
 
         if isinf(mSR_mean)
             optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
