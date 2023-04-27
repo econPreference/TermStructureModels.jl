@@ -91,7 +91,16 @@ if step == 0 ## Drawing pareto frontier
 elseif step == 1 ## Tuning hyperparameter
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_mean=mSR_mean)
+        if isfile("tuned_pf.jld2")
+            pf = load("tuned_pf.jld2")["pf"]
+            pf_input = load("tuned_pf.jld2")["pf_input"]
+            tuned_ = pf_input[i][findmin(abs.(pf[i][2] .- (mSR_mean - 0.05)))[2]]
+            x0 = [tuned_.q[1]; tuned_.q[2] / tuned_.q[1]; tuned_.q[3:5]; tuned_.ν0 - dP - 1]
+        else
+            x0 = []
+        end
+
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_mean=mSR_mean, initial=x0)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]

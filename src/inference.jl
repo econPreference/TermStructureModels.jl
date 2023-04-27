@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter_global=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf, maxiter_local=1000)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter_global=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf, maxiter_local=1000, initial=[])
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -63,12 +63,8 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             fx, gx = negative_log_marginal(input), constraint(input)
             fx, [gx - (mSR_mean - 0.05)], zeros(1)
         end
-        if isfile("tuned_pf.jld2")
-            pf = load("tuned_pf.jld2")["pf"]
-            pf_input = load("tuned_pf.jld2")["pf_input"]
-            tuned = pf_input[lag][findmin(abs.(pf[lag][2] .- (mSR_mean - 0.05)))[2]]
-            x0 = [tuned.q[1]; tuned.q[2] / tuned.q[1]; tuned.q[3:5]; tuned.ν0 - dP - 1]
-            set_user_solutions!(algo, x0, obj_modified)
+        if !isempty(initial)
+            set_user_solutions!(algo, initial, obj_modified)
         end
         opt = Metaheuristics.optimize(obj_modified, bounds, algo)
 
@@ -95,12 +91,8 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             fx, gx = negative_log_marginal(input), constraint(input)
             fx, [gx - mSR_mean], zeros(1)
         end
-        if isfile("tuned_pf.jld2")
-            pf = load("tuned_pf.jld2")["pf"]
-            pf_input = load("tuned_pf.jld2")["pf_input"]
-            tuned = pf_input[lag][findmin(abs.(pf[lag][2] .- (mSR_mean - 0.05)))[2]]
-            x0 = [tuned.q[1]; tuned.q[2] / tuned.q[1]; tuned.q[3:5]; tuned.ν0 - dP - 1]
-            set_user_solutions!(algo, x0, obj)
+        if !isempty(initial)
+            set_user_solutions!(algo, initial, obj)
         end
         opt = Metaheuristics.optimize(obj, bounds, algo)
 
