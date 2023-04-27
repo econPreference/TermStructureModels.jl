@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
 step = 1
-maxiter_global = 10
+maxiter_global = 20
 mSR_mean = 1.0
 lag = 6
 iteration = 25_000

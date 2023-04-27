@@ -55,13 +55,22 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     end
 
+    algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global))
+
     if maxiter_local > 0
         bounds = boxconstraints(lb=lx, ub=ux)
         function obj_modified(input)
             fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - (mSR_mean - 0.01)], zeros(1)
+            fx, [gx - (mSR_mean - 0.05)], zeros(1)
         end
-        opt = Metaheuristics.optimize(obj_modified, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
+        if isfile("tuned_pf.jld2")
+            pf = load("tuned_pf.jld2")["pf"]
+            pf_input = load("tuned_pf.jld2")["pf_input"]
+            tuned = pf_input[lag][findmin(abs.(pf[lag][2] .- (mSR_mean - 0.05)))[2]]
+            x0 = [tuned.q[1]; tuned.q[2] / tuned.q[1]; tuned.q[3:5]; tuned.ν0 - dP - 1]
+            set_user_solutions!(algo, x0, obj_modified)
+        end
+        opt = Metaheuristics.optimize(obj_modified, bounds, algo)
 
         if isinf(mSR_mean)
             optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
@@ -86,7 +95,14 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             fx, gx = negative_log_marginal(input), constraint(input)
             fx, [gx - mSR_mean], zeros(1)
         end
-        opt = Metaheuristics.optimize(obj, bounds, WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global)))
+        if isfile("tuned_pf.jld2")
+            pf = load("tuned_pf.jld2")["pf"]
+            pf_input = load("tuned_pf.jld2")["pf_input"]
+            tuned = pf_input[lag][findmin(abs.(pf[lag][2] .- (mSR_mean - 0.05)))[2]]
+            x0 = [tuned.q[1]; tuned.q[2] / tuned.q[1]; tuned.q[3:5]; tuned.ν0 - dP - 1]
+            set_user_solutions!(algo, x0, obj)
+        end
+        opt = Metaheuristics.optimize(obj, bounds, algo)
 
         q = minimizer(opt)[1:5]
         q[2] = q[1] * q[2]
