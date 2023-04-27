@@ -61,7 +61,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         bounds = boxconstraints(lb=lx, ub=ux)
         function obj_modified(input)
             fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - (mSR_mean - 0.05)], zeros(1)
+            fx, [gx - (mSR_mean - 0.1)], zeros(1)
         end
         if !isempty(initial)
             set_user_solutions!(algo, initial, obj_modified)
