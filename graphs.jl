@@ -1,7 +1,15 @@
 using GDTSM
 import StatsPlots: @df
-using Gadfly, LinearAlgebra, Cairo, Fontconfig, Colors
+using LinearAlgebra, Cairo, Fontconfig, Colors
 ## Graphs
+mesh = [1 * ones(length(pf[1][1])) pf[1][2] pf[1][1]]
+for i in 2:p_max
+    mesh = vcat(mesh, [i * ones(length(pf[1][1])) pf[i][2] pf[i][1]])
+end
+df = DataFrame(lag=mesh[:, 1], mSR=mesh[:, 2], ML=mesh[:, 3])
+rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "maximum SR"))
+plot(df, x="maximum SR", y="log marginal likelihood", color=:lag, Geom.point, Guide.yticks(ticks=28500:750:31500), Guide.xticks(ticks=0:10), Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=12))
+
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"
     "2007-12-01" "2009-06-01"

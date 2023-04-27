@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra
+using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly
 import Plots
 
 ## Setting
@@ -138,7 +138,7 @@ elseif step == 3 ## Statistical inference
     pf = load("tuned_pf.jld2")["pf"]
     pf_input = load("tuned_pf.jld2")["pf_input"]
     opt = load("tuned_pf.jld2")["opt"]
-    pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
+    #pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 
     # from step 1
     tuned_set = load("tuned.jld2")["tuned"]
