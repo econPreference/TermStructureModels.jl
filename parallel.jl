@@ -95,12 +95,14 @@ elseif step == 1 ## Tuning hyperparameter
         pf_input = load("tuned_pf.jld2")["pf_input"]
     end
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
+        x0 = []
         if isfile("tuned_pf.jld2")
             dP = size(macros, 2) - 1 + dimQ()
-            tuned_ = pf_input[i][findmin(abs.(pf[i][2] .- (mSR_mean - 0.05)))[2]]
-            x0 = [tuned_.q[1]; tuned_.q[2] / tuned_.q[1]; tuned_.q[3:5]; tuned_.ν0 - dP - 1]
-        else
-            x0 = []
+            tuned_ = pf_input[i][findall(x -> x < mSR_mean, pf[i][2])]
+            x0 = Matrix{Float64}(undef, length(tuned_), 6)
+            for i in eachindex(tuned_)
+                x0[i, :] = [tuned_[i].q[1] tuned_[i].q[2] / tuned_[i].q[1] tuned_[i].q[3:5]' tuned_[i].ν0 - dP - 1]
+            end
         end
 
         tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_mean=mSR_mean, initial=x0)
