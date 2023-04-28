@@ -58,10 +58,10 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global))
 
     if maxiter_local > 0
-        bounds = boxconstraints(lb=lx, ub=ux)
+        bounds = boxconstraints(lb=1.01lx, ub=0.99ux)
         function obj_modified(input)
             fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - 0.9mSR_mean], zeros(1)
+            fx, [gx - 0.99mSR_mean], zeros(1)
         end
         if !isempty(initial)
             set_user_solutions!(algo, initial, obj_modified)
