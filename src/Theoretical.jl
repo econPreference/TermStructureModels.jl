@@ -163,7 +163,7 @@ _termPremium(τ, PCs, macros, bτ_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
     - jensen: Jensen's Ineqaulity part in TP
     - Although input has initial observations, output excludes the time period for the initial observations.  
 """
-function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP, GₚFF, ΩPP)
+function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP)
 
     T1P_ = inv(T1X_)
     # Jensen's Ineqaulity term
@@ -178,12 +178,9 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP, G
     KₓQ = zeros(dQ)
     KₓQ[1] = kQ_infty
     KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-    λₚ = KₚP - KₚQ
-    const_TP = 0
-    for i = 1:(τ-1)
-        const_TP += bτ_[:, i]' * (T1P_ * λₚ)
-    end
-    const_TP /= -τ
+    λₚ = KₚF[1:dQ] - KₚQ
+    const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1P_ * λₚ)
+    const_TP = -const_TP[1] / τ
 
     # Time-varying part
     dP = size(GₚFF, 1)
@@ -202,7 +199,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP, G
         predicted_X = datas[t:-1:1, :]
         for horizon = 1:(τ-2)
             regressors = vec(predicted_X[1:p, :]')
-            predicted = GₚFF * regressors
+            predicted = KₚF + GₚFF * regressors
             predicted_X = vcat(predicted', predicted_X)
         end
         reverse!(predicted_X, dims=1)
@@ -260,7 +257,7 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ)
-        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
+        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF=KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
         saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
     end
