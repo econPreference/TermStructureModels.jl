@@ -19,10 +19,10 @@ date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 2
+step = 1
 maxiter_global = 20
 mSR_mean = 0.5
-lag = 3
+lag = 6
 iteration = 25_000
 burnin = 5000
 issparse_coef = false
