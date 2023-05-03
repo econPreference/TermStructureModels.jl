@@ -21,7 +21,9 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 p_max = 12
 step = 1
 maxiter_global = 20
-mSR_mean = 0.5
+maxiter_local = 100
+mSR_mean = 1.0
+
 lag = 6
 iteration = 25_000
 burnin = 5000
@@ -105,7 +107,7 @@ elseif step == 1 ## Tuning hyperparameter
             end
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_mean=mSR_mean, initial=x0)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_mean=mSR_mean, initial=x0, maxiter_local=maxiter_local)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
