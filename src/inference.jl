@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter_global=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_mean=Inf, maxiter_local=1000, initial=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter_global=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_tail=Inf, maxiter_local=1000, initial=[])
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -47,7 +47,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         end
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        if isinf(mSR_mean)
+        if isinf(mSR_tail)
             return 0.0
         else
             return quantile(maximum_SR(yields, macros, tuned, τₙ, ρ), 0.95)
@@ -61,21 +61,21 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         bounds = boxconstraints(lb=1.01lx, ub=0.99ux)
         function obj_modified(input)
             fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - 0.99mSR_mean], zeros(1)
+            fx, [gx - 0.99mSR_tail], zeros(1)
         end
         if !isempty(initial)
             set_user_solutions!(algo, initial, obj_modified)
         end
         opt = Metaheuristics.optimize(obj_modified, bounds, algo)
 
-        if isinf(mSR_mean)
+        if isinf(mSR_tail)
             optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
             prob = OptimizationProblem(optprob, minimizer(opt); lb=lx, ub=ux)
             sol = solve(prob, LBFGS(); show_trace=true, iterations=maxiter_local)
         else
             cons(res, x, p) = (res .= [constraint(x); x])
             optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
-            prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_mean; ux])
+            prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_tail; ux])
             sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
         end
 
@@ -89,7 +89,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         bounds = boxconstraints(lb=lx, ub=ux)
         function obj(input)
             fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - mSR_mean], zeros(1)
+            fx, [gx - mSR_tail], zeros(1)
         end
         if !isempty(initial)
             set_user_solutions!(algo, initial, obj)
