@@ -50,7 +50,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         if isinf(mSR_mean)
             return 0.0
         else
-            return mean(maximum_SR(yields, macros, tuned, τₙ, ρ))
+            return quantile(maximum_SR(yields, macros, tuned, τₙ, ρ), 0.95)
         end
 
     end
@@ -131,7 +131,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         end
 
         tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
-        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mean(maximum_SR(yields, macros, tuned, τₙ, ρ))]
+        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), quantile(maximum_SR(yields, macros, tuned, τₙ, ρ), 0.95)]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
