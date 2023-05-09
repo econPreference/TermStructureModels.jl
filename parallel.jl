@@ -22,7 +22,7 @@ p_max = 12
 step = 0
 maxiter_global = 20
 maxiter_local = 100
-mSR_tail = 3.0
+mSR_tail = 5.0
 
 lag = 6
 iteration = 25_000
