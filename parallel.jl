@@ -15,7 +15,7 @@ import Plots
 
 ## Setting
 τₙ = [3; 6; collect(12:12:120)]
-date_start = Date("1985-11-01", "yyyy-mm-dd")
+date_start = Date("1985-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
@@ -24,9 +24,9 @@ maxiter_global = 20
 maxiter_local = 100
 mSR_tail = 5.0
 
-lag = 6
+lag = 7
 iteration = 25_000
-burnin = 5000
+burnin = 5_000
 issparse_coef = false
 issparse_prec = false
 TPτ_interest = 120
@@ -48,19 +48,25 @@ begin ## Data: macro data
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA", "UNRATE"]
+        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "UNRATE"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
         elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
+        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["BAA"]
+            macros[13:end, i+1] = macros[13:end, i+1] - macros[1:end-12, i+1]
+            ρ[i] = 0.0
+        elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["RPI", "TOTRESNS", "DTCTHFNM"]
+            macros[13:end, i+1] = log.(macros[13:end, i+1]) - log.(macros[1:end-12, i+1])
+            ρ[i] = 0.0
         else
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1])
             ρ[i] = 0.0
         end
     end
-    macros = macros[3:end, :]
+    macros = macros[13:end, :]
 end
 
 begin ## Data: yield data
@@ -77,7 +83,7 @@ begin ## Data: yield data
     yields = DataFrame([Matrix(yield_month) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
     yields = [yield_year[:, 1] yields]
     rename!(yields, Dict(:x1 => "date"))
-    yields = yields[3:end, :]
+    yields = yields[13:end, :]
 end
 
 if step == 0 ## Drawing pareto frontier
@@ -187,7 +193,7 @@ elseif step == 3 ## Statistical inference
     ## Scenario Analysis
     begin ## Data: macro data
         R"library(fbi)"
-        raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1985-11-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
+        raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1985-01-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
         excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
         macros_extended = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
         idx = ones(Int, 1)
@@ -202,23 +208,25 @@ elseif step == 3 ## Statistical inference
         macros_extended = macros_extended[:, findall(x -> !(x ∈ excluded), names(macros_extended))]
         ρ = Vector{Float64}(undef, size(macros_extended[:, 2:end], 2))
         for i in axes(macros_extended[:, 2:end], 2) # i'th macro variable (excluding date)
-            if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA"]
-                macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
-                ρ[i] = 0.0
-            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["UNRATE"]
-                macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+            if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "UNRATE"]
                 macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
                 ρ[i] = 0.0
             elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
                 macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
                 macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
                 ρ[i] = 0.0
+            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["BAA"]
+                macros_extended[13:end, i+1] = macros_extended[13:end, i+1] - macros_extended[1:end-12, i+1]
+                ρ[i] = 0.0
+            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["RPI", "TOTRESNS", "DTCTHFNM"]
+                macros_extended[13:end, i+1] = log.(macros_extended[13:end, i+1]) - log.(macros_extended[1:end-12, i+1])
+                ρ[i] = 0.0
             else
                 macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
                 ρ[i] = 0.0
             end
         end
-        macros_extended = macros_extended[3:end, :]
+        macros_extended = macros_extended[13:end, :]
     end
 
     dP = size(macros_extended, 2) - 1 + dimQ()
