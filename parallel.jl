@@ -19,12 +19,12 @@ date_start = Date("1985-01-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 1
+step = 2
 maxiter_global = 20
 maxiter_local = 100
 mSR_tail = 5.0
 
-lag = 6
+lag = 11
 iteration = 25_000
 burnin = 5_000
 issparse_coef = false
@@ -174,7 +174,6 @@ elseif step == 3 ## Statistical inference
         accept_rate = load("posterior.jld2")["accept_rate"]
         iteration = length(saved_θ)
     end
-    saved_TP = load("TP.jld2")["TP"]
 
     saved_Xθ = latentspace(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
@@ -184,7 +183,8 @@ elseif step == 3 ## Statistical inference
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
     mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
-
+    saved_TP = load("TP.jld2")["TP"]
+    
     if is_scenario == true
         ## Scenario Analysis
         begin ## Data: macro data
