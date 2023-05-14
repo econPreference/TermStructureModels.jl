@@ -7,7 +7,9 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter_global=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_tail=Inf, maxiter_local=1000, initial=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_tail=Inf, initial=[])
+
+    maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -55,7 +57,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     end
 
-    algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter_global))
+    algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter))
 
     if maxiter_local > 0
         bounds = boxconstraints(lb=1.01lx, ub=0.99ux)
