@@ -19,16 +19,15 @@ date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 1
-mSR_tail = 4.0
-
-lag = 11
+step = 2
+maxiter_global = 20
+mSR_mean = Inf
+lag = 6
 iteration = 25_000
-burnin = 5_000
-issparse_coef = false
+burnin = 5000
+issparse_coef = true
 issparse_prec = false
 TPτ_interest = 120
-is_scenario = false
 
 begin ## Data: macro data
     R"library(fbi)"
@@ -47,7 +46,7 @@ begin ## Data: macro data
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "UNRATE", "BAA"]
+        if rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA", "UNRATE"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
         elseif rcopy(rcall(:describe_md, names(macros[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
@@ -99,14 +98,14 @@ elseif step == 1 ## Tuning hyperparameter
         x0 = []
         if isfile("tuned_pf.jld2")
             dP = size(macros, 2) - 1 + dimQ()
-            tuned_ = pf_input[i][findall(x -> x < mSR_tail, pf[i][2])]
+            tuned_ = pf_input[i][findall(x -> x < mSR_mean, pf[i][2])]
             x0 = Matrix{Float64}(undef, length(tuned_), 6)
             for i in eachindex(tuned_)
                 x0[i, :] = [tuned_[i].q[1] tuned_[i].q[2] / tuned_[i].q[1] tuned_[i].q[3:5]' tuned_[i].ν0 - dP - 1]
             end
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_tail=mSR_tail, initial=x0)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, maxiter_global=maxiter_global, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_mean=mSR_mean, initial=x0)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -172,6 +171,7 @@ elseif step == 3 ## Statistical inference
         accept_rate = load("posterior.jld2")["accept_rate"]
         iteration = length(saved_θ)
     end
+    saved_TP = load("TP.jld2")["TP"]
 
     saved_Xθ = latentspace(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
@@ -181,57 +181,58 @@ elseif step == 3 ## Statistical inference
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
     mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
-    saved_TP = load("TP.jld2")["TP"]
 
-    if is_scenario == true
-        ## Scenario Analysis
-        begin ## Data: macro data
-            R"library(fbi)"
-            raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1985-11-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
-            excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
-            macros_extended = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
-            idx = ones(Int, 1)
-            for i in axes(macros_extended[:, 2:end], 2)
-                if sum(ismissing.(macros_extended[:, i+1])) == 0
-                    push!(idx, i + 1)
-                end
+    ## Scenario Analysis
+    begin ## Data: macro data
+        R"library(fbi)"
+        raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=Date("1985-11-01", "yyyy-mm-dd"), date_end=Date("2020-12-01", "yyyy-mm-dd"), transform=false))
+        excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
+        macros_extended = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
+        idx = ones(Int, 1)
+        for i in axes(macros_extended[:, 2:end], 2)
+            if sum(ismissing.(macros_extended[:, i+1])) == 0
+                push!(idx, i + 1)
             end
-            macros_extended = macros_extended[:, idx]
-            excluded = ["W875RX1", "IPFPNSS", "IPFINAL", "IPCONGD", "IPDCONGD", "IPNCONGD", "IPBUSEQ", "IPMAT", "IPDMAT", "IPNMAT", "IPMANSICS", "IPB51222S", "IPFUELS", "HWIURATIO", "CLF16OV", "CE16OV", "UEMPLT5", "UEMP5TO14", "UEMP15OV", "UEMP15T26", "UEMP27OV", "USGOOD", "CES1021000001", "USCONS", "MANEMP", "DMANEMP", "NDMANEMP", "SRVPRD", "USTPU", "USWTRADE", "USTRADE", "USFIRE", "USGOVT", "AWOTMAN", "AWHMAN", "CES2000000008", "CES3000000008", "HOUSTNE", "HOUSTMW", "HOUSTS", "HOUSTW", "PERMITNE", "PERMITMW", "PERMITS", "PERMITW", "NONBORRES", "DTCOLNVHFNM", "AAAFFM", "BAAFFM", "EXSZUSx", "EXJPUSx", "EXUSUKx", "EXCAUSx", "WPSFD49502", "WPSID61", "WPSID62", "CPIAPPSL", "CPITRNSL", "CPIMEDSL", "CUSR0000SAC", "CUSR0000SAS", "CPIULFSL", "CUSR0000SA0L2", "CUSR0000SA0L5", "DDURRG3M086SBEA", "DNDGRG3M086SBEA", "DSERRG3M086SBEA"]
-            push!(excluded, "CMRMTSPLx", "RETAILx", "HWI", "UEMPMEAN", "CLAIMSx", "AMDMNOx", "ANDENOx", "AMDMUOx", "BUSINVx", "ISRATIOx", "BUSLOANS", "NONREVSL", "CONSPI", "S&P: indust", "S&P div yield", "S&P PE ratio", "M1SL", "BOGMBASE", "TOTRESNS", "DTCTHFNM")
-            macros_extended = macros_extended[:, findall(x -> !(x ∈ excluded), names(macros_extended))]
-            ρ = Vector{Float64}(undef, size(macros_extended[:, 2:end], 2))
-            for i in axes(macros_extended[:, 2:end], 2) # i'th macro variable (excluding date)
-                if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "UNRATE", "BAA"]
-                    macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
-                    ρ[i] = 0.0
-                elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
-                    macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
-                    macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
-                    ρ[i] = 0.0
-                else
-                    macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
-                    ρ[i] = 0.0
-                end
+        end
+        macros_extended = macros_extended[:, idx]
+        excluded = ["W875RX1", "IPFPNSS", "IPFINAL", "IPCONGD", "IPDCONGD", "IPNCONGD", "IPBUSEQ", "IPMAT", "IPDMAT", "IPNMAT", "IPMANSICS", "IPB51222S", "IPFUELS", "HWIURATIO", "CLF16OV", "CE16OV", "UEMPLT5", "UEMP5TO14", "UEMP15OV", "UEMP15T26", "UEMP27OV", "USGOOD", "CES1021000001", "USCONS", "MANEMP", "DMANEMP", "NDMANEMP", "SRVPRD", "USTPU", "USWTRADE", "USTRADE", "USFIRE", "USGOVT", "AWOTMAN", "AWHMAN", "CES2000000008", "CES3000000008", "HOUSTNE", "HOUSTMW", "HOUSTS", "HOUSTW", "PERMITNE", "PERMITMW", "PERMITS", "PERMITW", "NONBORRES", "DTCOLNVHFNM", "AAAFFM", "BAAFFM", "EXSZUSx", "EXJPUSx", "EXUSUKx", "EXCAUSx", "WPSFD49502", "WPSID61", "WPSID62", "CPIAPPSL", "CPITRNSL", "CPIMEDSL", "CUSR0000SAC", "CUSR0000SAS", "CPIULFSL", "CUSR0000SA0L2", "CUSR0000SA0L5", "DDURRG3M086SBEA", "DNDGRG3M086SBEA", "DSERRG3M086SBEA"]
+        push!(excluded, "CMRMTSPLx", "RETAILx", "HWI", "UEMPMEAN", "CLAIMSx", "AMDMNOx", "ANDENOx", "AMDMUOx", "BUSINVx", "ISRATIOx", "BUSLOANS", "NONREVSL", "CONSPI", "S&P: indust", "S&P div yield", "S&P PE ratio", "M1SL", "BOGMBASE")
+        macros_extended = macros_extended[:, findall(x -> !(x ∈ excluded), names(macros_extended))]
+        ρ = Vector{Float64}(undef, size(macros_extended[:, 2:end], 2))
+        for i in axes(macros_extended[:, 2:end], 2) # i'th macro variable (excluding date)
+            if rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["CUMFNS", "AAA", "BAA"]
+                macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+                ρ[i] = 0.0
+            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["UNRATE"]
+                macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+                macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+                ρ[i] = 0.0
+            elseif rcopy(rcall(:describe_md, names(macros_extended[:, 2:end])))[:, :fred][i] ∈ ["HOUST", "PERMIT", "M2REAL", "REALLN", "WPSFD49207", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "CES0600000007"]
+                macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
+                macros_extended[2:end, i+1] = macros_extended[2:end, i+1] - macros_extended[1:end-1, i+1]
+                ρ[i] = 0.0
+            else
+                macros_extended[2:end, i+1] = log.(macros_extended[2:end, i+1]) - log.(macros_extended[1:end-1, i+1])
+                ρ[i] = 0.0
             end
-            macros_extended = macros_extended[3:end, :]
         end
-
-        dP = size(macros_extended, 2) - 1 + dimQ()
-        scene = Vector{Scenario}(undef, 0)
-        combs = zeros(dP - dimQ() + 3, dP - dimQ() + length(τₙ))
-        vals = Vector{Float64}(undef, size(combs, 1))
-        combs[1:3, 1:3] = I(3)
-        vals[1:3] = zeros(3)
-        combs[4:end, length(τₙ)+1:length(τₙ)+dP-dimQ()] = I(dP - dimQ())
-        vals[4:end] = macros_extended[end-9, 2:end] |> Array
-        push!(scene, Scenario(combinations=combs, values=vals))
-        for h = 2:10
-            local combs = zeros(3, dP - dimQ() + length(τₙ))
-            local combs[1:3, 1:3] = I(3)
-            local vals = zeros(3)
-            push!(scene, Scenario(combinations=combs, values=vals))
-        end
-        prediction = scenario_sampler(scene, 24, 10, saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
+        macros_extended = macros_extended[3:end, :]
     end
+
+    dP = size(macros_extended, 2) - 1 + dimQ()
+    scene = Vector{Scenario}(undef, 0)
+    combs = zeros(dP - dimQ() + 3, dP - dimQ() + length(τₙ))
+    vals = Vector{Float64}(undef, size(combs, 1))
+    combs[1:3, 1:3] = I(3)
+    vals[1:3] = zeros(3)
+    combs[4:end, length(τₙ)+1:length(τₙ)+dP-dimQ()] = I(dP - dimQ())
+    vals[4:end] = macros_extended[end-9, 2:end] |> Array
+    push!(scene, Scenario(combinations=combs, values=vals))
+    for h = 2:10
+        local combs = zeros(3, dP - dimQ() + length(τₙ))
+        local combs[1:3, 1:3] = I(3)
+        local vals = zeros(3)
+        push!(scene, Scenario(combinations=combs, values=vals))
+    end
+    prediction = scenario_sampler(scene, 24, 10, saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
 end
