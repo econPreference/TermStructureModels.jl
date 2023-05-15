@@ -17,17 +17,17 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
 plot(
-    layer(x=yields[tuned.p+1:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, 1], Geom.line, color=[colorant"blue"]),
-    layer(x=yields[tuned.p+1:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, linestyle=[:dash], color=[colorant"red"]),
+    layer(x=yields[13:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, 1], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[13:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, linestyle=[:dash], color=[colorant"red"]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["one month yield", "expected one month yield over 10 years", "NBER recessions"], ["blue", "red", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=-1:3:10)
+    Guide.manual_color_key("", ["one month yield", "expected one month yield over 10 years", "NBER recessions"], ["blue", "red", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[-1; 0; collect(2:3:10)])
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_EH10.pdf")
 
 plot(
-    layer(x=yields[tuned.p+1:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
+    layer(x=yields[13:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
     layer(x=[], y=[]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=-1:2:12)
+    Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=0:0.2:0.6)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR.pdf")
 
 Plots.histogram(mSR, bins=range(0, 3, length=31), normalize=:pdf, labels="maximum SR", alpha=0.9)
@@ -46,7 +46,7 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
 plot(
-    layer(x=yields[tuned.p+1:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[13:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"blue"]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["term premium", "", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=-2:2:2)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/TP.pdf")
@@ -67,9 +67,9 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
 plot(
-    layer(x=yields[tuned.p+1:end, 1], y=mean(load("mSR/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
-    layer(x=yields[tuned.p+1:end, 1], y=mean(load("mSR+sparsity/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
-    layer(x=yields[tuned.p+1:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
+    layer(x=yields[13:end, 1], y=mean(load("mSR/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[13:end, 1], y=mean(load("mSR+sparsity/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
+    layer(x=yields[13:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["restricted SR", "sparse slope", "", "", "sparse precision", "NBER recessions", ""], ["blue", "red", RGBA(1, 1, 1, 0.2), RGBA(1, 1, 1, 0.1), "green", "grey", RGBA(1, 1, 1, 0)]),
     Theme(line_width=1.5pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt),
