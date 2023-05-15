@@ -115,24 +115,27 @@ elseif step == 1 ## Tuning hyperparameter
 elseif step == 2 ## Estimation
 
     tuned = load("tuned.jld2")["tuned"][lag]
-    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; sparsity=issparse_coef)
-    saved_θ = saved_θ[burnin+1:end]
-    iteration = length(saved_θ)
+    if issparse_prec == false
+        saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; sparsity=issparse_coef)
+        saved_θ = saved_θ[burnin+1:end]
+        iteration = length(saved_θ)
 
-    par_stationary_θ = @showprogress 1 "Stationary filtering..." pmap(1:iteration) do i
-        stationary_θ([saved_θ[i]])
-    end
-    saved_θ = Vector{Parameter}(undef, 0)
-    for i in eachindex(par_stationary_θ)
-        if !isempty(par_stationary_θ[i][1])
-            push!(saved_θ, par_stationary_θ[i][1][1])
+        par_stationary_θ = @showprogress 1 "Stationary filtering..." pmap(1:iteration) do i
+            stationary_θ([saved_θ[i]])
         end
-    end
-    accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
-    iteration = length(saved_θ)
-    save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+        saved_θ = Vector{Parameter}(undef, 0)
+        for i in eachindex(par_stationary_θ)
+            if !isempty(par_stationary_θ[i][1])
+                push!(saved_θ, par_stationary_θ[i][1][1])
+            end
+        end
+        accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
+        iteration = length(saved_θ)
+        save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+    else
+        saved_θ = load("posterior.jld2")["samples"]
+        iteration = length(saved_θ)
 
-    if issparse_prec == true
         par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
             sparse_precision([saved_θ[i]], size(macros, 1) - tuned.p)
         end
