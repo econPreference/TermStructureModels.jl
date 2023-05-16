@@ -19,7 +19,7 @@ date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
-step = 3
+step = 2
 mSR_tail = 4.0
 
 lag = 1
@@ -159,51 +159,21 @@ elseif step == 3 ## Statistical inference
     #pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 
     # from step 1
-    if mSR_tail == Inf
-        tuned_set = load("standard/tuned.jld2")["tuned"]
-        tuned = tuned_set[lag]
-        opt = load("standard/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
-    else
-        tuned_set = load("mSR/tuned.jld2")["tuned"]
-        tuned = tuned_set[lag]
-        opt = load("mSR/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
-    end
+    tuned_set = load("tuned.jld2")["tuned"]
+    tuned = tuned_set[lag]
+    opt = load("tuned.jld2")["opt"]
+    mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
 
     # from step 2
-    if issparse_prec == true && issparse_coef == false
-        saved_θ = load("mSR+prec/sparse.jld2")["samples"]
-        trace_sparsity = load("mSR+prec/sparse.jld2")["sparsity"]
-        acceptPr = load("mSR+prec/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR+prec/posterior.jld2")["accept_rate"]
+    if issparse_prec == true
+        saved_θ = load("sparse.jld2")["samples"]
+        trace_sparsity = load("sparse.jld2")["sparsity"]
         iteration = length(saved_θ)
-        saved_TP = load("mSR+prec/TP.jld2")["TP"]
-    elseif issparse_prec == false && issparse_coef == true
-        saved_θ = load("mSR+sparsity/posterior.jld2")["samples"]
-        acceptPr = load("mSR+sparsity/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR+sparsity/posterior.jld2")["accept_rate"]
+    else
+        saved_θ = load("posterior.jld2")["samples"]
+        acceptPr = load("posterior.jld2")["acceptPr"]
+        accept_rate = load("posterior.jld2")["accept_rate"]
         iteration = length(saved_θ)
-        saved_TP = load("mSR+sparsity/TP.jld2")["TP"]
-    elseif issparse_prec == true && issparse_coef == true
-        saved_θ = load("mSR+sparsity+prec/sparse.jld2")["samples"]
-        trace_sparsity = load("mSR+sparsity+prec/sparse.jld2")["sparsity"]
-        acceptPr = load("mSR+sparsity+prec/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR+sparsity+prec/posterior.jld2")["accept_rate"]
-        iteration = length(saved_θ)
-        saved_TP = load("mSR+sparsity+prec/TP.jld2")["TP"]
-    elseif issparse_prec == false && issparse_coef == false
-        saved_θ = load("mSR/posterior.jld2")["samples"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        iteration = length(saved_θ)
-        saved_TP = load("mSR/TP.jld2")["TP"]
-    elseif mSR_tail == Inf
-        saved_θ = load("standard/posterior.jld2")["samples"]
-        acceptPr = load("standard/posterior.jld2")["acceptPr"]
-        accept_rate = load("standard/posterior.jld2")["accept_rate"]
-        iteration = length(saved_θ)
-        saved_TP = load("standard/TP.jld2")["TP"]
     end
 
     saved_Xθ = latentspace(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), τₙ)
@@ -214,6 +184,7 @@ elseif step == 3 ## Statistical inference
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
     mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
+    saved_TP = load("TP.jld2")["TP"]
 
     if is_scenario == true
         ## Scenario Analysis
