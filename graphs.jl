@@ -39,7 +39,7 @@ starting = []
 for i in 1:dP
     push!(starting, AR_res_var([PCs Array(macros[:, 2:end])][:, i], tuned.p))
 end
-Plots.histogram(tuned.Ω0 / (tuned.ν0 - dP - 1) |> x -> x ./ starting, bins=range(0.8, 1.2, length=21), label="", ylabel="counts") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+prec/Optimized_Omega.pdf")
+Plots.histogram(tuned.Ω0 / (tuned.ν0 - dP - 1) |> x -> x ./ starting, bins=range(0.8, 1.2, length=41), label="", ylabel="counts") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+prec/Optimized_Omega.pdf")
 
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"
@@ -57,7 +57,7 @@ plot(
 Plots.histogram(mSR, bins=range(0, maximum([mSR; mSR_prior]), length=41), normalize=:pdf, label="posterior", alpha=0.9)
 Plots.histogram!(mSR_prior, bins=range(0, maximum([mSR; mSR_prior]), length=41), normalize=:pdf, label="prior", xlabel="Sharpe ratio", ylabel="density", tickfont=(10), alpha=0.6) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/post_mSR.pdf")
 
-plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Scale.x_log10, Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("counts"), Guide.xlabel("E[ψ|data] in log scale")) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+sparsity/psi_hist.pdf")
+plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Scale.x_log10, Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("counts"), Guide.xlabel("E[ψ|data]")) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+sparsity/psi_hist.pdf")
 
 dP = size(macros, 2) - 1 + dimQ()
 Plots.histogram(100 * trace_sparsity / dP^2, label="", xlabel="Ratio of non-zeros (%)", ylabel="counts", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+prec/prec_hist.pdf")
