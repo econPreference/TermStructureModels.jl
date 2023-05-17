@@ -27,7 +27,7 @@ plot(
     layer(x=yields[13:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
     layer(x=[], y=[]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=range(0, ceil(maximum(mSR) + 0.2), length=7))
+    Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=range(0, ceil(maximum(mSR) + 0.2), length=7) |> collect |> x -> ceil.(x, digits=2))
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/mSR.pdf")
 
 # Plots.histogram(mSR, bins=range(0, 3, length=31), normalize=:pdf, labels="maximum SR", alpha=0.9)
