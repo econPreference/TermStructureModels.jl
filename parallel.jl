@@ -20,6 +20,11 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 12
 step = 3
+
+upper_q1 = 1
+upper_q4 = 1
+upper_q5 = 1
+σ²kQ_infty = 0.02^2
 mSR_tail = 4.0
 
 lag = 1
@@ -82,7 +87,7 @@ end
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, σ²kQ_infty=σ²kQ_infty)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -106,7 +111,7 @@ elseif step == 1 ## Tuning hyperparameter
             end
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q1=1, upper_q4=1, upper_q5=1, σ²kQ_infty=0.02^2, mSR_tail=mSR_tail, initial=x0)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q1=upper_q1, upper_q4=upper_q4, upper_q5=upper_q5, σ²kQ_infty=σ²kQ_infty, mSR_tail=mSR_tail, initial=x0)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
