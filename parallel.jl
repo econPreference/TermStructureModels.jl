@@ -84,6 +84,8 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
+#mean_TP([0.06, 0, 0], 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609)
+
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
