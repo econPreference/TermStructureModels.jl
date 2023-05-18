@@ -230,6 +230,7 @@ export
     PCA,
     fitted_YieldCurve,
     maximum_SR,
+    mean_TP,
 
     # utilities.jl
     getindex,

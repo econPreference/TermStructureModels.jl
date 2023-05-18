@@ -500,3 +500,16 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
 
     return mSR
 end
+
+function mean_TP(λₚ, τ, yields, τₙ, p; κQ)
+
+    Wₚ = PCA(yields, p)[3]
+
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    T1X_ = T1X(Bₓ_, Wₚ)
+
+    const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ)
+    return -const_TP[1] / τ
+
+end
