@@ -24,7 +24,7 @@ step = 3
 upper_q1 = 1
 upper_q4 = 1
 upper_q5 = 1
-μkQ_infty = 0.02
+μkQ_infty = -0.02
 mSR_tail = 4.0
 
 lag = 1
