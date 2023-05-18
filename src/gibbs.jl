@@ -40,8 +40,8 @@ function post_kQ_infty(μkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
     X = X ./ (sqrt.(1 ./ Σₒ))
     X = kron(ones(T), X)
 
-    kQ_infty_var = inv(X'X + (1 / (μkQ_infty^2)))
-    return Normal(kQ_infty_var * (1 / μkQ_infty + X'y), sqrt(kQ_infty_var))
+    kQ_infty_var = inv(X'X + (1 / ((0.5μkQ_infty)^2)))
+    return Normal(kQ_infty_var * (1 / (0.25μkQ_infty) + X'y), sqrt(kQ_infty_var))
 
 end
 

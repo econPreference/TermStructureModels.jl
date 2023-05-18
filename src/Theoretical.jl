@@ -447,7 +447,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
-    kQ_infty_dist = Normal(μkQ_infty, abs(μkQ_infty))
+    kQ_infty_dist = Normal(μkQ_infty, 0.5abs(μkQ_infty))
 
     mSR = Vector{typeof(Ω0[1])}(undef, iteration)
     for iter in 1:iteration
