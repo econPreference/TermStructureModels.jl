@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1, mSR_tail=Inf, initial=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, μkQ_infty=0.02, mSR_tail=Inf, initial=[])
 
     maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
 
@@ -30,7 +30,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             return Inf
         end
 
-        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty)
         return -log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ)
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -48,7 +48,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             return Inf
         end
 
-        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty)
         if isinf(mSR_tail)
             return 0.0
         else
@@ -86,7 +86,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         ν0 = sol.u[6] + dP + 1
         Ω0 = AR_re_var_vec * sol.u[6]
 
-        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), (opt, prob.f(sol.u, []))
+        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty), (opt, prob.f(sol.u, []))
     else
         bounds = boxconstraints(lb=lx, ub=ux)
         function obj(input)
@@ -103,15 +103,15 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         ν0 = minimizer(opt)[6] + dP + 1
         Ω0 = AR_re_var_vec * minimizer(opt)[6]
 
-        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty), opt
+        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty), opt
     end
 
 end
 
 """
-tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, σ²kQ_infty=1)
+tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, σ²kQ_infty=1)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, μkQ_infty=0.02)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -132,7 +132,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
             return [Inf, Inf]
         end
 
-        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty)
         return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), quantile(maximum_SR(yields, macros, tuned, τₙ, ρ), 0.95)]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
@@ -153,7 +153,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         ν0 = input[6] + dP + 1
         Ω0 = AR_re_var_vec * input[6]
 
-        pf_input[i] = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, σ²kQ_infty=σ²kQ_infty)
+        pf_input[i] = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty)
     end
 
     return [-pf[:, 1], pf[:, 2]], pf_input, opt
@@ -187,7 +187,7 @@ posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsit
 """
 function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], init_param=[])
 
-    (; p, q, ν0, Ω0, σ²kQ_infty) = HyperParameter_
+    (; p, q, ν0, Ω0, μkQ_infty) = HyperParameter_
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -221,7 +221,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_
     @showprogress 1 "Sampling the posterior..." for iter in 1:iteration
         κQ = rand(post_κQ(yields[(p+1):end, :], prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ))
 
-        kQ_infty = rand(post_kQ_infty(σ²kQ_infty, yields[(p+1):end, :], τₙ; κQ, ϕ, σ²FF, Σₒ))
+        kQ_infty = rand(post_kQ_infty(μkQ_infty, yields[(p+1):end, :], τₙ; κQ, ϕ, σ²FF, Σₒ))
 
         σ²FF, isaccept = post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
         isaccept_C_σ²FF[1] += isaccept

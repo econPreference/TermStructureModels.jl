@@ -26,7 +26,7 @@ using RCall
     q
     ν0
     Ω0
-    σ²kQ_infty
+    μkQ_infty
 end
 
 """

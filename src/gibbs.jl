@@ -4,11 +4,11 @@
 # This file contains the full-conditional posterior distribution of all parameters including the MH blocks.
 
 """
-post_kQ_infty(σ²kQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
-* Input: yields should exclude initial observations. σ²kQ_infty is a prior variance.
+post_kQ_infty(μkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
+* Input: yields should exclude initial observations. μkQ_infty is a prior variance.
 * Output: Posterior distribution itself
 """
-function post_kQ_infty(σ²kQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
+function post_kQ_infty(μkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
 
     N = length(τₙ) # of maturities
     T = size(yields, 1) # length of dependent variables
@@ -40,8 +40,8 @@ function post_kQ_infty(σ²kQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
     X = X ./ (sqrt.(1 ./ Σₒ))
     X = kron(ones(T), X)
 
-    kQ_infty_var = inv(X'X + (1 / σ²kQ_infty))
-    return Normal(kQ_infty_var * X'y, sqrt(kQ_infty_var))
+    kQ_infty_var = inv(X'X + (1 / (μkQ_infty^2)))
+    return Normal(kQ_infty_var * (-1 / μkQ_infty + X'y), sqrt(kQ_infty_var))
 
 end
 
