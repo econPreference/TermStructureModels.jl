@@ -501,15 +501,34 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     return mSR
 end
 
-function mean_TP(λₚ, τ, yields, τₙ, p; κQ)
+function mean_TP(kQ_infty, τ, yields, τₙ, p; κQ=0.0609)
 
-    Wₚ = PCA(yields, p)[3]
+    dQ = dimQ()
+    PCs, ~, Wₚ = PCA(yields, p)
+    ΩPP = diagm([AR_res_var(PCs[:, i], p) for i in 1:dQ])
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
     T1X_ = T1X(Bₓ_, Wₚ)
 
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+    Aₓ_ = Aₓ(aτ_, τₙ)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+
+    # Jensen's Ineqaulity term
+    jensen = 0
+    for i = 1:(τ-1)
+        jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP)
+    end
+    jensen /= -τ
+
+    # Constant term
+    KₓQ = zeros(dQ)
+    KₓQ[1] = kQ_infty
+    KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+    λₚ = -KₚQ
+
     const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ)
-    return -const_TP[1] / τ
+    return (-const_TP[1] / τ) + jensen
 
 end
