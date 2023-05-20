@@ -73,7 +73,7 @@ prior_ϕ0(ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
     - prior variance for ϕ[i,:] = σ²FF[i]*variance of output[i,:]
     - Unlike MvNormal, the second arg of "Normal" is a standard deviation.
 """
-function prior_ϕ0(ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
+function prior_ϕ0(μϕ_const, ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
 
     dP, dPp = size(ψ) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
@@ -93,7 +93,7 @@ function prior_ϕ0(ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
     end
 
     for i in 1:dQ
-        ϕ0[i, 1] = Normal(0, sqrt(ψ0[i] * q[4]))
+        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[4]))
         for l = 1:1
             for j in 1:dQ
                 ϕ0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, ν0, Ω0)))
@@ -109,7 +109,7 @@ function prior_ϕ0(ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
         end
     end
     for i in (dQ+1):dP
-        ϕ0[i, 1] = Normal(0, sqrt(ψ0[i] * q[5]))
+        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[5]))
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1

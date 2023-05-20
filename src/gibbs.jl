@@ -232,7 +232,7 @@ post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, 
 * Output(2): ϕ, σ²FF
     - It gives a posterior sample, and it is updated for the remaining elements that are not in MH block.
 """
-function post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
+function post_ϕ_σ²FF_remaining(PCs, macros, μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
 
     dQ = dimQ()
     dP = size(ψ, 1)
@@ -240,7 +240,7 @@ function post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, 
 
     yϕ, Xϕ, Xϕ0, XC = yϕ_Xϕ(PCs, macros, p)
     ~, ~, C0 = ϕ_2_ϕ₀_C(; ϕ)
-    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
+    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0)
     prior_ϕ_ = [prior_ϕ0_ prior_C(; Ω0)]
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
 
@@ -368,12 +368,12 @@ post_ψ_ψ0(ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 * Output(2): ψ0, ψ
     - posterior samples
 """
-function post_ψ_ψ0(ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
+function post_ψ_ψ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
 
     R"library(GIGrvg)"
     dP = size(ψ, 1)
     p = Int(size(ψ, 2) / dP)
-    priormean_ϕ0_ = mean.(prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0))
+    priormean_ϕ0_ = mean.(prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0))
     post_ψ = similar(ψ)
     post_ψ0 = similar(ψ0)
 

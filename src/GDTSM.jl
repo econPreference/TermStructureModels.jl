@@ -26,6 +26,7 @@ using RCall
     q
     ν0
     Ω0
+    μϕ_const
     μkQ_infty
     σkQ_infty
 end
@@ -231,7 +232,7 @@ export
     PCA,
     fitted_YieldCurve,
     maximum_SR,
-    mean_TP,
+    calibration_kQ_infty,
 
     # utilities.jl
     getindex,

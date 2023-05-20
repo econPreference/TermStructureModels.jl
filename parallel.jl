@@ -24,8 +24,8 @@ step = 3
 upper_q1 = 1
 upper_q4 = 1
 upper_q5 = 1
-μkQ_infty = 0.167
-σkQ_infty = μkQ_infty / 2
+μkQ_infty = 0.04
+σkQ_infty = μkQ_infty
 mSR_tail = 4.0
 
 lag = 1
@@ -85,7 +85,7 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-# mean_TP(0.086, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609)
+calibration_kQ_infty(0.04, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609)
 
 if step == 0 ## Drawing pareto frontier
 

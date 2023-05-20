@@ -437,7 +437,7 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 """
 function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=100)
 
-    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty) = HyperParameter_
+    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
@@ -446,7 +446,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
-    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
+    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
     kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
 
     mSR = Vector{typeof(Ω0[1])}(undef, iteration)
@@ -501,11 +501,12 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     return mSR
 end
 
-function mean_TP(kQ_infty, τ, yields, τₙ, p; κQ=0.0609)
+function calibration_kQ_infty(kQ_infty, yields, τₙ, p; κQ=0.0609)
 
     dQ = dimQ()
     PCs, ~, Wₚ = PCA(yields, p)
-    ΩPP = diagm([AR_res_var(PCs[:, i], p) for i in 1:dQ])
+    ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
+    μϕ_const_P = [AR_res_var(PCs[:, i], p)[2][1] for i in 1:dQ]
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
@@ -515,20 +516,12 @@ function mean_TP(kQ_infty, τ, yields, τₙ, p; κQ=0.0609)
     Aₓ_ = Aₓ(aτ_, τₙ)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ)
 
-    # Jensen's Ineqaulity term
-    jensen = 0
-    for i = 1:(τ-1)
-        jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP)
-    end
-    jensen /= -τ
-
     # Constant term
     KₓQ = zeros(dQ)
     KₓQ[1] = kQ_infty
     KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-    λₚ = -KₚQ
+    λₚ = μϕ_const_P - KₚQ
 
-    const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ)
-    return (-const_TP[1] / τ) + jensen
+    return λₚ
 
 end
