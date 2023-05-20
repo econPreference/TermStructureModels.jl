@@ -120,6 +120,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); 1]
     ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
+    μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
 
     function negative_log_marginal(input)
 
