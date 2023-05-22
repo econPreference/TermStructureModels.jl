@@ -93,7 +93,7 @@ function prior_ϕ0(μϕ_const, ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, 
     end
 
     for i in 1:dQ
-        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[4]))
+        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[4, 1]))
         for l = 1:1
             for j in 1:dQ
                 ϕ0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, ν0, Ω0)))
@@ -109,7 +109,7 @@ function prior_ϕ0(μϕ_const, ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, 
         end
     end
     for i in (dQ+1):dP
-        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[5]))
+        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[4, 2]))
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
@@ -138,14 +138,25 @@ function Minnesota(l, i, j; q, ν0, Ω0)
 
     dP = length(Ω0) # dimension
 
-    if i == j
-        Minn_var = q[1]
+    if i < dimQ() + 1
+        if i == j
+            Minn_var = q[1, 1]
+        else
+            Minn_var = q[2, 1]
+        end
+        Minn_var /= l^q[3, 1]
+        Minn_var *= ν0 - dP - 1
+        Minn_var /= Ω0[j]
     else
-        Minn_var = q[2]
+        if i == j
+            Minn_var = q[1, 2]
+        else
+            Minn_var = q[2, 2]
+        end
+        Minn_var /= l^q[3, 2]
+        Minn_var *= ν0 - dP - 1
+        Minn_var /= Ω0[j]
     end
-    Minn_var /= l^q[3]
-    Minn_var *= ν0 - dP - 1
-    Minn_var /= Ω0[j]
 
     return Minn_var
 end

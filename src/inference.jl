@@ -7,15 +7,15 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[])
 
     maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); 1]
-    ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
+    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
+    ux = 0.0 .+ [vec(upper_q); size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     # μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
     μϕ_const = zeros(dP)
@@ -23,12 +23,15 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     function negative_log_marginal(input)
 
         # parameters
-        q = input[1:5]
-        q[2] = q[1] * q[2]
-        ν0 = input[6] + dP + 1
-        Ω0 = AR_re_var_vec * input[6]
+        q = [input[1] input[5]
+            input[2] input[6]
+            input[3] input[7]
+            input[4] input[8]]
+        q[2, :] = q[1, :] .* q[2, :]
+        ν0 = input[9] + dP + 1
+        Ω0 = AR_re_var_vec * input[9]
 
-        if minimum([q; ν0 - dP + 1; Ω0]) <= 0
+        if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
             return Inf
         end
 
@@ -41,12 +44,15 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     function constraint(input)
 
         # parameters
-        q = input[1:5]
-        q[2] = q[1] * q[2]
-        ν0 = input[6] + dP + 1
-        Ω0 = AR_re_var_vec * input[6]
+        q = [input[1] input[5]
+            input[2] input[6]
+            input[3] input[7]
+            input[4] input[8]]
+        q[2, :] = q[1, :] .* q[2, :]
+        ν0 = input[9] + dP + 1
+        Ω0 = AR_re_var_vec * input[9]
 
-        if minimum([q; ν0 - dP + 1; Ω0]) <= 0
+        if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
             return Inf
         end
 
@@ -83,10 +89,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
         end
 
-        q = sol.u[1:5]
-        q[2] = q[1] * q[2]
-        ν0 = sol.u[6] + dP + 1
-        Ω0 = AR_re_var_vec * sol.u[6]
+        q = [sol.u[1] sol.u[5]
+            sol.u[2] sol.u[6]
+            sol.u[3] sol.u[7]
+            sol.u[4] sol.u[8]]
+        q[2, :] = q[1, :] .* q[2, :]
+        ν0 = sol.u[9] + dP + 1
+        Ω0 = AR_re_var_vec * sol.u[9]
 
         return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const), (opt, prob.f(sol.u, []))
     else
@@ -100,10 +109,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         end
         opt = Metaheuristics.optimize(obj, bounds, algo)
 
-        q = minimizer(opt)[1:5]
-        q[2] = q[1] * q[2]
-        ν0 = minimizer(opt)[6] + dP + 1
-        Ω0 = AR_re_var_vec * minimizer(opt)[6]
+        q = [minimizer(opt)[1] minimizer(opt)[5]
+            minimizer(opt)[2] minimizer(opt)[6]
+            minimizer(opt)[3] minimizer(opt)[7]
+            minimizer(opt)[4] minimizer(opt)[8]]
+        q[2, :] = q[1, :] .* q[2, :]
+        ν0 = minimizer(opt)[9] + dP + 1
+        Ω0 = AR_re_var_vec * minimizer(opt)[9]
 
         return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const), opt
     end
@@ -113,13 +125,13 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q1=1, upper_q4=100, upper_q5=100, μkQ_infty=0, σkQ_infty=1)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1)
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); 1]
-    ux = 0.0 .+ [upper_q1; 1; 10; upper_q4; upper_q5; size(yields, 1)]
+    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
+    ux = 0.0 .+ [vec(upper_q); size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     # μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
     μϕ_const = zeros(dP)
@@ -127,12 +139,15 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     function negative_log_marginal(input)
 
         # parameters
-        q = input[1:5]
-        q[2] = q[1] * q[2]
-        ν0 = input[6] + dP + 1
-        Ω0 = AR_re_var_vec * input[6]
+        q = [input[1] input[5]
+            input[2] input[6]
+            input[3] input[7]
+            input[4] input[8]]
+        q[2, :] = q[1, :] .* q[2, :]
+        ν0 = input[9] + dP + 1
+        Ω0 = AR_re_var_vec * input[9]
 
-        if minimum([q; ν0 - dP + 1; Ω0]) <= 0
+        if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
             return [Inf, Inf]
         end
 
@@ -152,10 +167,13 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     pf_input = Vector{HyperParameter}(undef, size(pf, 1))
     for i in eachindex(pf_input)
         input = opt.population[i].x
-        q = input[1:5]
-        q[2] = q[1] * q[2]
-        ν0 = input[6] + dP + 1
-        Ω0 = AR_re_var_vec * input[6]
+        q = [input[1] input[5]
+            input[2] input[6]
+            input[3] input[7]
+            input[4] input[8]]
+        q[2, :] = q[1, :] .* q[2, :]
+        ν0 = input[9] + dP + 1
+        Ω0 = AR_re_var_vec * input[9]
 
         pf_input[i] = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const)
     end

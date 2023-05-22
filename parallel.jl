@@ -110,7 +110,7 @@ elseif step == 1 ## Tuning hyperparameter
             tuned_ = pf_input[i][findall(x -> x < mSR_tail, pf[i][2])]
             x0 = Matrix{Float64}(undef, length(tuned_), 6)
             for i in eachindex(tuned_)
-                x0[i, :] = [tuned_[i].q[1] tuned_[i].q[2] / tuned_[i].q[1] tuned_[i].q[3:5]' tuned_[i].ν0 - dP - 1]
+                x0[i, :] = [tuned_[i].q[1, 1] tuned_[i].q[2, 1] / tuned_[i].q[1, 1] tuned_[i].q[3, 1] tuned_[i].q[4, 1] tuned_[i].q[1, 2] tuned_[i].q[2, 2] / tuned_[i].q[1, 2] tuned_[i].q[3, 2] tuned_[i].q[4, 2] tuned_[i].ν0 - dP - 1]
             end
         end
 
