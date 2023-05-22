@@ -501,13 +501,12 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     return mSR
 end
 
-function calibration_kQ_infty(kQ_infty, yields, τₙ, p; κQ=0.0609)
+function calibration_kQ_infty(kQ_infty, yields, τₙ, p; κQ=0.0609, μϕ_const_P=zeros(3))
 
     dQ = dimQ()
     PCs, ~, Wₚ = PCA(yields, p)
     ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
     # μϕ_const_P = [AR_res_var(PCs[:, i], p)[2][1] for i in 1:dQ]
-    μϕ_const_P = zeros(dQ)
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
