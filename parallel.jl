@@ -22,10 +22,10 @@ p_max = 12
 step = 3
 
 upper_q =
-    [1e-3 1e-3
+    [1e-3 1
         1 1
         10 10
-        1e-1 1e-1]
+        1 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
 mSR_tail = 4.0
