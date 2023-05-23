@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], μϕ_const_PCs=[])
 
     maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
 
@@ -17,8 +17,10 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
     ux = 0.0 .+ [vec(upper_q); size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
-    # μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
-    μϕ_const = zeros(dP)
+    if isempty(μϕ_const_PCs) == true
+        μϕ_const_PCs = zeros(dQ)
+    end
+    μϕ_const = [μϕ_const_PCs; zeros(dP - dQ)]
 
     function negative_log_marginal(input)
 
@@ -125,7 +127,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const_PCs=[])
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
@@ -133,8 +135,10 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
     ux = 0.0 .+ [vec(upper_q); size(yields, 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
-    # μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
-    μϕ_const = zeros(dP)
+    if isempty(μϕ_const_PCs) == true
+        μϕ_const_PCs = zeros(dQ)
+    end
+    μϕ_const = [μϕ_const_PCs; zeros(dP - dQ)]
 
     function negative_log_marginal(input)
 

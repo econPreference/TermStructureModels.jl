@@ -18,8 +18,8 @@ import Plots
 date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
-p_max = 12
-step = 3
+p_max = 1
+step = 1
 
 upper_q =
     [1e-3 1
@@ -33,8 +33,8 @@ mSR_tail = 4.0
 lag = 1
 iteration = 25_000
 burnin = 5_000
-issparse_coef = true
-issparse_prec = true
+issparse_coef = false
+issparse_prec = false
 TPτ_interest = 120
 is_scenario = false
 
@@ -87,7 +87,7 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-calibration_kQ_infty(-0.0, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609)
+calibration_kQ_infty(0.01, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609)
 
 if step == 0 ## Drawing pareto frontier
 
