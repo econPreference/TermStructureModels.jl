@@ -402,7 +402,7 @@ PCA(yields, p; rescaling = false)
     - PCs, OCs: first dQ and the remaining principal components
     - Wₚ, Wₒ: the rotation matrix for PCs and OCs, respectively
 """
-function PCA(yields, p; rescaling=false)
+function PCA(yields, p, proxies=[]; rescaling=false)
 
     dQ = dimQ()
     ## z-score case
@@ -416,6 +416,16 @@ function PCA(yields, p; rescaling=false)
 
     PCs = (Wₚ * yields')' # Main dQ PCs
     OCs = (Wₒ * yields')' # remaining PCs
+
+    #observables
+    if isempty(proxies) == true
+        proxies = [yields[:, end] yields[:, end] - yields[:, 1] 2yields[:, Int(floor(size(yields, 2) / 3))] - yields[:, 1] - yields[:, end]]
+    end
+    for i in axes(PCs, 2)
+        sign_ = cor(proxies[:, i], PCs[:, i]) |> sign
+        PCs[:, i] *= sign_
+        Wₚ[i, :] *= sign_
+    end
 
     if rescaling == false
         return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ
@@ -435,7 +445,7 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=100)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)
@@ -501,14 +511,13 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     return mSR
 end
 
-function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_const_PCs=[])
+function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609)
 
     dQ = dimQ()
     PCs, ~, Wₚ = PCA(yields, p)
     ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
-    if isempty(μϕ_const_PCs) == true
-        μϕ_const_PCs = zeros(dQ)
-    end
+    μϕ_const_PCs = [AR_res_var(PCs[:, i], p)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end])) for i in 1:dQ]
+
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)

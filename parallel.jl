@@ -26,7 +26,7 @@ upper_q =
         1 1
         10 10
         1 100]
-μϕ_const_PCs = [0.0, 0, 0]
+upper_ν0 = 100
 μkQ_infty = 0
 σkQ_infty = 0.02
 mSR_tail = 4.0
@@ -88,12 +88,12 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-calibration_kQ_infty(0, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609, μϕ_const_PCs)
+calibration_kQ_infty(σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609)
 
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, μϕ_const_PCs)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, μϕ_const_PCs, upper_ν0)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -117,7 +117,7 @@ elseif step == 1 ## Tuning hyperparameter
             end
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, μϕ_const_PCs)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, μϕ_const_PCs, upper_ν0)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
