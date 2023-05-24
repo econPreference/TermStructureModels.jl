@@ -445,7 +445,7 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
+function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const) = HyperParameter_
     PCs, ~, Wₚ = PCA(yields, p)
@@ -511,13 +511,14 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     return mSR
 end
 
-function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609)
+function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_const_PCs=[])
 
     dQ = dimQ()
     PCs, ~, Wₚ = PCA(yields, p)
     ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
-    μϕ_const_PCs = [AR_res_var(PCs[:, i], p)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end])) for i in 1:dQ]
-
+    if isempty(μϕ_const_PCs) == true
+        μϕ_const_PCs = [AR_res_var(PCs[:, i], p)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end])) for i in 1:dQ]
+    end
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)

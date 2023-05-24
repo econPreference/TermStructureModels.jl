@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[])
 
     maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
     if isempty(upper_ν0) == true
@@ -20,9 +20,11 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
-    μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
-    for i in 1:dQ
-        μϕ_const[i] = AR_res_var(PCs[:, i], lag)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end]))
+    if isempty(μϕ_const) == true
+        μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
+        for i in 1:dQ
+            μϕ_const[i] = AR_res_var(PCs[:, i], lag)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end]))
+        end
     end
 
     function negative_log_marginal(input)
@@ -130,7 +132,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const_PCs=[], upper_ν0=[])
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -142,9 +144,11 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
-    μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
-    for i in 1:dQ
-        μϕ_const[i] = AR_res_var(PCs[:, i], lag)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end]))
+    if isempty(μϕ_const) == true
+        μϕ_const = [AR_res_var([PCs macros][:, i], lag)[2][1] for i in 1:dP]
+        for i in 1:dQ
+            μϕ_const[i] = AR_res_var(PCs[:, i], lag)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end]))
+        end
     end
 
     function negative_log_marginal(input)
@@ -219,7 +223,7 @@ posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsit
     - iteration: # of posterior samples
 * Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const) = HyperParameter_
     N = size(yields, 2) # of maturities
