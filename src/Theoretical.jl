@@ -235,7 +235,7 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
     dQ = dimQ()
     dP = size(saved_θ[:ϕ][1], 1)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
     @showprogress 1 "Calculating TPs..." for iter in 1:iteration
 
@@ -256,7 +256,7 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
 
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF=KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
         saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
@@ -312,7 +312,7 @@ function PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
     dQ = dimQ()
     dM = dP - dQ # of macro variables
     p = Int(size(GₚFF, 2) / dP)
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
     # statistical Parameters
     bτ_ = bτ(τₙ[end]; κQ)
@@ -322,7 +322,7 @@ function PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
 
     aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
     Aₓ_ = Aₓ(aτ_, τₙ)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
     ΩXFXF = similar(ΩFF)
     ΩXFXF[1:dQ, 1:dQ] = (T1P_ * ΩFF[1:dQ, 1:dQ]) * T1P_'
@@ -427,9 +427,11 @@ function PCA(yields, p, proxies=[]; rescaling=false)
         Wₚ[i, :] *= sign_
     end
 
-    PCs .-= mean(PCs[p+1:end, :], dims=1)
     if rescaling == false
-        return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ
+        mean_PCs = mean(PCs[p+1:end, :], dims=1)
+        PCs .-= mean_PCs
+
+        return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ, mean_PCs[1, :]
     else
         ## rescaling
         # mean_std = mean(std(yields[(p+1):end, :], dims=1))
@@ -437,7 +439,10 @@ function PCA(yields, p, proxies=[]; rescaling=false)
         scale_PCs = mean_std ./ std(PCs, dims=1)'
         scale_OCs = mean_std ./ std(OCs, dims=1)'
 
-        return Matrix((scale_PCs .* PCs')'), Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ
+        PCs = Matrix((scale_PCs .* PCs')')
+        mean_PCs = mean(PCs[p+1:end, :], dims=1)
+        PCs .-= mean_PCs
+        return PCs, Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ, mean_PCs[1, :]
     end
 end
 """
@@ -449,7 +454,7 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const) = HyperParameter_
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
@@ -483,7 +488,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         kQ_infty = rand(MersenneTwister(6 + iter), kQ_infty_dist)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
         KₓQ = zeros(dQ)
         KₓQ[1] = kQ_infty
@@ -515,7 +520,7 @@ end
 function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_const_PCs=[])
 
     dQ = dimQ()
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
     if isempty(μϕ_const_PCs)
         μϕ_const_PCs = zeros(dQ)
@@ -527,7 +532,7 @@ function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_c
 
     aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
     Aₓ_ = Aₓ(aτ_, τₙ)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
     # Jensen's Ineqaulity term
     jensen = 0

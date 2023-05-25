@@ -413,7 +413,7 @@ function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
     dQ = dimQ()
     N = length(τₙ)
     T = size(yields, 1)
-    PCs, OCs, Wₚ, Wₒ = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
@@ -422,7 +422,7 @@ function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
 
     aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
     Aₓ_ = Aₓ(aτ_, τₙ)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs, dims=1)[1, :])
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
 
     post_Σₒ_ = Vector{Any}(undef, N - dQ)

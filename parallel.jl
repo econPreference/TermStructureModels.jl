@@ -29,7 +29,7 @@ upper_q =
 upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 5.0
+mSR_tail = Inf
 
 lag = 1
 iteration = 25_000
@@ -177,7 +177,7 @@ elseif step == 3
     fitted_survey = Matrix{Float64}(undef, dt_length, 10)
     par_fitted = @showprogress 1 "Forecasting..." pmap(lag+1:lag+dt_length) do i
         ind_fitted = Vector{Float64}(undef, 10)
-        PCAs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag) |> x -> (x[1][1:i, :], x[2][1:i, :], x[3], x[4])
+        PCAs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag) |> x -> (x[1][1:i, :], x[2][1:i, :], x[3], x[4], x[5])
         prediction = scenario_sampler([], [], 14, saved_θ, Array(yields[p_max-lag+1:p_max-lag+i, 2:end]), Array(macros[p_max-lag+1:p_max-lag+i, 2:end]), τₙ; PCAs) |> x -> mean(x)[:yields]
         for j in 1:5
             aux_box = [0, 2, 5, 8, 11, 14]

@@ -6,7 +6,7 @@ loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 """
 function loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
-    PCs, OCs, Wₚ, Wₒ = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -15,7 +15,7 @@ function loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
     ΩPP = ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF)
     aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
     Aₓ_ = Aₓ(aτ_, τₙ)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs, dims=1)[1, :])
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
 
     T = size(OCs, 1)
@@ -203,7 +203,7 @@ function reducedform(saved_θ, yields, macros, τₙ)
     dQ = dimQ()
     dP = size(saved_θ[:ϕ][1], 1)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
 
     iteration = length(saved_θ)
@@ -228,7 +228,7 @@ function reducedform(saved_θ, yields, macros, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
         KₓQ = zeros(dQ)
         KₓQ[1] = kQ_infty
