@@ -72,7 +72,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     Aₓ_ = Aₓ(aτ_, τₙ)
     T1X_ = T1X(Bₓ_, Wₚ)
     T1P_ = inv(T1X_)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
     Σᵣ = [Wₚ; Wₒ] \ [zeros(dQ, N); zeros(N - dQ, dQ) diagm(Σₒ)] / [Wₚ' Wₒ'] |> Symmetric
 
     if dh > 0

@@ -15,7 +15,7 @@ function loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
     ΩPP = ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF)
     aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
     Aₓ_ = Aₓ(aτ_, τₙ)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs, dims=1)[1, :])
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
 
     T = size(OCs, 1)
@@ -228,7 +228,7 @@ function reducedform(saved_θ, yields, macros, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean(PCs[p+1:end, :], dims=1)[1, :])
 
         KₓQ = zeros(dQ)
         KₓQ[1] = kQ_infty

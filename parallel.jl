@@ -88,7 +88,7 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-calibration_kQ_infty(σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609, μϕ_const_PCs=[0.1, 0, 0])
+calibration_kQ_infty(σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609, μϕ_const_PCs=[-0.02, 0, 0])
 
 if step == 0 ## Drawing pareto frontier
 
@@ -212,7 +212,7 @@ elseif step == 4 ## Statistical inference
         mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
     end
 
-    # from step 2
+    # from step 2 and 3
     if mSR_tail == Inf
         saved_θ = load("standard/posterior.jld2")["samples"]
         acceptPr = load("standard/posterior.jld2")["acceptPr"]
