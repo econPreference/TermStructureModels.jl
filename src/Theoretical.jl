@@ -516,8 +516,8 @@ function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_c
     dQ = dimQ()
     PCs, ~, Wₚ = PCA(yields, p)
     ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
-    if isempty(μϕ_const_PCs) == true
-        μϕ_const_PCs = [AR_res_var(PCs[:, i], p)[2] |> x -> mean(PCs[:, i]) * (1 - sum(x[2:end])) for i in 1:dQ]
+    if isempty(μϕ_const_PCs)
+        μϕ_const_PCs = zeros(dQ)
     end
 
     bτ_ = bτ(τₙ[end]; κQ)

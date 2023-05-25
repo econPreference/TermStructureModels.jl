@@ -17,14 +17,14 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
 plot(
-    layer(x=yields[13:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, 1], Geom.line, color=[colorant"blue"]),
-    layer(x=yields[13:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, linestyle=[:dash], color=[colorant"red"]),
+    layer(x=yields[7:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, 1], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[7:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, linestyle=[:dash], color=[colorant"red"]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["one month yield", "expected one month yield over 10 years", "NBER recessions", "", ""], ["blue", "red", "grey", RGBA(1, 1, 1, 0.0000001), RGBA(1, 1, 1, 0.0000002)]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[-1; 0; collect(2:3:10)])
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/EH10.pdf")
 
 plot(
-    layer(x=yields[13:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
+    layer(x=yields[7:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
     layer(x=[], y=[]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=range(0, ceil(maximum(mSR) + 0.1, digits=2), length=7) |> collect |> x -> ceil.(x, digits=2))
@@ -46,7 +46,7 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
 plot(
-    layer(x=yields[13:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[7:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"blue"]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["term premium", "", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=0:1:5)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/TP.pdf")
@@ -67,16 +67,33 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
 plot(
-    layer(x=yields[13:end, 1], y=mean(load("standard/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"black"]),
-    layer(x=yields[13:end, 1], y=mean(load("mSR/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
-    layer(x=yields[13:end, 1], y=mean(load("mSR+sparsity/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
-    layer(x=yields[13:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
-    layer(x=yields[13:end, 1], y=mean(load("mSR+sparsity+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"purple"], linestyle=[:dashdot]),
+    layer(x=yields[7:end, 1], y=mean(load("standard/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"black"]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR+sparsity/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR+sparsity+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"purple"], linestyle=[:dashdot]),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
     Guide.manual_color_key("", ["", "no restriction", "restricted SR", "sparse slope", "", "", "", "", "", "sparse precision", "full sparse", "NBER recessions", "", "", "", ""], [RGBA(1, 1, 1, 0.0000001), "black", "blue", "red", RGBA(1, 1, 1, 0.0000002), RGBA(1, 1, 1, 0.0000003), RGBA(1, 1, 1, 0.0000004), RGBA(1, 1, 1, 0.0000005), RGBA(1, 1, 1, 0.0000006), "green", "purple", "grey", RGBA(1, 1, 1, 0.0000007), RGBA(1, 1, 1, 0.0000008), RGBA(1, 1, 1, 0.0000009), RGBA(1, 1, 1, 0.000001)]),
     Theme(line_width=1.5pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt),
     Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=0:1:5)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/extended_TP.pdf")
+
+survey_tbill25 = [XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "B84:B216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "E84:E216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "H84:H216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "K84:K216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "N84:N216")] |> x -> Float64.(x)
+survey_tbill75 = [XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "C84:C216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "F84:F216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "I84:I216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "L84:L216") XLSX.readdata("Dispersion_TBILL.xlsx", "D1", "O84:O216")] |> x -> Float64.(x)
+survey_tbond25 = [XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "B104:B216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "E104:E216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "H104:H216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "K104:K216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "N104:N216")] |> x -> Float64.(x) # For bonds, the data is available from 92Q1
+survey_tbond75 = [XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "C104:C216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "F104:F216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "I104:I216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "L104:L216") XLSX.readdata("Dispersion_TBOND.xlsx", "D1", "O104:O216")] |> x -> Float64.(x)
+
+plot(
+    layer(x=yields[7:end, 1], y=mean(load("standard/survey.jld2")["TP"])[:TP], Geom.line, color=[colorant"black"]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR/survey.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR+sparsity/survey.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
+    layer(x=yields[7:end, 1], y=mean(load("mSR+sparsity+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"purple"], linestyle=[:dashdot]),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
+    Guide.manual_color_key("", ["", "no restriction", "restricted SR", "sparse slope", "", "", "", "", "", "sparse precision", "full sparse", "NBER recessions", "", "", "", ""], [RGBA(1, 1, 1, 0.0000001), "black", "blue", "red", RGBA(1, 1, 1, 0.0000002), RGBA(1, 1, 1, 0.0000003), RGBA(1, 1, 1, 0.0000004), RGBA(1, 1, 1, 0.0000005), RGBA(1, 1, 1, 0.0000006), "green", "purple", "grey", RGBA(1, 1, 1, 0.0000007), RGBA(1, 1, 1, 0.0000008), RGBA(1, 1, 1, 0.0000009), RGBA(1, 1, 1, 0.000001)]),
+    Theme(line_width=1.5pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt),
+    Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=0:1:5)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/extended_EH.pdf")
 
 ## Scenario analysis
 yield_res = max.(mean(prediction)[:yields], 0)

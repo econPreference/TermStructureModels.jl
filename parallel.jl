@@ -10,12 +10,12 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly
+using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
 τₙ = [3; 6; collect(12:12:120)]
-date_start = Date("1985-11-01", "yyyy-mm-dd")
+date_start = Date("1986-05-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 
 p_max = 6
@@ -88,12 +88,12 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-calibration_kQ_infty(σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609, μϕ_const_PCs=zeros(dimQ()))
+calibration_kQ_infty(σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609, μϕ_const_PCs=[0.1, 0, 0])
 
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, upper_ν0, μϕ_const=zeros(size(macros, 2) - 1 + dimQ()))
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, upper_ν0)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -117,7 +117,7 @@ elseif step == 1 ## Tuning hyperparameter
             end
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, upper_ν0, μϕ_const=zeros(size(macros, 2) - 1 + dimQ()))
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, upper_ν0)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -164,6 +164,14 @@ elseif step == 2 ## Estimation
     end
 
 elseif step == 3
+
+    if issparse_prec == false
+        saved_θ = load("posterior.jld2")["samples"]
+        iteration = length(saved_θ)
+    else
+        saved_θ = load("sparse.jld2")["samples"]
+        iteration = length(saved_θ)
+    end
 
     dt_length = length(yields[p_max-lag+1:end, 1]) - lag
     fitted_survey = Matrix{Float64}(undef, dt_length, 10)
