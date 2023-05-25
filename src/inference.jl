@@ -17,7 +17,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
+    lx = 1e-8 .+ [0; 0; 1; 0; 0; 0; 1; 0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
@@ -141,7 +141,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 0.0 .+ [eps(); eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
+    lx = 1e-8 .+ [0; 0; 1; 0; 0; 0; 1; 0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true

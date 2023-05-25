@@ -22,14 +22,14 @@ p_max = 6
 step = 4
 
 upper_q =
-    [1e-3 1
+    [1 1
         1 1
         10 10
         1 100]
-upper_ν0 = 100
+upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 4.0
+mSR_tail = 5.0
 
 lag = 1
 iteration = 25_000
