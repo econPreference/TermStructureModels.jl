@@ -12,7 +12,7 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
     - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
     - function "load\\_object" can be applied
 """
-function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ)
+function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; PCAs=[])
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
@@ -23,7 +23,7 @@ function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ)
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
 
-        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs)
 
         scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
     end
@@ -38,7 +38,7 @@ _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
 * Output(3): spanned_yield, spanned_F, predicted_TP
     - Matrix{Float64}(scenario,horizon,dP or N or 1)
 """
-function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs)
 
     R"library(MASS)"
     ## Construct GDTSM parameters
@@ -58,7 +58,11 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     else
         dh = 0
     end
-    PCs, ~, Wₚ, Wₒ = PCA(yields, p)
+    if isempty(PCAs)
+        PCs, ~, Wₚ, Wₒ = PCA(yields, p)
+    else
+        PCs, Wₚ, Wₒ = PCAs[1], PCAs[3], PCAs[4]
+    end
     data = [PCs macros] # no initial observations
     T = size(data, 1)
 
@@ -172,7 +176,10 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_F[t, 1:dQ] + mea_error
     end
-    predicted_TP = _termPremium(τ, spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚP=KₚF[1:dQ], GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
-
+    if isempty(τ)
+        predicted_TP = []
+    else
+        predicted_TP = _termPremium(τ, spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
+    end
     return spanned_yield[(end-horizon+1):end, :], spanned_F[(end-horizon+1):end, :], predicted_TP
 end
