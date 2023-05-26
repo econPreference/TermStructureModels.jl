@@ -153,7 +153,7 @@ function isstationary(GₚFF)
     G = [GₚFF
         I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
 
-    return maximum(abs.(eigen(G).values)) < 1
+    return maximum(abs.(eigen(G).values)) < 1 || maximum(abs.(eigen(G).values)) ≈ 1
 end
 
 """ 
