@@ -21,7 +21,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 p_max = 6
 step = 4
 
-lower_q11 = 1e-4
+lower_q11 = eps()
 upper_q =
     [1 1
         1 1
