@@ -9,7 +9,7 @@ log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[
 function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
 
     (; p, ν0, Ω0, q, μϕ_const) = HyperParameter_
-    if max(q[1, 1] / (p^q[3, 1]), q[1, 2] / (p^q[3, 2])) < (0.0001)^2
+    if max(q[1, 1] / (p^q[3, 1]), q[1, 2] / (p^q[3, 2])) < (0.001)^2
         return -Inf
     end
 

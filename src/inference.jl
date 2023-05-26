@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct HyperParameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[], lower_q11=1e-4)
 
     maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
     if isempty(upper_ν0) == true
@@ -17,7 +17,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 1e-8 .+ [0; 0; 1; 0; 0; 0; 1; 0; 1]
+    lx = [lower_q11; eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
@@ -129,7 +129,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[])
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], lower_q11=1e-4)
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -138,7 +138,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = 1e-8 .+ [0; 0; 1; 0; 0; 0; 1; 0; 1]
+    lx = [lower_q11; eps(); 1; eps(); eps(); eps(); 1; eps(); 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
