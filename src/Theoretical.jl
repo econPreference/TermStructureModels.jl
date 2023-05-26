@@ -508,7 +508,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
         #     zeros(dP * (p - 1), dP * p)]
         # mean_Ft = (I(length(μT)) - G) \ μT
         # var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
-        # Ft = rand(MersenneTwister(7+iteration), MvNormal(mean_Ft, var_Ft))
+        # Ft = rand(MersenneTwister(7+iter), MvNormal(mean_Ft, var_Ft))
 
         Ft = rand(MersenneTwister(8 + iter), p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
         mSR[iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
