@@ -29,7 +29,7 @@ upper_q =
 upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = Inf
+mSR_tail = 2.0
 
 lag = 7
 iteration = 25_000
@@ -111,9 +111,9 @@ elseif step == 1 ## Tuning hyperparameter
         if isfile("tuned_pf.jld2")
             dP = size(macros, 2) - 1 + dimQ()
             tuned_ = pf_input[i][findall(x -> x < mSR_tail, pf[i][2])]
-            x0 = Matrix{Float64}(undef, length(tuned_), 6)
-            for i in eachindex(tuned_)
-                x0[i, :] = [tuned_[i].q[1, 1] tuned_[i].q[2, 1] / tuned_[i].q[1, 1] tuned_[i].q[3, 1] tuned_[i].q[4, 1] tuned_[i].q[1, 2] tuned_[i].q[2, 2] / tuned_[i].q[1, 2] tuned_[i].q[3, 2] tuned_[i].q[4, 2] tuned_[i].ν0 - dP - 1]
+            x0 = Matrix{Float64}(undef, length(tuned_), 9)
+            for j in eachindex(tuned_)
+                x0[j, :] = [tuned_[j].q[1, 1] tuned_[j].q[2, 1] / tuned_[j].q[1, 1] tuned_[j].q[3, 1] tuned_[j].q[4, 1] tuned_[j].q[1, 2] tuned_[j].q[2, 2] / tuned_[j].q[1, 2] tuned_[j].q[3, 2] tuned_[j].q[4, 2] tuned_[j].ν0 - dP - 1]
             end
         end
 
