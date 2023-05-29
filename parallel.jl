@@ -17,6 +17,7 @@ import Plots
 τₙ = [3; 6; collect(12:12:120)]
 date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
+medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
 step = 4
@@ -25,10 +26,10 @@ upper_q =
     [1 1
         1 1
         10 10
-        1e-10 100]
+        1 100]
 upper_ν0 = 600
-μkQ_infty = 0
-σkQ_infty = 0.02
+μkQ_infty = -0.12
+σkQ_infty = 0.001
 mSR_tail = 2.0
 
 lag = 7
@@ -88,12 +89,12 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-calibration_kQ_infty(σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=0.0609, μϕ_const_PCs=[-0.02, 0, 0])
+calibration_kQ_infty(-0.12, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; κQ=mean(prior_κQ(medium_τ)), μϕ_const_PCs=[0, 0, 0])
 
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, upper_ν0)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, upper_ν0, medium_τ)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -117,7 +118,7 @@ elseif step == 1 ## Tuning hyperparameter
             end
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, upper_ν0)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, upper_ν0, medium_τ)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -127,7 +128,7 @@ elseif step == 2 ## Estimation
 
     tuned = load("tuned.jld2")["tuned"][lag]
     if issparse_prec == false
-        saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; sparsity=issparse_coef)
+        saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; sparsity=issparse_coef, medium_τ)
         saved_θ = saved_θ[burnin+1:end]
         iteration = length(saved_θ)
 
@@ -204,12 +205,12 @@ elseif step == 4 ## Statistical inference
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
+        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000, medium_τ)
     else
         tuned_set = load("mSR/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("mSR/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000)
+        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000, medium_τ)
     end
 
     # from step 2 and 3
