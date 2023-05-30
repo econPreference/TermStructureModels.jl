@@ -28,9 +28,9 @@ upper_q =
         10 10
         1 100]
 upper_ν0 = 600
-μkQ_infty = -0.12
-σkQ_infty = 0.001
-mSR_tail = 2.0
+μkQ_infty = 0
+σkQ_infty = 0.02
+mSR_tail = Inf
 
 lag = 7
 iteration = 25_000
