@@ -517,7 +517,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     return mSR
 end
 
-function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_const_PCs=[])
+function calibration_kQ_infty(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000)
 
     dQ = dimQ()
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -526,28 +526,37 @@ function calibration_kQ_infty(kQ_infty, τ, yields, τₙ, p; κQ=0.0609, μϕ_c
         μϕ_const_PCs = zeros(dQ)
     end
 
-    bτ_ = bτ(τₙ[end]; κQ)
-    Bₓ_ = Bₓ(bτ_, τₙ)
-    T1X_ = T1X(Bₓ_, Wₚ)
+    prior_TP = Vector{Float64}(undef, iteration)
+    prior_λₚ = Matrix{Float64}(undef, iteration, dQ)
+    for i in 1:iteration
+        κQ = prior_κQ(medium_τ) |> rand
+        kQ_infty = Normal(μkQ_infty, σkQ_infty) |> rand
 
-    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
-    Aₓ_ = Aₓ(aτ_, τₙ)
-    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
 
-    # Jensen's Ineqaulity term
-    jensen = 0
-    for i = 1:(τ-1)
-        jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        # Jensen's Ineqaulity term
+        jensen = 0
+        for i = 1:(τ-1)
+            jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP)
+        end
+        jensen /= -τ
+
+        # Constant term
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        λₚ = μϕ_const_PCs - KₚQ
+        prior_λₚ[i, :] = μϕ_const_PCs - KₚQ
+
+        prior_TP[i] = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ) |> x -> (-x[1] / τ) + jensen
     end
-    jensen /= -τ
 
-    # Constant term
-    KₓQ = zeros(dQ)
-    KₓQ[1] = kQ_infty
-    KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-    λₚ = μϕ_const_PCs - KₚQ
-
-    const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ)
-    return (-const_TP[1] / τ) + jensen, λₚ
+    return prior_TP, prior_λₚ
 
 end
