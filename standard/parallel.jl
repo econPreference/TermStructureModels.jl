@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
-step = 4
+step = 2
 
 upper_q =
     [1 1
@@ -167,33 +167,33 @@ elseif step == 2 ## Estimation
         save("TP.jld2", "TP", saved_TP)
     end
 
-elseif step == 3
+# elseif step == 3
 
-    #     if issparse_prec == false
-    #         saved_θ = load("posterior.jld2")["samples"]
-    #         iteration = length(saved_θ)
-    #     else
-    #         saved_θ = load("sparse.jld2")["samples"]
-    #         iteration = length(saved_θ)
-    #     end
+#     if issparse_prec == false
+#         saved_θ = load("posterior.jld2")["samples"]
+#         iteration = length(saved_θ)
+#     else
+#         saved_θ = load("sparse.jld2")["samples"]
+#         iteration = length(saved_θ)
+#     end
 
-    #     dt_length = length(yields[p_max-lag+1:end, 1]) - lag
-    #     fitted_survey = Matrix{Float64}(undef, dt_length, 10)
-    #     par_fitted = @showprogress 1 "Forecasting..." pmap(lag+1:lag+dt_length) do i
-    #         ind_fitted = Vector{Float64}(undef, 10)
-    #         PCAs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag) |> x -> (x[1][1:i, :], x[2][1:i, :], x[3], x[4], x[5])
-    #         prediction = scenario_sampler([], [], 14, saved_θ, Array(yields[p_max-lag+1:p_max-lag+i, 2:end]), Array(macros[p_max-lag+1:p_max-lag+i, 2:end]), τₙ; PCAs) |> x -> mean(x)[:yields]
-    #         for j in 1:5
-    #             aux_box = [0, 2, 5, 8, 11, 14]
-    #             ind_fitted[j] = prediction[aux_box[j]+1:aux_box[j+1], 1] |> mean
-    #             ind_fitted[5+j] = prediction[aux_box[j]+1:aux_box[j+1], end] |> mean
-    #         end
-    #         ind_fitted
-    #     end
-    #     for i in axes(fitted_survey, 1)
-    #         fitted_survey[i, :] = par_fitted[i]
-    #     end
-    #     save("survey.jld2", "fitted", fitted_survey)
+#     dt_length = length(yields[p_max-lag+1:end, 1]) - lag
+#     fitted_survey = Matrix{Float64}(undef, dt_length, 10)
+#     par_fitted = @showprogress 1 "Forecasting..." pmap(lag+1:lag+dt_length) do i
+#         ind_fitted = Vector{Float64}(undef, 10)
+#         PCAs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag) |> x -> (x[1][1:i, :], x[2][1:i, :], x[3], x[4], x[5])
+#         prediction = scenario_sampler([], [], 14, saved_θ, Array(yields[p_max-lag+1:p_max-lag+i, 2:end]), Array(macros[p_max-lag+1:p_max-lag+i, 2:end]), τₙ; PCAs) |> x -> mean(x)[:yields]
+#         for j in 1:5
+#             aux_box = [0, 2, 5, 8, 11, 14]
+#             ind_fitted[j] = prediction[aux_box[j]+1:aux_box[j+1], 1] |> mean
+#             ind_fitted[5+j] = prediction[aux_box[j]+1:aux_box[j+1], end] |> mean
+#         end
+#         ind_fitted
+#     end
+#     for i in axes(fitted_survey, 1)
+#         fitted_survey[i, :] = par_fitted[i]
+#     end
+#     save("survey.jld2", "fitted", fitted_survey)
 
 elseif step == 4 ## Statistical inference
 
