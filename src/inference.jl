@@ -9,7 +9,6 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
 """
 function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[])
 
-    maxiter_local = 0 # we temporarily shut down local maximizer, becaust it does not manage a complex constraint well.
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
     end
@@ -71,58 +70,58 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter))
 
-    if maxiter_local > 0
-        bounds = boxconstraints(lb=1.01lx, ub=0.99ux)
-        function obj_modified(input)
-            fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - 0.99mSR_tail], zeros(1)
-        end
-        if !isempty(initial)
-            set_user_solutions!(algo, initial, obj_modified)
-        end
-        opt = Metaheuristics.optimize(obj_modified, bounds, algo)
+    # if maxiter_local > 0
+    #     bounds = boxconstraints(lb=1.01lx, ub=0.99ux)
+    #     function obj_modified(input)
+    #         fx, gx = negative_log_marginal(input), constraint(input)
+    #         fx, [gx - 0.99mSR_tail], zeros(1)
+    #     end
+    #     if !isempty(initial)
+    #         set_user_solutions!(algo, initial, obj_modified)
+    #     end
+    #     opt = Metaheuristics.optimize(obj_modified, bounds, algo)
 
-        if isinf(mSR_tail)
-            optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
-            prob = OptimizationProblem(optprob, minimizer(opt); lb=lx, ub=ux)
-            sol = solve(prob, LBFGS(); show_trace=true, iterations=maxiter_local)
-        else
-            cons(res, x, p) = (res .= [constraint(x); x])
-            optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
-            prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_tail; ux])
-            sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
-        end
+    #     if isinf(mSR_tail)
+    #         optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
+    #         prob = OptimizationProblem(optprob, minimizer(opt); lb=lx, ub=ux)
+    #         sol = solve(prob, LBFGS(); show_trace=true, iterations=maxiter_local)
+    #     else
+    #         cons(res, x, p) = (res .= [constraint(x); x])
+    #         optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
+    #         prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_tail; ux])
+    #         sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
+    #     end
 
-        q = [sol.u[1] sol.u[5]
-            sol.u[2] sol.u[6]
-            sol.u[3] sol.u[7]
-            sol.u[4] sol.u[8]]
-        q[2, :] = q[1, :] .* q[2, :]
-        ν0 = sol.u[9] + dP + 1
-        Ω0 = AR_re_var_vec * sol.u[9]
+    #     q = [sol.u[1] sol.u[5]
+    #         sol.u[2] sol.u[6]
+    #         sol.u[3] sol.u[7]
+    #         sol.u[4] sol.u[8]]
+    #     q[2, :] = q[1, :] .* q[2, :]
+    #     ν0 = sol.u[9] + dP + 1
+    #     Ω0 = AR_re_var_vec * sol.u[9]
 
-        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const), (opt, prob.f(sol.u, []))
-    else
-        bounds = boxconstraints(lb=lx, ub=ux)
-        function obj(input)
-            fx, gx = negative_log_marginal(input), constraint(input)
-            fx, [gx - mSR_tail], zeros(1)
-        end
-        if !isempty(initial)
-            set_user_solutions!(algo, initial, obj)
-        end
-        opt = Metaheuristics.optimize(obj, bounds, algo)
-
-        q = [minimizer(opt)[1] minimizer(opt)[5]
-            minimizer(opt)[2] minimizer(opt)[6]
-            minimizer(opt)[3] minimizer(opt)[7]
-            minimizer(opt)[4] minimizer(opt)[8]]
-        q[2, :] = q[1, :] .* q[2, :]
-        ν0 = minimizer(opt)[9] + dP + 1
-        Ω0 = AR_re_var_vec * minimizer(opt)[9]
-
-        return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const), opt
+    #     return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const), (opt, prob.f(sol.u, []))
+    # else
+    bounds = boxconstraints(lb=lx, ub=ux)
+    function obj(input)
+        fx, gx = negative_log_marginal(input), constraint(input)
+        fx, [gx - mSR_tail], zeros(1)
     end
+    if !isempty(initial)
+        set_user_solutions!(algo, initial, obj)
+    end
+    opt = Metaheuristics.optimize(obj, bounds, algo)
+
+    q = [minimizer(opt)[1] minimizer(opt)[5]
+        minimizer(opt)[2] minimizer(opt)[6]
+        minimizer(opt)[3] minimizer(opt)[7]
+        minimizer(opt)[4] minimizer(opt)[8]]
+    q[2, :] = q[1, :] .* q[2, :]
+    ν0 = minimizer(opt)[9] + dP + 1
+    Ω0 = AR_re_var_vec * minimizer(opt)[9]
+
+    return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const), opt
+    # end
 
 end
 
