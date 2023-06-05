@@ -30,9 +30,9 @@ upper_q =
 upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 5.0
+mSR_tail = Inf
 
-lag = 7
+lag = 10
 iteration = 25_000
 burnin = 5_000
 issparse_coef = false

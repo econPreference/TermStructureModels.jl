@@ -1,5 +1,16 @@
+## Setting
+using Distributed
+addprocs(3)
+@everywhere begin
+    using Pkg
+    Pkg.activate(@__DIR__)
+    # Pkg.instantiate()
+    # Pkg.precompile()
+end
+@everywhere begin
+    using GDTSM, ProgressMeter
+end
 using Distributions, LinearAlgebra
-using GDTSM
 
 ## Simulating sample data
 T = 1000
@@ -29,7 +40,11 @@ yields, latents, macros = generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, G�
 diag_G = diag_G[dimQ()+1:end]
 ρ = zeros(dP - dimQ())
 ρ[diag_G.>0.5] .= 1.0
-tuned = tuning_hyperparameter(yields, macros, τₙ, ρ)
+par_tuned = @showprogress 1 "Tuning..." pmap(1:4) do i
+    tuning_hyperparameter(yields, macros, τₙ, ρ; lag=i)
+end
+tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
+opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
 
 ## Estimating
 iteration = 10_000
