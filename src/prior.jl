@@ -93,7 +93,11 @@ function prior_ϕ0(μϕ_const, ρ::Vector, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, 
     end
 
     for i in 1:dQ
-        ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[4, 1]))
+        if i == 1
+            ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * 1e-10))
+        else
+            ϕ0[i, 1] = Normal(μϕ_const[i], sqrt(ψ0[i] * q[4, 1]))
+        end
         for l = 1:1
             for j in 1:dQ
                 ϕ0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, ν0, Ω0)))
