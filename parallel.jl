@@ -32,7 +32,7 @@ upper_ν0 = 600
 σkQ_infty = 0.02
 mSR_tail = Inf
 
-lag = 10
+lag = 7
 iteration = 25_000
 burnin = 5_000
 issparse_coef = false
@@ -104,7 +104,7 @@ begin ## Data: yield data
 end
 
 μϕ_const_PCs = -calibration_kQ_infty(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-μϕ_const_PCs = [0.02, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 @show calibration_kQ_infty(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
