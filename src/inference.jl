@@ -222,7 +222,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    PCs, ~, Wₚ = PCA(yields, p)
+    Wₚ = PCA(yields, p)[3]
     prior_κQ_ = prior_κQ(medium_τ)
     γ_bar = prior_γ(yields[(p+1):end, :])
 
@@ -254,18 +254,19 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
 
         kQ_infty = rand(post_kQ_infty(μkQ_infty, σkQ_infty, yields[(p+1):end, :], τₙ; κQ, ϕ, σ²FF, Σₒ))
 
-        σ²FF, isaccept = post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-        isaccept_C_σ²FF[1] += isaccept
+        # σ²FF, isaccept = post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+        # isaccept_C_σ²FF[1] += isaccept
 
-        ϕ, σ²FF, isaccept = post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-        isaccept_C_σ²FF[2:end] += isaccept
+        # ϕ, σ²FF, isaccept = post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+        # isaccept_C_σ²FF[2:end] += isaccept
 
         if sparsity == true
             ηψ, isaccept = post_ηψ(; ηψ, ψ, ψ0)
             isaccept_ηψ += isaccept
         end
 
-        ϕ, σ²FF = post_ϕ_σ²FF_remaining(PCs, macros, μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, fix_const_PC1)
+        ϕ, σ²FF, isaccept = post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1)
+        isaccept_C_σ²FF += isaccept
 
         if sparsity == true
             ψ0, ψ = post_ψ_ψ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0, fix_const_PC1)

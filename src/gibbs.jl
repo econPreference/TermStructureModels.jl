@@ -67,79 +67,79 @@ function post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ)
     return DiscreteNonParametric(κQ_candidate, Pr)
 end
 
-"""
-post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-* Input: Data should contain initial observations.
-* Output(2): σ²FF, isaccept
-    - a posterior sample of σ²FF is returned, but only σ²FF[1] is updated
-"""
-function post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+# """
+# post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+# * Input: Data should contain initial observations.
+# * Output(2): σ²FF, isaccept
+#     - a posterior sample of σ²FF is returned, but only σ²FF[1] is updated
+# """
+# function post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
 
-    dP = length(Ω0)
-    T = size(yields, 1) - p # length of dependent variable
-    PCs = PCA(yields, p)[1]
+#     dP = length(Ω0)
+#     T = size(yields, 1) - p # length of dependent variable
+#     PCs = PCA(yields, p)[1]
 
-    yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
-    y = yϕ[:, 1]
-    fitted = Xϕ * (ϕ[1, :])
-    RSS = (y - fitted)' * (y - fitted)
+#     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
+#     y = yϕ[:, 1]
+#     fitted = Xϕ * (ϕ[1, :])
+#     RSS = (y - fitted)' * (y - fitted)
 
-    prop_σ²FF = deepcopy(σ²FF) # proposal
-    prop_σ²FF[1] = rand(InverseGamma(0.5 * (ν0 + 1 - dP + T), 0.5 * (Ω0[1] + RSS))) # a sample from the proposal distribution
+#     prop_σ²FF = deepcopy(σ²FF) # proposal
+#     prop_σ²FF[1] = rand(InverseGamma(0.5 * (ν0 + 1 - dP + T), 0.5 * (Ω0[1] + RSS))) # a sample from the proposal distribution
 
-    prob = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF=prop_σ²FF, Σₒ)
-    prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+#     prob = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF=prop_σ²FF, Σₒ)
+#     prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
-    if rand() < min(1.0, exp(prob))
-        return prop_σ²FF, true
-    else
-        return σ²FF, false
-    end
+#     if rand() < min(1.0, exp(prob))
+#         return prop_σ²FF, true
+#     else
+#         return σ²FF, false
+#     end
 
-end
+# end
 
-"""
-post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-* It make a posterior sample of components in ΩPP, except for σ²FF₁.
-* Input: data should contain initial observations.
-* Output(3): ϕ, σ²FF, isaccept
-    - posterior samples of [ϕ0 C0], σ²FF are returned
-    - 2~dQ rows of C0 and σ²FF are updated
-"""
-function post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+# """
+# post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
+# * It make a posterior sample of components in ΩPP, except for σ²FF₁.
+# * Input: data should contain initial observations.
+# * Output(3): ϕ, σ²FF, isaccept
+#     - posterior samples of [ϕ0 C0], σ²FF are returned
+#     - 2~dQ rows of C0 and σ²FF are updated
+# """
+# function post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
 
-    dQ = dimQ()
-    PCs = PCA(yields, p)[1]
+#     dQ = dimQ()
+#     PCs = PCA(yields, p)[1]
 
-    yϕ, ~, Xϕ0, XC = yϕ_Xϕ(PCs, macros, p)
-    ϕ0, ~, C0 = ϕ_2_ϕ₀_C(; ϕ)
-    prior_C_ = prior_C(; Ω0)
-    prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
+#     yϕ, ~, Xϕ0, XC = yϕ_Xϕ(PCs, macros, p)
+#     ϕ0, ~, C0 = ϕ_2_ϕ₀_C(; ϕ)
+#     prior_C_ = prior_C(; Ω0)
+#     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
 
-    isaccept = fill(false, dQ - 1)
-    for i in 2:dQ
-        prop_C0 = deepcopy(C0) # proposal for C
-        prop_σ²FF = deepcopy(σ²FF) # proposal for σ²FF
+#     isaccept = fill(false, dQ - 1)
+#     for i in 2:dQ
+#         prop_C0 = deepcopy(C0) # proposal for C
+#         prop_σ²FF = deepcopy(σ²FF) # proposal for σ²FF
 
-        y = yϕ[:, i] - Xϕ0 * ϕ0[i, :]
-        X = XC[:, 1:(i-1)]
-        prop_C0[i, 1:(i-1)], prop_σ²FF[i] = NIG_NIG(y, X, zeros(i - 1), diagm(var.(prior_C_[i, 1:(i-1)])), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
+#         y = yϕ[:, i] - Xϕ0 * ϕ0[i, :]
+#         X = XC[:, 1:(i-1)]
+#         prop_C0[i, 1:(i-1)], prop_σ²FF[i] = NIG_NIG(y, X, zeros(i - 1), diagm(var.(prior_C_[i, 1:(i-1)])), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
 
-        prop_ϕ = [ϕ0 prop_C0] # proposal for ϕ
+#         prop_ϕ = [ϕ0 prop_C0] # proposal for ϕ
 
-        prob = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=prop_ϕ, σ²FF=prop_σ²FF, Σₒ)
-        prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+#         prob = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=prop_ϕ, σ²FF=prop_σ²FF, Σₒ)
+#         prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
-        if rand() < min(1.0, exp(prob))
-            C0 = deepcopy(prop_C0)
-            σ²FF = deepcopy(prop_σ²FF)
-            isaccept[i-1] = true
-        end
+#         if rand() < min(1.0, exp(prob))
+#             C0 = deepcopy(prop_C0)
+#             σ²FF = deepcopy(prop_σ²FF)
+#             isaccept[i-1] = true
+#         end
 
-    end
-    return [ϕ0 C0], σ²FF, isaccept
+#     end
+#     return [ϕ0 C0], σ²FF, isaccept
 
-end
+# end
 
 """
 post_ηψ(; ηψ, ψ, ψ0)
@@ -232,40 +232,44 @@ post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, 
 * Output(2): ϕ, σ²FF
     - It gives a posterior sample, and it is updated for the remaining elements that are not in MH block.
 """
-function post_ϕ_σ²FF_remaining(PCs, macros, μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, fix_const_PC1)
+function post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1)
 
     dQ = dimQ()
     dP = size(ψ, 1)
     p = Int(size(ψ)[2] / dP)
+    PCs, ~, Wₚ = PCA(yields, p)
 
-    yϕ, Xϕ, Xϕ0, XC = yϕ_Xϕ(PCs, macros, p)
-    ~, ~, C0 = ϕ_2_ϕ₀_C(; ϕ)
+    yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0, fix_const_PC1)
     prior_ϕ_ = [prior_ϕ0_ prior_C(; Ω0)]
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
 
-    # for i = 1
-    mᵢ = mean.(prior_ϕ0_[1, :])
-    Vᵢ = var.(prior_ϕ0_[1, :])
-    ϕ[1, 1:(1+p*dP)] = Normal_Normal_in_NIG(yϕ[:, 1], Xϕ0, mᵢ, diagm(Vᵢ), σ²FF[1])
+    isaccept = fill(false, dQ)
+    for i in 1:dP
+        if i <= dQ
+            prop_ϕ = deepcopy(ϕ) # proposal for C
+            prop_σ²FF = deepcopy(σ²FF) # proposal for σ²FF
 
-    for i in 2:dQ
+            mᵢ = mean.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
+            Vᵢ = var.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
+            prop_ϕ[i, 1:(1+p*dP+i-1)], prop_σ²FF[i] = NIG_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
 
-        y = yϕ[:, i] - XC * C0[i, :]
-        mᵢ = mean.(prior_ϕ0_[i, :])
-        Vᵢ = var.(prior_ϕ0_[i, :])
-        ϕ[i, 1:(1+p*dP)] = Normal_Normal_in_NIG(y, Xϕ0, mᵢ, diagm(Vᵢ), σ²FF[i])
+            prob = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=prop_ϕ, σ²FF=prop_σ²FF, Σₒ)
+            prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
 
+            if rand() < min(1.0, exp(prob))
+                ϕ = deepcopy(prop_ϕ)
+                σ²FF = deepcopy(prop_σ²FF)
+                isaccept[i] = true
+            end
+        else
+            mᵢ = mean.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
+            Vᵢ = var.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
+            ϕ[i, 1:(1+p*dP+i-1)], σ²FF[i] = NIG_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
+        end
     end
-    for i in dQ+1:dP
 
-        mᵢ = mean.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
-        Vᵢ = var.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
-        ϕ[i, 1:(1+p*dP+i-1)], σ²FF[i] = NIG_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
-
-    end
-
-    return ϕ, σ²FF
+    return ϕ, σ²FF, isaccept
 
 end
 
