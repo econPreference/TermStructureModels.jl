@@ -399,7 +399,7 @@ function ineff_factor(saved_θ)
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
 
     vec_saved_θ[1, :] = initial_θ
-    for iter in 2:iteration
+    @showprogress 1 "Vectorizing posterior samples..." for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
         ϕ = saved_θ[:ϕ][iter]
@@ -415,7 +415,7 @@ function ineff_factor(saved_θ)
 
     ineff = Vector{Float64}(undef, length(initial_θ))
     kernel = QuadraticSpectralKernel{Andrews}()
-    for i in axes(vec_saved_θ, 2)
+    @showprogress 1 "Calculating Ineff factors..." for i in axes(vec_saved_θ, 2)
         object = Matrix{Float64}(undef, iteration, 1)
         object[:] = vec_saved_θ[:, i]
         bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
