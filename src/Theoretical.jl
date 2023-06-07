@@ -452,7 +452,7 @@ maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ
 """
 function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
-    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const) = HyperParameter_
+    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = HyperParameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
@@ -461,7 +461,7 @@ function maximum_SR(yields, macros, HyperParameter_::HyperParameter, τₙ, ρ; 
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
-    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0)
+    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
     kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
 
     mSR = Vector{typeof(Ω0[1])}(undef, iteration)

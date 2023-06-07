@@ -26,9 +26,16 @@ using RCall
     q
     ν0
     Ω0
-    μϕ_const
     μkQ_infty
     σkQ_infty
+    μϕ_const
+    fix_const_PC1
+end
+function HyperParameter(; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const=[], fix_const_PC1=true)
+    if isempty(μϕ_const)
+        μϕ_const = zeros(length(Ω0))
+    end
+    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
 end
 
 """
