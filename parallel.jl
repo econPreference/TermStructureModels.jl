@@ -1,6 +1,6 @@
 ## Setting
 using Distributed
-# addprocs(8)
+# addprocs(3)
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
@@ -32,7 +32,7 @@ upper_ν0 = 600
 σkQ_infty = 0.02
 mSR_tail = 3
 
-lag = 6
+lag = 10
 iteration = 31_000
 burnin = 1_000
 issparse_coef = false
