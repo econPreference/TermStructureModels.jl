@@ -22,20 +22,14 @@ using RCall
 * ν0(d.f.), Ω0(scale): hyper-parameters of the Inverse-Wishart prior distribution for the error covariance matrix in the transition equation
 """
 @kwdef struct Hyperparameter
-    p
-    q
+    p::Int
+    q::Matrix
     ν0
-    Ω0
+    Ω0::Vector
     μkQ_infty
     σkQ_infty
-    μϕ_const
-    fix_const_PC1
-end
-function Hyperparameter(; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const=[], fix_const_PC1=true)
-    if isempty(μϕ_const)
-        μϕ_const = zeros(length(Ω0))
-    end
-    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
+    μϕ_const::Vector = zeros(length(Ω0))
+    fix_const_PC1::Bool = true
 end
 @kwdef struct HyperParameter
     p
@@ -46,7 +40,6 @@ end
     μkQ_infty
     σkQ_infty
 end
-
 
 """
 abstract type PosteriorSample
