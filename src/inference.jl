@@ -412,6 +412,7 @@ function ineff_factor(saved_θ)
 
         vec_saved_θ[iter, :] = [κQ; kQ_infty; vec(ϕ); σ²FF; ηψ; vec(ψ); ψ0; Σₒ; γ]
     end
+    vec_saved_θ = vec_saved_θ[:, findall(!iszero, var(vec_saved_θ, dims=1)[1, :])]
 
     ineff = Vector{Float64}(undef, length(initial_θ))
     kernel = QuadraticSpectralKernel{Andrews}()
