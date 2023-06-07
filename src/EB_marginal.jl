@@ -1,14 +1,14 @@
 """
-log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
+log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
 * This file derives hyper-parameters for priors. The marginal likelihood for the transition equation is maximized at the selected hyperparameters. 
 * Input: Data should contain initial observations. 
     * ρ only indicates macro variables' persistencies.
     * medium_τ is a vector of representative medium maturities that are used for constructing prior for κQ.
 *Output: the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
+function log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
 
-    (; p, ν0, Ω0, q, μϕ_const, fix_const_PC1) = HyperParameter_
+    (; p, ν0, Ω0, q, μϕ_const, fix_const_PC1) = Hyperparameter_
     if max(q[1, 1] / (p^q[3, 1]), q[1, 2] / (p^q[3, 2])) < (0.001)^2
         return -Inf
     end

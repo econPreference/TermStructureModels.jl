@@ -8,7 +8,7 @@ import Statistics: mean, median, std, var, quantile
 using RCall
 
 """
-* @kwdef struct HyperParameter
+* @kwdef struct Hyperparameter
     - p::Int64
     - q::Vector{Float64}
     - ν0::Float64
@@ -21,7 +21,7 @@ using RCall
     - q[4]: shrinkages for the intercept
 * ν0(d.f.), Ω0(scale): hyper-parameters of the Inverse-Wishart prior distribution for the error covariance matrix in the transition equation
 """
-@kwdef struct HyperParameter
+@kwdef struct Hyperparameter
     p
     q
     ν0
@@ -31,12 +31,22 @@ using RCall
     μϕ_const
     fix_const_PC1
 end
-function HyperParameter(; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const=[], fix_const_PC1=true)
+function Hyperparameter(; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const=[], fix_const_PC1=true)
     if isempty(μϕ_const)
         μϕ_const = zeros(length(Ω0))
     end
-    return HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
+    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
 end
+@kwdef struct HyperParameter
+    p
+    q
+    ν0
+    Ω0
+    μϕ_const
+    μkQ_infty
+    σkQ_infty
+end
+
 
 """
 abstract type PosteriorSample
@@ -204,6 +214,7 @@ export
     reducedform,
 
     # GDTSM.jl
+    Hyperparameter,
     HyperParameter,
     PosteriorSample,
     Parameter,

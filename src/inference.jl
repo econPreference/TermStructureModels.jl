@@ -5,7 +5,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
 * Input: Data should contain initial observations.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables.
     - If gradient == true, the LBFGS method is applied at the last.
-* Output: struct HyperParameter
+* Output: struct Hyperparameter
 """
 function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=true)
 
@@ -38,7 +38,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             return Inf
         end
 
-        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
+        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
         return -log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ)
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -59,7 +59,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             return Inf
         end
 
-        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
+        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
         if isinf(mSR_tail)
             return 0.0
         else
@@ -100,7 +100,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     #     ν0 = sol.u[9] + dP + 1
     #     Ω0 = AR_re_var_vec * sol.u[9]
 
-    #     return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), (opt, prob.f(sol.u, []))
+    #     return Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), (opt, prob.f(sol.u, []))
     # else
     bounds = boxconstraints(lb=lx, ub=ux)
     function obj(input)
@@ -120,7 +120,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     ν0 = minimizer(opt)[9] + dP + 1
     Ω0 = AR_re_var_vec * minimizer(opt)[9]
 
-    return HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), opt
+    return Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), opt
     # end
 
 end
@@ -159,7 +159,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
             return [Inf, Inf]
         end
 
-        tuned = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
+        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
         return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), quantile(maximum_SR(yields, macros, tuned, τₙ, ρ), 0.95)]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
@@ -172,7 +172,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     opt = Metaheuristics.optimize(obj, bounds, NSGA3(; N=populationsize, options=Options(; verbose=true, iterations=maxiter)))
 
     pf = pareto_front(opt)
-    pf_input = Vector{HyperParameter}(undef, size(pf, 1))
+    pf_input = Vector{Hyperparameter}(undef, size(pf, 1))
     for i in eachindex(pf_input)
         input = opt.population[i].x
         q = [input[1] input[5]
@@ -183,7 +183,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         ν0 = input[9] + dP + 1
         Ω0 = AR_re_var_vec * input[9]
 
-        pf_input[i] = HyperParameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
+        pf_input[i] = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
     end
 
     return [-pf[:, 1], pf[:, 2]], pf_input, opt
@@ -209,16 +209,16 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5])
+posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5])
 * This is a posterior distribution sampler. It needs data and hyperparameters. 
 * Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
     - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
     - iteration: # of posterior samples
 * Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_::Hyperparameter; sparsity=false, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
 
-    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = HyperParameter_
+    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = Hyperparameter_
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     dP = dQ + size(macros, 2)
