@@ -166,8 +166,7 @@ stationary\\_θ(saved_θ)
 function stationary_θ(saved_θ)
 
     iteration = length(saved_θ)
-    stationary_saved_θ = Vector{Parameter}(undef, 0)
-    @showprogress 1 "Filtering..." for iter in 1:iteration
+    par_stationary_θ = @showprogress 1 "Filtering..." pmap(1:iteration) do iter
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -184,9 +183,13 @@ function stationary_θ(saved_θ)
         GₚFF = ϕ0[:, 2:end]
 
         if isstationary(GₚFF)
-            push!(stationary_saved_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ))
+            Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
+        else
+            []
         end
     end
+
+    stationary_saved_θ = par_stationary_θ[findall(x -> typeof(x) == Parameter, par_stationary_θ)]
 
     return stationary_saved_θ, 100length(stationary_saved_θ) / iteration
 end
@@ -207,8 +210,7 @@ function reducedform(saved_θ, yields, macros, τₙ)
     factors = [PCs macros]
 
     iteration = length(saved_θ)
-    reduced_θ = Vector{ReducedForm}(undef, iteration)
-    @showprogress 1 "Moving to the reduced form..." for iter in 1:iteration
+    reduced_θ = @showprogress 1 "Moving to the reduced form..." pmap(1:iteration) do iter
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -221,7 +223,6 @@ function reducedform(saved_θ, yields, macros, τₙ)
         KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
         ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-
 
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
@@ -243,7 +244,7 @@ function reducedform(saved_θ, yields, macros, τₙ)
             Ft = factors'[:, t:-1:t-p+1] |> vec
             mpr[t-p, :] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)]
         end
-        reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF, mpr=mpr)
+        ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF, mpr=mpr)
 
     end
 

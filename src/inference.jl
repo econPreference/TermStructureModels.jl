@@ -301,9 +301,7 @@ function sparse_precision(saved_θ, T; lower_penalty=1e-2, nlambda=100)
     dP = size(ϕ, 1)
 
     iteration = length(saved_θ)
-    sparse_θ = Vector{Parameter}(undef, iteration)
-    trace_sparsity = Vector{Float64}(undef, iteration)
-    @showprogress 1 "Imposing sparsity on precision..." for iter in 1:iteration
+    par_sparse_θ = @showprogress 1 "Imposing sparsity on precision..." pmap(1:iteration) do iter
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -325,15 +323,14 @@ function sparse_precision(saved_θ, T; lower_penalty=1e-2, nlambda=100)
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
         sparsity = sum(abs.(sparse_prec) .> eps())
-        trace_sparsity[iter] = sparsity
         inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
         ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
         σ²FF = diag(diagm_σ²FF)
 
-        sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
+        (Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ), sparsity)
     end
 
-    return sparse_θ, trace_sparsity
+    return [par_sparse_θ[i][1] for i in eachindex(par_sparse_θ)], [par_sparse_θ[i][2] for i in eachindex(par_sparse_θ)]
 end
 
 """
@@ -423,13 +420,12 @@ function ineff_factor(saved_θ; fix_const_PC1=true)
     end
     vec_saved_θ = vec_saved_θ[:, findall(!iszero, var(vec_saved_θ, dims=1)[1, :])]
 
-    ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
-    @showprogress 1 "Calculating Ineff factors..." for i in axes(vec_saved_θ, 2)
+    ineff = @showprogress 1 "Calculating Ineff factors..." pmap(1:size(vec_saved_θ, 2)) do i
         object = Matrix{Float64}(undef, iteration, 1)
         object[:] = vec_saved_θ[:, i]
         bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
-        ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
+        Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
     end
 
     return ineff
