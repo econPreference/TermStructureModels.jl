@@ -30,7 +30,7 @@ upper_q =
 upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = Inf
+mSR_tail = 3
 
 lag = 6
 iteration = 25_000
