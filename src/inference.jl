@@ -381,13 +381,17 @@ ineff_factor(saved_θ)
 * Input: posterior sample matrix from the Gibbs sampler
 * Output: Vector{Float64}(inefficiency factors, # of parameters)
 """
-function ineff_factor(saved_θ)
+function ineff_factor(saved_θ; fix_const_PC1=true)
 
     iteration = length(saved_θ)
 
     κQ = saved_θ[:κQ][1]
     kQ_infty = saved_θ[:kQ_infty][1]
-    ϕ = saved_θ[:ϕ][1]
+    if fix_const_PC1
+        ϕ = saved_θ[:ϕ][1] |> x -> vec(x)[2:end]
+    else
+        ϕ = saved_θ[:ϕ][1] |> x -> vec(x)
+    end
     σ²FF = saved_θ[:σ²FF][1]
     ηψ = saved_θ[:ηψ][1]
     ψ = saved_θ[:ψ][1]
@@ -395,14 +399,18 @@ function ineff_factor(saved_θ)
     Σₒ = saved_θ[:Σₒ][1]
     γ = saved_θ[:γ][1]
 
-    initial_θ = [κQ; kQ_infty; vec(ϕ); σ²FF; ηψ; vec(ψ); ψ0; Σₒ; γ]
+    initial_θ = [κQ; kQ_infty; ηψ; γ; Σₒ; σ²FF; ψ0; vec(ψ); ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
 
     vec_saved_θ[1, :] = initial_θ
     @showprogress 1 "Vectorizing posterior samples..." for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
-        ϕ = saved_θ[:ϕ][iter]
+        if fix_const_PC1
+            ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)[2:end]
+        else
+            ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)
+        end
         σ²FF = saved_θ[:σ²FF][iter]
         ηψ = saved_θ[:ηψ][iter]
         ψ = saved_θ[:ψ][iter]
@@ -410,11 +418,11 @@ function ineff_factor(saved_θ)
         Σₒ = saved_θ[:Σₒ][iter]
         γ = saved_θ[:γ][iter]
 
-        vec_saved_θ[iter, :] = [κQ; kQ_infty; vec(ϕ); σ²FF; ηψ; vec(ψ); ψ0; Σₒ; γ]
+        vec_saved_θ[iter, :] = [κQ; kQ_infty; ηψ; γ; Σₒ; σ²FF; ψ0; vec(ψ); ϕ]
     end
     vec_saved_θ = vec_saved_θ[:, findall(!iszero, var(vec_saved_θ, dims=1)[1, :])]
 
-    ineff = Vector{Float64}(undef, length(initial_θ))
+    ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
     @showprogress 1 "Calculating Ineff factors..." for i in axes(vec_saved_θ, 2)
         object = Matrix{Float64}(undef, iteration, 1)
