@@ -39,6 +39,7 @@ issparse_coef = false
 issparse_prec = false
 TPτ_interest = 120
 is_TP = true
+is_ineff = true
 
 begin ## Data: macro data
     R"library(fbi)"
@@ -179,6 +180,11 @@ elseif step == 2 ## Estimation
         end
         saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
         save("TP.jld2", "TP", saved_TP)
+    end
+
+    if is_ineff
+        ineff = ineff_factor(saved_θ)
+        save("ineff.jld2", "ineff", ineff)
     end
 
 elseif step == 3
