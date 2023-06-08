@@ -230,12 +230,14 @@ term_premium(τ, τₙ, saved_θ, yields, macros)
 function term_premium(τ, τₙ, saved_θ, yields, macros)
 
     iteration = length(saved_θ)
+    saved_TP = Vector{TermPremium}(undef, iteration)
+
     dQ = dimQ()
     dP = size(saved_θ[:ϕ][1], 1)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
-    saved_TP = @showprogress 1 "Calculating TPs..." pmap(1:iteration) do iter
+    @showprogress 1 "Calculating TPs..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -257,7 +259,7 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF=KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
-        TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
+        saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
     end
 
     return saved_TP
@@ -275,7 +277,8 @@ latentspace(saved_θ, yields, τₙ)
 function latentspace(saved_θ, yields, τₙ)
 
     iteration = length(saved_θ)
-    saved_θ_latent = @showprogress 1 "Moving to the latent space..." pmap(1:iteration) do iter
+    saved_θ_latent = Vector{LatentSpace}(undef, iteration)
+    @showprogress 1 "Moving to the latent space..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -289,7 +292,7 @@ function latentspace(saved_θ, yields, τₙ)
         ΩFF = (C \ diagm(σ²FF)) / C'
 
         latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
-        LatentSpace(latents=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
+        saved_θ_latent[iter] = LatentSpace(latents=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
 
     end
 
@@ -365,7 +368,8 @@ function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
 
     dQ = dimQ()
     iteration = length(saved_Xθ)
-    YieldCurve_ = @showprogress 1 "Generating fitted yield curve..." pmap(1:iteration) do iter
+    YieldCurve_ = Vector{YieldCurve}(undef, iteration)
+    @showprogress 1 "Generating fitted yield curve..." for iter in 1:iteration
 
         latents = saved_Xθ[:latents][iter]
         κQ = saved_Xθ[:κQ][iter]
@@ -378,7 +382,7 @@ function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
         aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=ΩXFXF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τ0)
 
-        YieldCurve(
+        YieldCurve_[iter] = YieldCurve(
             latents=latents,
             yields=(Aₓ_ .+ Bₓ_ * latents')' |> Matrix,
             intercept=Aₓ_,
