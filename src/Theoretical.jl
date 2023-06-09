@@ -434,8 +434,7 @@ function PCA(yields, p, proxies=[]; rescaling=true)
         return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ, mean_PCs[1, :]
     else
         ## rescaling
-        # mean_std = mean(std(yields[(p+1):end, :], dims=1))
-        mean_std = 1
+        mean_std = mean(std(yields[(p+1):end, :], dims=1))
         scale_PCs = mean_std ./ std(PCs, dims=1)'
         scale_OCs = mean_std ./ std(OCs, dims=1)'
 
