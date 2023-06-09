@@ -30,7 +30,7 @@ upper_q =
 upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 3
+mSR_tail = 2
 
 lag = 10
 iteration = 31_000
@@ -76,26 +76,12 @@ end
 begin ## Data: yield data
     # yield(3 months) and yield(6 months)
     raw_yield = CSV.File("FRB_H15.csv", missingstring="ND", types=[Date; fill(Float64, 11)]) |> DataFrame |> (x -> [x[5137:end, 1] x[5137:end, 3:4]]) |> dropmissing
-    idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]]) |> findall
-    for i in eachindex(idx)
-        if i == 1
-            raw_yield[idx[i], 2:end] = mean(raw_yield[1:idx[i], 2:end] |> Array, dims=1)
-        else
-            raw_yield[idx[i], 2:end] = mean(raw_yield[idx[i-1]+1:idx[i], 2:end] |> Array, dims=1)
-        end
-    end
+    idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
     yield_month = raw_yield[idx, :]
     yield_month = yield_month[findall(x -> x == yearmonth(date_start), yearmonth.(yield_month[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(yield_month[:, 1]))[1], :] |> x -> x[:, 2:end]
     # longer than one year
     raw_yield = CSV.File("feds200628.csv", missingstring="NA", types=[Date; fill(Float64, 99)]) |> DataFrame |> (x -> [x[8:end, 1] x[8:end, 69:78]]) |> dropmissing
-    idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]]) |> findall
-    for i in eachindex(idx)
-        if i == 1
-            raw_yield[idx[i], 2:end] = mean(raw_yield[1:idx[i], 2:end] |> Array, dims=1)
-        else
-            raw_yield[idx[i], 2:end] = mean(raw_yield[idx[i-1]+1:idx[i], 2:end] |> Array, dims=1)
-        end
-    end
+    idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
     yield_year = raw_yield[idx, :]
     yield_year = yield_year[findall(x -> x == yearmonth(date_start), yearmonth.(yield_year[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(yield_year[:, 1]))[1], :]
     yields = DataFrame([Matrix(yield_month) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
@@ -105,7 +91,7 @@ begin ## Data: yield data
 end
 
 μϕ_const_PCs = -calibration_kQ_infty(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+μϕ_const_PCs = [0.008, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 @show calibration_kQ_infty(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
