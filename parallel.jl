@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
-step = 1
+step = 4
 
 upper_q =
     [1 1
@@ -30,7 +30,7 @@ upper_q =
 upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = Inf
+mSR_tail = 3
 
 lag = 7
 iteration = 31_000
