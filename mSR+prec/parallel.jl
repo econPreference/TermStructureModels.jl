@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
-step = 4
+step = 2
 
 upper_q =
     [1 1
@@ -41,7 +41,7 @@ zeta = 2
 post_prec = true
 TPτ_interest = 120
 is_TP = true
-is_ineff = true
+is_ineff = false
 
 begin ## Data: macro data
     R"library(fbi)"
@@ -258,27 +258,25 @@ elseif step == 4 ## Statistical inference
     elseif post_prec == true && post_coef == false
         saved_θ = load("mSR+prec/sparse.jld2")["samples"]
         trace_sparsity = load("mSR+prec/sparse.jld2")["sparsity"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
+        acceptPr = load("mSR+prec/posterior.jld2")["acceptPr"]
+        accept_rate = load("mSR+prec/posterior.jld2")["accept_rate"]
         iteration = length(saved_θ)
         saved_TP = load("mSR+prec/TP.jld2")["TP"]
         # fitted_survey = load("mSR+prec/survey.jld2")["fitted"]
     elseif post_prec == false && post_coef == true
-        saved_θ = load("mSR+coef/sparse.jld2")["samples"]
-        trace_sparsity = load("mSR+coef/sparse.jld2")["sparsity"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
+        saved_θ = load("mSR+sparsity/posterior.jld2")["samples"]
+        acceptPr = load("mSR+sparsity/posterior.jld2")["acceptPr"]
+        accept_rate = load("mSR+sparsity/posterior.jld2")["accept_rate"]
         iteration = length(saved_θ)
-        saved_TP = load("mSR+coef/TP.jld2")["TP"]
+        saved_TP = load("mSR+sparsity/TP.jld2")["TP"]
         # fitted_survey = load("mSR+sparsity/survey.jld2")["fitted"]
     elseif post_prec == true && post_coef == true
-        saved_θ = load("mSR+coef+prec/sparse.jld2")["samples"]
-        trace_sparsity_coef = load("mSR+coef+prec/sparse.jld2")["sparsity_coef"]
-        trace_sparsity_prec = load("mSR+coef+prec/sparse.jld2")["sparsity_prec"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
+        saved_θ = load("mSR+sparsity+prec/sparse.jld2")["samples"]
+        trace_sparsity = load("mSR+sparsity+prec/sparse.jld2")["sparsity"]
+        acceptPr = load("mSR+sparsity+prec/posterior.jld2")["acceptPr"]
+        accept_rate = load("mSR+sparsity+prec/posterior.jld2")["accept_rate"]
         iteration = length(saved_θ)
-        saved_TP = load("mSR+coef+prec/TP.jld2")["TP"]
+        saved_TP = load("mSR+sparsity+prec/TP.jld2")["TP"]
         # fitted_survey = load("mSR+sparsity+prec/survey.jld2")["fitted"]
     else
         saved_θ = load("mSR/posterior.jld2")["samples"]
