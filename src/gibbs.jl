@@ -169,7 +169,7 @@ function post_ηψ(; ηψ, ψ, ψ0)
         logpdf_ += logpdf(Gamma(1, 1), arg_ηψ)
         return logpdf_
     end
-    proposal_dist = truncated(TDist(15, ηψ_hat, -1 / ηψ_hess); lower=0)
+    proposal_dist = truncated(TDist(5, ηψ_hat, -1 / ηψ_hess); lower=0)
     prop_ηψ = rand(proposal_dist)
 
     prob = log_target(prop_ηψ; ψ, ψ0)

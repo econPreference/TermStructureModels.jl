@@ -285,7 +285,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
 end
 
 """
-sparse_precision(saved_θ, yields, macros, τₙ)
+sparse_prec(saved_θ, yields, macros, τₙ)
 * It conduct the glasso of Friedman, Hastie, and Tibshirani (2022) using the method of Hauzenberger, Huber and Onorante. 
 * That is, the posterior samples of ΩFF is penalized with L1 norm to impose a sparsity on the precision.
 * Input: "saved\\_θ" from function posterior_sampler, and the data should contain initial observations.
@@ -294,7 +294,7 @@ sparse_precision(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_precision(saved_θ, T; lower_penalty=1e-2, nlambda=100)
+function sparse_prec(saved_θ, T; lower_penalty=1e-2, nlambda=100)
 
     R"library(qgraph)"
     ϕ = saved_θ[:ϕ][1]
@@ -324,7 +324,7 @@ function sparse_precision(saved_θ, T; lower_penalty=1e-2, nlambda=100)
         sparse_prec = glasso_results[:optwi]
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
-        sparsity = sum(abs.(sparse_prec) .> eps())
+        sparsity = sum(abs.(sparse_prec) .<= eps())
         trace_sparsity[iter] = sparsity
         inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
         ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
@@ -334,6 +334,137 @@ function sparse_precision(saved_θ, T; lower_penalty=1e-2, nlambda=100)
     end
 
     return sparse_θ, trace_sparsity
+end
+
+function sparse_coef(saved_θ, yields, macros; lambda=1, zeta=2)
+
+    dP = size(saved_θ[:ϕ][1], 1)
+    p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
+    PCs = PCA(yields, p)[1]
+    factors = [PCs macros]
+    T = size(factors, 1)
+    X = Matrix{Float64}(undef, T - p, 1 + dP * p)
+    for t = p+1:T
+        X[t-p, :] = [vec(factors[t-1:-1:t-p, :]'); 1]
+    end
+    Z = kron(I(dP), X)
+
+    iteration = length(saved_θ)
+    sparse_θ = Vector{Parameter}(undef, iteration)
+    trace_sparsity = Vector{Float64}(undef, iteration)
+    @showprogress 1 "Imposing sparsity on coefs..." for iter in 1:iteration
+
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
+        ηψ = saved_θ[:ηψ][iter]
+        ψ = saved_θ[:ψ][iter]
+        ψ0 = saved_θ[:ψ0][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
+        γ = saved_θ[:γ][iter]
+
+        ϕ0, C, C0 = ϕ_2_ϕ₀_C(; ϕ)
+        ϕ0 = C \ ϕ0
+        KₚF = ϕ0[:, 1]
+        GₚFF = ϕ0[:, 2:end]
+        coefs_hat = [GₚFF KₚF]' |> vec
+
+        coefs = similar(coefs_hat)
+        sparsity = 0
+        for j in eachindex(coefs)
+            coef_hat = coefs_hat[j]
+            thres = lambda / (abs(coef_hat)^zeta)
+            trunc_coef = max(abs(coef_hat) * (norm(Z[:, j])^2) - thres, 0)
+            coefs[j] = sign(coef_hat) * trunc_coef / (norm(Z[:, j])^2)
+            if trunc_coef == 0
+                sparsity += 1
+            end
+        end
+        reshape_coef = reshape(coefs, 1 + dP * p, dP)'
+        KₚF = reshape_coef[:, end]
+        GₚFF = reshape_coef[:, 1:end-1]
+        ϕ0 = C * [KₚF GₚFF]
+        ϕ = [ϕ0 C0]
+
+        sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
+        trace_sparsity[iter] = sparsity
+    end
+
+    return sparse_θ, trace_sparsity
+end
+
+function sparse_coef_prec(saved_θ, yields, macros; lambda=1, zeta=2, lower_penalty=1e-2, nlambda=100)
+    R"library(qgraph)"
+
+    dP = size(saved_θ[:ϕ][1], 1)
+    p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
+    PCs = PCA(yields, p)[1]
+    factors = [PCs macros]
+    T = size(factors, 1)
+    X = Matrix{Float64}(undef, T - p, 1 + dP * p)
+    for t = p+1:T
+        X[t-p, :] = [vec(factors[t-1:-1:t-p, :]'); 1]
+    end
+    Z = kron(I(dP), X)
+
+    iteration = length(saved_θ)
+    sparse_θ = Vector{Parameter}(undef, iteration)
+    trace_sparsity_coef = Vector{Float64}(undef, iteration)
+    trace_sparsity_prec = Vector{Float64}(undef, iteration)
+    @showprogress 1 "Imposing sparsity on coefs..." for iter in 1:iteration
+
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
+        ηψ = saved_θ[:ηψ][iter]
+        ψ = saved_θ[:ψ][iter]
+        ψ0 = saved_θ[:ψ0][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
+        γ = saved_θ[:γ][iter]
+
+        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+        ϕ0 = C \ ϕ0
+        KₚF = ϕ0[:, 1]
+        GₚFF = ϕ0[:, 2:end]
+        coefs_hat = [GₚFF KₚF]' |> vec
+
+        coefs = similar(coefs_hat)
+        sparsity_coef = 0
+        for j in eachindex(coefs)
+            coef_hat = coefs_hat[j]
+            thres = lambda / (abs(coef_hat)^zeta)
+            trunc_coef = max(abs(coef_hat) * (norm(Z[:, j])^2) - thres, 0)
+            coefs[j] = sign(coef_hat) * trunc_coef / (norm(Z[:, j])^2)
+            if trunc_coef == 0
+                sparsity_coef += 1
+            end
+        end
+        reshape_coef = reshape(coefs, 1 + dP * p, dP)'
+        KₚF = reshape_coef[:, end]
+        GₚFF = reshape_coef[:, 1:end-1]
+        ϕ0 = C * [KₚF GₚFF]
+        trace_sparsity_coef[iter] = sparsity_coef
+
+        ΩFF_ = (C \ diagm(σ²FF)) / C'
+        ΩFF_ = 0.5(ΩFF_ + ΩFF_')
+
+        std_ = sqrt.(diag(ΩFF_))
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T - p, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))
+        sparse_prec = glasso_results[:optwi]
+        sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
+
+        sparsity_prec = sum(abs.(sparse_prec) .<= eps())
+        trace_sparsity_prec[iter] = sparsity_prec
+        inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
+        ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
+        σ²FF = diag(diagm_σ²FF)
+
+        sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
+    end
+
+    return sparse_θ, trace_sparsity_coef, trace_sparsity_prec
 end
 
 """
