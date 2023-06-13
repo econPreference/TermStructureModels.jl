@@ -29,7 +29,7 @@ using RCall
     μkQ_infty
     σkQ_infty
     μϕ_const::Vector = zeros(length(Ω0))
-    fix_const_PC1::Bool = false
+    fix_const_PC1::Bool = true
 end
 @kwdef struct HyperParameter
     p
