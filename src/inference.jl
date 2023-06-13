@@ -394,7 +394,7 @@ function sparse_coef(saved_θ, yields, macros; lambda=1, zeta=2)
     return sparse_θ, trace_sparsity
 end
 
-function sparse_coef_prec(saved_θ, yields, macros; lambda=1, zeta=2, lower_penalty=1e-2, nlambda=100)
+function sparse_prec_coef(saved_θ, yields, macros; lambda=1, zeta=2, lower_penalty=1e-2, nlambda=100)
     R"library(qgraph)"
 
     dP = size(saved_θ[:ϕ][1], 1)
@@ -410,8 +410,8 @@ function sparse_coef_prec(saved_θ, yields, macros; lambda=1, zeta=2, lower_pena
 
     iteration = length(saved_θ)
     sparse_θ = Vector{Parameter}(undef, iteration)
-    trace_sparsity_coef = Vector{Float64}(undef, iteration)
     trace_sparsity_prec = Vector{Float64}(undef, iteration)
+    trace_sparsity_coef = Vector{Float64}(undef, iteration)
     @showprogress 1 "Imposing sparsity on coefs..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -425,6 +425,21 @@ function sparse_coef_prec(saved_θ, yields, macros; lambda=1, zeta=2, lower_pena
         γ = saved_θ[:γ][iter]
 
         ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+        ΩFF_ = (C \ diagm(σ²FF)) / C'
+        ΩFF_ = 0.5(ΩFF_ + ΩFF_')
+
+        std_ = sqrt.(diag(ΩFF_))
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T - p, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))
+        sparse_prec = glasso_results[:optwi]
+        sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
+
+        sparsity_prec = sum(abs.(sparse_prec) .<= eps())
+        trace_sparsity_prec[iter] = sparsity_prec
+        inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
+        C = inv(inv_sparse_C)
+        C0 = C - I(dP)
+        σ²FF = diag(diagm_σ²FF)
+
         ϕ0 = C \ ϕ0
         KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
@@ -446,25 +461,12 @@ function sparse_coef_prec(saved_θ, yields, macros; lambda=1, zeta=2, lower_pena
         GₚFF = reshape_coef[:, 1:end-1]
         ϕ0 = C * [KₚF GₚFF]
         trace_sparsity_coef[iter] = sparsity_coef
-
-        ΩFF_ = (C \ diagm(σ²FF)) / C'
-        ΩFF_ = 0.5(ΩFF_ + ΩFF_')
-
-        std_ = sqrt.(diag(ΩFF_))
-        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T - p, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))
-        sparse_prec = glasso_results[:optwi]
-        sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
-
-        sparsity_prec = sum(abs.(sparse_prec) .<= eps())
-        trace_sparsity_prec[iter] = sparsity_prec
-        inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
-        ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
-        σ²FF = diag(diagm_σ²FF)
+        ϕ = [ϕ0 C0]
 
         sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
     end
 
-    return sparse_θ, trace_sparsity_coef, trace_sparsity_prec
+    return sparse_θ, trace_sparsity_prec, trace_sparsity_coef
 end
 
 """

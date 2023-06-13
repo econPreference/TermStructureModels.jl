@@ -228,7 +228,7 @@ export
     posterior_sampler,
     sparse_prec,
     sparse_coef,
-    sparse_coef_prec,
+    sparse_prec_coef,
 
     # priors.jl
     prior_κQ,

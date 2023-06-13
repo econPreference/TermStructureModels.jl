@@ -160,11 +160,11 @@ elseif step == 2 ## Estimation
         iteration = length(saved_θ)
 
         par_sparse_θ = @showprogress 1 "Sparse VAR..." pmap(1:iteration) do i
-            sparse_coef_prec([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]); lambda, zeta)
+            sparse_prec_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]); lambda, zeta)
         end
         saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
-        trace_sparsity_coef = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-        trace_sparsity_prec = [par_sparse_θ[i][3][1] for i in eachindex(par_sparse_θ)]
+        trace_sparsity_coef = [par_sparse_θ[i][3][1] for i in eachindex(par_sparse_θ)]
+        trace_sparsity_prec = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
         save("sparse.jld2", "samples", saved_θ, "sparsity_coef", trace_sparsity_coef, "sparsity_prec", trace_sparsity_prec)
     else
         saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
