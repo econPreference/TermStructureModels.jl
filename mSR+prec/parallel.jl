@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
-step = 4
+step = 2
 
 upper_q =
     [1 1
@@ -39,7 +39,7 @@ post_prec = true
 post_coef = false
 TPτ_interest = 120
 is_TP = true
-is_ineff = true
+is_ineff = false
 
 begin ## Data: macro data
     R"library(fbi)"
