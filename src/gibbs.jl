@@ -152,24 +152,26 @@ function post_ηψ(; ηψ, ψ, ψ0)
     dP = size(ψ)[1]
     p = Int(size(ψ)[2] / dP)
 
-    obj(_ηψ) = dlogηψ_dηψ(_ηψ; ψ, ψ0)
-    function find_ηψ(obj_, ηψ_)
-        try
-            ηψ_hat_ = fzero(obj_, ηψ_)
-        catch
-            ηψ_hat_ = ηψ_
-        end
-    end
-    ηψ_hat = find_ηψ(obj, ηψ)
-    ηψ_hess = d2logηψ_dηψ2(ηψ_hat; dP, p)
-
     function log_target(arg_ηψ; ψ, ψ0) # See the posterior kernel formula in terms of distributions not pdfs.
+        if arg_ηψ <= 0
+            return -Inf
+        end
+
         logpdf_ = sum(logpdf.(Gamma(arg_ηψ, 1 / arg_ηψ), ψ))
         logpdf_ += sum(logpdf.(Gamma(arg_ηψ, 1 / arg_ηψ), ψ0))
         logpdf_ += logpdf(Gamma(1, 1), arg_ηψ)
         return logpdf_
     end
-    proposal_dist = truncated(TDist(5, ηψ_hat, -1 / ηψ_hess); lower=0)
+    function g!(G, x)
+        G[1] = dlogηψ_dηψ(x[1]; ψ, ψ0)
+    end
+    function h!(H, x)
+        H[1, 1] = d2logηψ_dηψ2(x[1]; dP, p)
+    end
+    ηψ_hat = Optim.optimize(x -> -log_target(x[1]; ψ, ψ0), g!, h!, [1.0], NewtonTrustRegion()) |> Optim.minimizer |> x -> x[1]
+    ηψ_hess = d2logηψ_dηψ2(ηψ_hat; dP, p)
+
+    proposal_dist = truncated(Normal(ηψ_hat, sqrt(-1 / ηψ_hess)); lower=0)
     prop_ηψ = rand(proposal_dist)
 
     prob = log_target(prop_ηψ; ψ, ψ0)
