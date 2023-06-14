@@ -163,12 +163,12 @@ function post_ηψ(; ηψ, ψ, ψ0)
         return logpdf_
     end
     function g!(G, x)
-        G[1] = dlogηψ_dηψ(x[1]; ψ, ψ0)
+        G[1] = -dlogηψ_dηψ(x[1]; ψ, ψ0)
     end
     function h!(H, x)
-        H[1, 1] = d2logηψ_dηψ2(x[1]; dP, p)
+        H[1, 1] = -d2logηψ_dηψ2(x[1]; dP, p)
     end
-    ηψ_hat = Optim.optimize(x -> -log_target(x[1]; ψ, ψ0), g!, h!, [1.0], NewtonTrustRegion()) |> Optim.minimizer |> x -> x[1]
+    ηψ_hat = Optim.optimize(x -> -log_target(x[1]; ψ, ψ0), g!, h!, [Float64(ηψ)], NewtonTrustRegion()) |> Optim.minimizer |> x -> x[1]
     ηψ_hess = d2logηψ_dηψ2(ηψ_hat; dP, p)
 
     proposal_dist = truncated(Normal(ηψ_hat, sqrt(-1 / ηψ_hess)); lower=0)
