@@ -455,7 +455,7 @@ function post_γ(; γ_bar, Σₒ)
 
     post_γ_ = Vector{Any}(undef, N)
     for i in 1:N
-        post_γ_[i] = Gamma(3, γ_bar + (1 / Σₒ[i]))
+        post_γ_[i] = Gamma(3, 1/(γ_bar + (1 / Σₒ[i])))
     end
 
     return post_γ_
