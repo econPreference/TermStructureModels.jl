@@ -294,7 +294,7 @@ sparse_prec(saved_θ, yields, macros, τₙ)
     - trace_λ: a vector that contains an optimal lasso parameters in iterations
     - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
 """
-function sparse_prec(saved_θ, T; lower_penalty=1e-2, nlambda=100, kappa=1)
+function sparse_prec(saved_θ, T; lower_penalty=1e-2, nlambda=100)
 
     R"library(qgraph)"
     ϕ = saved_θ[:ϕ][1]
@@ -320,8 +320,8 @@ function sparse_prec(saved_θ, T; lower_penalty=1e-2, nlambda=100, kappa=1)
         ΩFF_ = 0.5(ΩFF_ + ΩFF_')
 
         std_ = sqrt.(diag(ΩFF_))
-        inv_corr_ΩFF = diagm(1 ./ std_) * ΩFF_ * diagm(1 ./ std_) |> inv
-        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda, penalizeMatrix=abs.(inv_corr_ΩFF) .^ (-kappa / 2)))
+        # inv_corr_ΩFF = diagm(1 ./ std_) * ΩFF_ * diagm(1 ./ std_) |> inv
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))#penalizeMatrix=abs.(inv_corr_ΩFF) .^ (-kappa / 2)))
         sparse_prec = glasso_results[:optwi]
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
@@ -372,26 +372,26 @@ function sparse_coef(saved_θ, yields, macros, τₙ; zeta=2, lambda=1)
         GₚFF = ϕ0[:, 2:end]
         coefs_hat = [GₚFF KₚF]' |> vec
 
-        ind_diag = I(dP)
-        ind_lag = ones(dP, dP)
-        for i in 2:p
-            ind_diag = [ind_diag I(dP)]
-            ind_lag = [ind_lag i * ones(dP, dP)]
-        end
-        ind_diag = [ind_diag zeros(dP)] |> x -> vec(x')
-        ind_lag = [ind_lag zeros(dP)] |> x -> vec(x')
+        # ind_diag = I(dP)
+        # ind_lag = ones(dP, dP)
+        # for i in 2:p
+        #     ind_diag = [ind_diag I(dP)]
+        #     ind_lag = [ind_lag i * ones(dP, dP)]
+        # end
+        # ind_diag = [ind_diag zeros(dP)] |> x -> vec(x')
+        # ind_lag = [ind_lag zeros(dP)] |> x -> vec(x')
 
         coefs = similar(coefs_hat)
         sparsity = 0
         for j in eachindex(coefs)
-
-            if ind_diag[j] == 1
-                j_lambda = lambda * (ind_lag[j] - 1)^2
-            elseif ind_lag[j] == 0
-                j_lambda = 0
-            else
-                j_lambda = lambda * ind_lag[j]^2
-            end
+            j_lambda = lambda
+            # if ind_diag[j] == 1
+            #     j_lambda = lambda * (ind_lag[j] - 1)^2
+            # elseif ind_lag[j] == 0
+            #     j_lambda = 0
+            # else
+            #     j_lambda = lambda * ind_lag[j]^2
+            # end
 
             coef_hat = coefs_hat[j]
             thres = j_lambda / (abs(coef_hat)^zeta)
@@ -415,7 +415,7 @@ function sparse_coef(saved_θ, yields, macros, τₙ; zeta=2, lambda=1)
     return sparse_θ, trace_sparsity, trace_lik
 end
 
-function sparse_prec_coef(saved_θ, yields, macros, τₙ; zeta=2, lower_penalty=1e-2, nlambda=100, lambda=1, kappa=1)
+function sparse_prec_coef(saved_θ, yields, macros, τₙ; zeta=2, lower_penalty=1e-2, nlambda=100, lambda=1)
     R"library(qgraph)"
 
     dP = size(saved_θ[:ϕ][1], 1)
@@ -451,8 +451,8 @@ function sparse_prec_coef(saved_θ, yields, macros, τₙ; zeta=2, lower_penalty
         ΩFF_ = 0.5(ΩFF_ + ΩFF_')
 
         std_ = sqrt.(diag(ΩFF_))
-        inv_corr_ΩFF = diagm(1 ./ std_) * ΩFF_ * diagm(1 ./ std_) |> inv
-        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T - p, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda, penalizeMatrix=abs.(inv_corr_ΩFF) .^ (-kappa / 2)))
+        # inv_corr_ΩFF = diagm(1 ./ std_) * ΩFF_ * diagm(1 ./ std_) |> inv
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T - p, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))#, penalizeMatrix=abs.(inv_corr_ΩFF) .^ (-kappa / 2)))
         sparse_prec = glasso_results[:optwi]
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
@@ -468,26 +468,26 @@ function sparse_prec_coef(saved_θ, yields, macros, τₙ; zeta=2, lower_penalty
         GₚFF = ϕ0[:, 2:end]
         coefs_hat = [GₚFF KₚF]' |> vec
 
-        ind_diag = I(dP)
-        ind_lag = ones(dP, dP)
-        for i in 2:p
-            ind_diag = [ind_diag I(dP)]
-            ind_lag = [ind_lag i * ones(dP, dP)]
-        end
-        ind_diag = [ind_diag zeros(dP)] |> x -> vec(x')
-        ind_lag = [ind_lag zeros(dP)] |> x -> vec(x')
+        # ind_diag = I(dP)
+        # ind_lag = ones(dP, dP)
+        # for i in 2:p
+        #     ind_diag = [ind_diag I(dP)]
+        #     ind_lag = [ind_lag i * ones(dP, dP)]
+        # end
+        # ind_diag = [ind_diag zeros(dP)] |> x -> vec(x')
+        # ind_lag = [ind_lag zeros(dP)] |> x -> vec(x')
 
         coefs = similar(coefs_hat)
         sparsity_coef = 0
         for j in eachindex(coefs)
-
-            if ind_diag[j] == 1
-                j_lambda = lambda * (ind_lag[j] - 1)^2
-            elseif ind_lag[j] == 0
-                j_lambda = 0
-            else
-                j_lambda = lambda * ind_lag[j]^2
-            end
+            j_lambda = lambda
+            # if ind_diag[j] == 1
+            #     j_lambda = lambda * (ind_lag[j] - 1)^2
+            # elseif ind_lag[j] == 0
+            #     j_lambda = 0
+            # else
+            #     j_lambda = lambda * ind_lag[j]^2
+            # end
 
             coef_hat = coefs_hat[j]
             thres = j_lambda / (abs(coef_hat)^zeta)
