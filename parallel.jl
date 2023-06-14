@@ -38,7 +38,6 @@ burnin = 1_000
 post_prec = true
 post_coef = true
 lambda = 1
-zeta = 2
 TPτ_interest = 120
 is_TP = true
 is_ineff = true
@@ -150,22 +149,24 @@ elseif step == 2 ## Estimation
         iteration = length(saved_θ)
 
         par_sparse_θ = @showprogress 1 "Sparse VAR coef..." pmap(1:iteration) do i
-            sparse_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]); lambda, zeta)
+            sparse_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; lambda)
         end
         saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
         trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-        save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
+        trace_lik = [par_sparse_θ[i][3][1] for i in eachindex(par_sparse_θ)]
+        save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity, "trace_lik", trace_lik)
     elseif post_prec && post_coef
         saved_θ = load("posterior.jld2")["samples"]
         iteration = length(saved_θ)
 
         par_sparse_θ = @showprogress 1 "Sparse VAR..." pmap(1:iteration) do i
-            sparse_prec_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]); lambda, zeta)
+            sparse_prec_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; lambda)
         end
         saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
         trace_sparsity_coef = [par_sparse_θ[i][3][1] for i in eachindex(par_sparse_θ)]
         trace_sparsity_prec = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-        save("sparse.jld2", "samples", saved_θ, "sparsity_coef", trace_sparsity_coef, "sparsity_prec", trace_sparsity_prec)
+        trace_lik = [par_sparse_θ[i][4][1] for i in eachindex(par_sparse_θ)]
+        save("sparse.jld2", "samples", saved_θ, "sparsity_coef", trace_sparsity_coef, "sparsity_prec", trace_sparsity_prec, "trace_lik", trace_lik)
     else
         saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
         saved_θ = saved_θ[burnin+1:end]

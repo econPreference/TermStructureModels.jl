@@ -337,7 +337,7 @@ function sparse_prec(saved_θ, T; lower_penalty=1e-2, nlambda=100, kappa=1)
     return sparse_θ, trace_sparsity
 end
 
-function sparse_coef(saved_θ, yields, macros; zeta=2, lambda=1)
+function sparse_coef(saved_θ, yields, macros, τₙ; zeta=2, lambda=1)
 
     dP = size(saved_θ[:ϕ][1], 1)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
@@ -353,6 +353,7 @@ function sparse_coef(saved_θ, yields, macros; zeta=2, lambda=1)
     iteration = length(saved_θ)
     sparse_θ = Vector{Parameter}(undef, iteration)
     trace_sparsity = Vector{Float64}(undef, iteration)
+    trace_lik = Vector{Float64}(undef, iteration)
     @showprogress 1 "Imposing sparsity on coefs..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -408,12 +409,13 @@ function sparse_coef(saved_θ, yields, macros; zeta=2, lambda=1)
 
         sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
         trace_sparsity[iter] = sparsity
+        trace_lik[iter] = loglik_mea(yields[p+1:end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ) + loglik_tran(PCs, macros; ϕ, σ²FF)
     end
 
-    return sparse_θ, trace_sparsity
+    return sparse_θ, trace_sparsity, trace_lik
 end
 
-function sparse_prec_coef(saved_θ, yields, macros; zeta=2, lower_penalty=1e-2, nlambda=100, lambda=1, kappa=1)
+function sparse_prec_coef(saved_θ, yields, macros, τₙ; zeta=2, lower_penalty=1e-2, nlambda=100, lambda=1, kappa=1)
     R"library(qgraph)"
 
     dP = size(saved_θ[:ϕ][1], 1)
@@ -427,11 +429,11 @@ function sparse_prec_coef(saved_θ, yields, macros; zeta=2, lower_penalty=1e-2, 
     end
     Z = kron(I(dP), X)
 
-
     iteration = length(saved_θ)
     sparse_θ = Vector{Parameter}(undef, iteration)
     trace_sparsity_prec = Vector{Float64}(undef, iteration)
     trace_sparsity_coef = Vector{Float64}(undef, iteration)
+    trace_lik = Vector{Float64}(undef, iteration)
     @showprogress 1 "Imposing sparsity on coefs..." for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -503,9 +505,10 @@ function sparse_prec_coef(saved_θ, yields, macros; zeta=2, lower_penalty=1e-2, 
         ϕ = [ϕ0 C0]
 
         sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
+        trace_lik[iter] = loglik_mea(yields[p+1:end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ) + loglik_tran(PCs, macros; ϕ, σ²FF)
     end
 
-    return sparse_θ, trace_sparsity_prec, trace_sparsity_coef
+    return sparse_θ, trace_sparsity_prec, trace_sparsity_coef, trace_lik
 end
 
 """
