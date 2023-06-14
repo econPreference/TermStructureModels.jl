@@ -1,7 +1,7 @@
 module GDTSM
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, Distributed, PositiveFactorizations, Plots, Metaheuristics, Optimization, OptimizationOptimJL, ForwardDiff, Random, JLD2
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, Roots, CovarianceMatrices, ProgressMeter, Distributed, PositiveFactorizations, Plots, Metaheuristics, Optimization, OptimizationOptimJL, ForwardDiff, Random, JLD2, Lasso
 import Distributions: TDist
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
