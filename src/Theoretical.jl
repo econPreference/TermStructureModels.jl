@@ -467,24 +467,24 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     mSR = Vector{typeof(Ω0[1])}(undef, iteration)
     for iter in 1:iteration
 
-        σ²FF = rand.(MersenneTwister(1 + iter), prior_σ²FF_)
-        C = rand.(MersenneTwister(2 + iter), prior_C_)
-        for i in 2:dP, j in 1:(i-1)
-            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(MersenneTwister(3 + iter * i * j), x)
-        end
+        σ²FF = mean.(prior_σ²FF_)
+        C = mean.(prior_C_)
+        # for i in 2:dP, j in 1:(i-1)
+        #     C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(MersenneTwister(3 + iter * i * j), x)
+        # end
         ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-        ϕ0 = rand.(MersenneTwister(4 + iter), [Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
+        ϕ0 = rand.(MersenneTwister(iter), [Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
 
         ϕ0 = C \ ϕ0
         KₚF = ϕ0[:, 1]
         GₚFF = ϕ0[:, 2:end]
 
-        κQ = rand(MersenneTwister(5 + iter), prior_κQ_)
+        κQ = mean(prior_κQ_)
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
 
-        kQ_infty = rand(MersenneTwister(6 + iter), kQ_infty_dist)
+        kQ_infty = mean(kQ_infty_dist)
         aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
@@ -509,7 +509,7 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
         # var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
         # Ft = rand(MersenneTwister(7+iter), MvNormal(mean_Ft, var_Ft))
 
-        Ft = rand(MersenneTwister(8 + iter), p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
+        Ft = rand(MersenneTwister(2iter), p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
         mSR[iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
     end
 

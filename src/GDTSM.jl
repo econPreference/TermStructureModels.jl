@@ -31,15 +31,6 @@ using RCall
     μϕ_const::Vector = zeros(length(Ω0))
     fix_const_PC1::Bool = true
 end
-@kwdef struct HyperParameter
-    p
-    q
-    ν0
-    Ω0
-    μϕ_const
-    μkQ_infty
-    σkQ_infty
-end
 
 """
 abstract type PosteriorSample
@@ -208,7 +199,6 @@ export
 
     # GDTSM.jl
     Hyperparameter,
-    HyperParameter,
     PosteriorSample,
     Parameter,
     ReducedForm,
