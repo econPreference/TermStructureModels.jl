@@ -27,10 +27,9 @@ upper_q =
         1 1
         10 10
         100 100]
-upper_ν0 = 600
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 2
+mSR_tail = 0.5
 
 lag = 5
 iteration = 21_000
@@ -99,7 +98,7 @@ end
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, upper_ν0, medium_τ, μϕ_const)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -122,10 +121,11 @@ elseif step == 1 ## Tuning hyperparameter
             for j in eachindex(tuned_)
                 x0[j, :] = [tuned_[j].q[1, 1] tuned_[j].q[2, 1] / tuned_[j].q[1, 1] tuned_[j].q[3, 1] tuned_[j].q[4, 1] tuned_[j].q[1, 2] tuned_[j].q[2, 2] / tuned_[j].q[1, 2] tuned_[j].q[3, 2] tuned_[j].q[4, 2] tuned_[j].ν0 - dP - 1]
             end
+            x0 = x0[sortperm(log_ml, rev=true), :]
+            x0 = x0[1:min(length(tuned_), 30), :]
         end
-        x0 = x0[sortperm(log_ml, rev=true), :]
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0[1:min(length(tuned_), 30), :], upper_ν0, medium_τ, μϕ_const)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, medium_τ, μϕ_const)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
