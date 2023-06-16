@@ -485,18 +485,23 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
     GQPP = T1X_ * GQ_XX(; κQ) / T1X_
 
+    Λ_i_mean = Matrix{Float64}(undef, 1 + dP * p, dQ)
+    ϕ_i_var = Array{Float64}(undef, 1 + dP * p, 1 + dP * p, dQ)
+    for i in 1:dQ
+        mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
+        Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
+        Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
+        Λ_i_mean[1, i] -= KₚQ[i]
+        Λ_i_mean[2:dQ+1, i] .-= GQPP[i, :]
+    end
+
     mSR = Vector{Float64}(undef, T - p)
     for t in p+1:T
         Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
 
         λ_dist = Vector{Normal}(undef, dQ)
         for i in 1:dQ
-            mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
-            Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
-            Λ_i_mean, ϕ_i_var = Normal_Normal_in_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
-            Λ_i_mean[1] -= KₚQ[i]
-            Λ_i_mean[2:dQ+1] .-= GQPP[i, :]
-            λ_dist[i] = Normal(Λ_i_mean'Ft, sqrt(Ft' * ϕ_i_var * Ft)) / sqrt(σ²FF[i])
+            λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FF[i])
         end
 
         mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1) # mean of Generalized chi-squared distribution
