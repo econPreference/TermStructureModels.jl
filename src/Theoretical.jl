@@ -499,7 +499,7 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
             λ_dist[i] = Normal(Λ_i_mean'Ft, sqrt(Ft' * ϕ_i_var * Ft)) / sqrt(σ²FF[i])
         end
 
-        mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1)
+        mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1) # mean of Generalized chi-squared distribution
     end
 
     return mSR

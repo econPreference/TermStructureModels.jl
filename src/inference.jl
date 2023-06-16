@@ -63,7 +63,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         if isinf(mSR_tail)
             return 0.0
         else
-            return maximum_SR(yields, macros, tuned, τₙ, ρ), 0.95 |> maximum
+            return maximum_SR(yields, macros, tuned, τₙ, ρ) |> maximum
         end
 
     end
