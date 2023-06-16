@@ -176,7 +176,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    PCs, ~, Wₚ = PCA(yields, lag)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, lag)
     lx = [0.0; 0.0; 1; 0.0; 0.0; 0.0; 1; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
