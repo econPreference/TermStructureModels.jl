@@ -119,7 +119,7 @@ elseif step == 1 ## Tuning hyperparameter
         pf_input = load("tuned_pf.jld2")["pf_input"]
     end
     mSR_param = []
-    if isfile("standard/posterior.jld2")
+    if isfile("standard/posterior.jld2") && !isinf(mSR_tail)
         saved_θ = load("standard/posterior.jld2")["samples"]
         reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
         mSR_param = (σ²FF=mean(saved_θ)[:σ²FF], C=ϕ_2_ϕ₀_C(; ϕ=mean(saved_θ)[:ϕ])[2], ΩFF=mean(reduced_θ)[:ΩFF], κQ=mean(saved_θ)[:κQ], kQ_infty=mean(saved_θ)[:kQ_infty])
