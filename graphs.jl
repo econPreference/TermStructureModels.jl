@@ -10,7 +10,10 @@ for i in 2:p_max
 end
 df = DataFrame(lag=mesh[:, 1], mSR=mesh[:, 2], ML=mesh[:, 3])
 rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "quantile(maximum SR, 0.95)"))
-plot(df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point, Guide.yticks(ticks=-37750:500:-36000), Guide.xticks(ticks=[collect(0:10); collect(12:2:20)]), Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=12)) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
+plot(
+    df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point, Guide.yticks(ticks=-37250:500:-36250), Guide.xticks(ticks=[collect(0:0.5:1.5); collect(2:0.5:6)]), Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=12),
+    #Coord.cartesian(; xmin=0, xmax=1)
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
 
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"

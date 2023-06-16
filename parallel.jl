@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
-step = 4
+step = 1
 
 upper_q =
     [1 1
@@ -31,7 +31,7 @@ upper_q =
 σkQ_infty = 0.02
 mSR_tail = 0.5
 
-lag = 5
+lag = 7
 iteration = 21_000
 burnin = 1_000
 post_prec = true
@@ -212,12 +212,12 @@ else
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000, medium_τ)
+        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; medium_τ)
     else
         tuned_set = load("mSR/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("mSR/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; iteration=1000, medium_τ)
+        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; medium_τ)
     end
 
     # from step 2

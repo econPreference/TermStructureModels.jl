@@ -275,7 +275,6 @@ function post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, �
 
 end
 
-
 """
 Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 * Normal-Normal update part in NIG-NIG update, given σ²
@@ -285,13 +284,11 @@ Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 """
 function Normal_Normal_in_NIG(y, X, β₀, B₀, σ²)
 
-    R"library(MASS)"
-
     inv_B₀ = inv(B₀)
     B₁ = Symmetric(inv(inv_B₀ + X'X))
     β₁ = B₁ * (inv_B₀ * β₀ + X'y)
 
-    return rcopy(Array, rcall(:mvrnorm, mu=β₁, Sigma=σ² * B₁))
+    return β₁, σ² * B₁
 end
 
 # """
@@ -455,7 +452,7 @@ function post_γ(; γ_bar, Σₒ)
 
     post_γ_ = Vector{Any}(undef, N)
     for i in 1:N
-        post_γ_[i] = Gamma(3, 1/(γ_bar + (1 / Σₒ[i])))
+        post_γ_[i] = Gamma(3, 1 / (γ_bar + (1 / Σₒ[i])))
     end
 
     return post_γ_

@@ -450,67 +450,56 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
+function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5])
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
+    T = size(factors, 1)
 
+    yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
     prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
     kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
 
-    mSR = Vector{typeof(Ω0[1])}(undef, iteration)
-    for iter in 1:iteration
+    σ²FF = mean.(prior_σ²FF_)
+    C = mean.(prior_C_)
+    ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
 
-        σ²FF = mean.(prior_σ²FF_)
-        C = mean.(prior_C_)
-        # for i in 2:dP, j in 1:(i-1)
-        #     C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> x -> rand(MersenneTwister(3 + iter * i * j), x)
-        # end
-        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-        ϕ0 = rand.(MersenneTwister(iter), [Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
+    κQ = mean(prior_κQ_)
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    T1X_ = T1X(Bₓ_, Wₚ)
 
-        ϕ0 = C \ ϕ0
-        KₚF = ϕ0[:, 1]
-        GₚFF = ϕ0[:, 2:end]
+    kQ_infty = mean(kQ_infty_dist)
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+    Aₓ_ = Aₓ(aτ_, τₙ)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        κQ = mean(prior_κQ_)
-        bτ_ = bτ(τₙ[end]; κQ)
-        Bₓ_ = Bₓ(bτ_, τₙ)
-        T1X_ = T1X(Bₓ_, Wₚ)
+    KₓQ = zeros(dQ)
+    KₓQ[1] = kQ_infty
+    KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+    GQPP = T1X_ * GQ_XX(; κQ) / T1X_
 
-        kQ_infty = mean(kQ_infty_dist)
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
-        Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+    mSR = Vector{Float64}(undef, T - p)
+    for t in p+1:T
+        Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
 
-        KₓQ = zeros(dQ)
-        KₓQ[1] = kQ_infty
-        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-        GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
-        GQPP = T1X_ * GQ_XX(; κQ) / T1X_
-        GQPF[:, 1:dQ] = GQPP
-        λP = KₚF[1:dQ] - KₚQ
-        ΛPF = GₚFF[1:dQ, :] - GQPF
+        λ_dist = Vector{Normal}(undef, dQ)
+        for i in 1:dQ
+            mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Λ_i_mean, ϕ_i_var = Normal_Normal_in_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
+            Λ_i_mean[1] -= KₚQ[i]
+            Λ_i_mean[2:dQ+1] .-= GQPP[i, :]
+            λ_dist[i] = Normal(Λ_i_mean'Ft, sqrt(Ft' * ϕ_i_var * Ft)) / sqrt(σ²FF[i])
+        end
 
-        # # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
-        # μT = [KₚF
-        #     zeros(dP * (p - 1))]
-        # G = [GₚFF
-        #     I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
-        # Ω = [ΩFF zeros(dP, dP * (p - 1))
-        #     zeros(dP * (p - 1), dP * p)]
-        # mean_Ft = (I(length(μT)) - G) \ μT
-        # var_Ft = (I(length(μT)^2) - kron(G, G)) \ vec(Ω) |> x -> reshape(x, length(μT), length(μT)) |> Symmetric
-        # Ft = rand(MersenneTwister(7+iter), MvNormal(mean_Ft, var_Ft))
-
-        Ft = rand(MersenneTwister(2iter), p+1:size(factors, 1)) |> x -> factors'[:, x:-1:x-p+1] |> vec
-        mSR[iter] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)] |> x -> sqrt(x'x)
+        mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1)
     end
 
     return mSR
