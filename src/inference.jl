@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct Hyperparameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=true)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_tail=Inf, initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=true, mSR_param=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -15,13 +15,86 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    PCs, ~, Wₚ = PCA(yields, lag)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, lag)
     lx = [0.0; 0.0; 1; 0.0; 0.0; 0.0; 1; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
         μϕ_const = zeros(dP)
     end
+
+    ## for calculating mSR###
+    factors = [PCs macros]
+    T = size(factors, 1)
+    yϕ, Xϕ = yϕ_Xϕ(PCs, macros, lag)
+    prior_κQ_ = prior_κQ(medium_τ)
+
+    if mSR_param |> isempty
+
+        σ²FF = AR_re_var_vec
+        C = I(dP)
+        ΩFF = diagm(σ²FF)
+        κQ = mean(prior_κQ_)
+        kQ_infty = Normal(μkQ_infty, σkQ_infty) |> mean
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+    else
+        (; σ²FF, C, ΩFF, κQ, kQ_infty) = mSR_param
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+    end
+
+    function maximum_SR_inner(Hyperparameter_::Hyperparameter)
+
+        (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
+
+        prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
+
+        Λ_i_mean = Matrix{Float64}(undef, 1 + dP * p, dQ)
+        ϕ_i_var = Array{Float64}(undef, 1 + dP * p, 1 + dP * p, dQ)
+        for i in 1:dQ
+            mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
+            Λ_i_mean[1, i] -= KₚQ[i]
+            Λ_i_mean[2:dQ+1, i] .-= GQPP[i, :]
+        end
+
+        mSR = Vector{Float64}(undef, T - p)
+        for t in p+1:T
+            Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
+
+            λ_dist = Vector{Normal}(undef, dQ)
+            for i in 1:dQ
+                λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FF[i])
+            end
+
+            mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1) # mean of Generalized chi-squared distribution
+        end
+
+        return mSR
+    end
+    ###
 
     function negative_log_marginal(input)
 
@@ -63,45 +136,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         if isinf(mSR_tail)
             return 0.0
         else
-            return maximum_SR(yields, macros, tuned, τₙ, ρ) |> maximum
+            return maximum_SR_inner(tuned) |> maximum
         end
 
     end
 
     algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter))
 
-    # if maxiter_local > 0
-    #     bounds = boxconstraints(lb=1.01lx, ub=0.99ux)
-    #     function obj_modified(input)
-    #         fx, gx = negative_log_marginal(input), constraint(input)
-    #         fx, [gx - 0.99mSR_tail], zeros(1)
-    #     end
-    #     if !isempty(initial)
-    #         set_user_solutions!(algo, initial, obj_modified)
-    #     end
-    #     opt = Metaheuristics.optimize(obj_modified, bounds, algo)
-
-    #     if isinf(mSR_tail)
-    #         optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff())
-    #         prob = OptimizationProblem(optprob, minimizer(opt); lb=lx, ub=ux)
-    #         sol = solve(prob, LBFGS(); show_trace=true, iterations=maxiter_local)
-    #     else
-    #         cons(res, x, p) = (res .= [constraint(x); x])
-    #         optprob = OptimizationFunction((x, p) -> negative_log_marginal(x), Optimization.AutoForwardDiff(), cons=cons)
-    #         prob = OptimizationProblem(optprob, minimizer(opt); lcons=[0.0; lx], ucons=[mSR_tail; ux])
-    #         sol = solve(prob, IPNewton(); show_trace=true, iterations=maxiter_local)
-    #     end
-
-    #     q = [sol.u[1] sol.u[5]
-    #         sol.u[2] sol.u[6]
-    #         sol.u[3] sol.u[7]
-    #         sol.u[4] sol.u[8]]
-    #     q[2, :] = q[1, :] .* q[2, :]
-    #     ν0 = sol.u[9] + dP + 1
-    #     Ω0 = AR_re_var_vec * sol.u[9]
-
-    #     return Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), (opt, prob.f(sol.u, []))
-    # else
     bounds = boxconstraints(lb=lx, ub=ux)
     function obj(input)
         fx, gx = negative_log_marginal(input), constraint(input)
@@ -121,14 +162,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     Ω0 = AR_re_var_vec * minimizer(opt)[9]
 
     return Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), opt
-    # end
 
 end
 
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=true)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=true, mSR_param=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -143,6 +183,80 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     if isempty(μϕ_const) == true
         μϕ_const = zeros(dP)
     end
+
+    ## for calculating mSR###
+    factors = [PCs macros]
+    T = size(factors, 1)
+    yϕ, Xϕ = yϕ_Xϕ(PCs, macros, lag)
+    prior_κQ_ = prior_κQ(medium_τ)
+
+    if mSR_param |> isempty
+
+        σ²FF = AR_re_var_vec
+        C = I(dP)
+        ΩFF = diagm(σ²FF)
+        κQ = mean(prior_κQ_)
+        kQ_infty = Normal(μkQ_infty, σkQ_infty) |> mean
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+    else
+        (; σ²FF, C, ΩFF, κQ, kQ_infty) = mSR_param
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+    end
+
+    function maximum_SR_inner(Hyperparameter_::Hyperparameter)
+
+        (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
+
+        prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
+
+        Λ_i_mean = Matrix{Float64}(undef, 1 + dP * p, dQ)
+        ϕ_i_var = Array{Float64}(undef, 1 + dP * p, 1 + dP * p, dQ)
+        for i in 1:dQ
+            mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
+            Λ_i_mean[1, i] -= KₚQ[i]
+            Λ_i_mean[2:dQ+1, i] .-= GQPP[i, :]
+        end
+
+        mSR = Vector{Float64}(undef, T - p)
+        for t in p+1:T
+            Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
+
+            λ_dist = Vector{Normal}(undef, dQ)
+            for i in 1:dQ
+                λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FF[i])
+            end
+
+            mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1) # mean of Generalized chi-squared distribution
+        end
+
+        return mSR
+    end
+    ###
+
 
     function negative_log_marginal(input)
 
@@ -160,7 +274,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         end
 
         tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), maximum(maximum_SR(yields, macros, tuned, τₙ, ρ))]
+        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), maximum(maximum_SR_inner(tuned))]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end

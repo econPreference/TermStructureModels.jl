@@ -450,7 +450,7 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5])
+function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], mSR_param=[])
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -458,24 +458,28 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     dP = length(Ω0)
     dQ = dimQ()
     T = size(factors, 1)
-
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
-    prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
-    prior_C_ = prior_C(; Ω0)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
-    kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
 
-    σ²FF = mean.(prior_σ²FF_)
-    C = mean.(prior_C_)
-    ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
+    if mSR_param |> isempty
+        prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
+        prior_C_ = prior_C(; Ω0)
+        kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
 
-    κQ = mean(prior_κQ_)
+        σ²FF = mean.(prior_σ²FF_)
+        C = mean.(prior_C_)
+        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
+        kQ_infty = mean(kQ_infty_dist)
+        κQ = mean(prior_κQ_)
+    else
+        (; σ²FF, C, ΩFF, κQ, kQ_infty) = mSR_param
+    end
+
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
     T1X_ = T1X(Bₓ_, Wₚ)
 
-    kQ_infty = mean(kQ_infty_dist)
     aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
     Aₓ_ = Aₓ(aτ_, τₙ)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)

@@ -29,7 +29,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 0.5
+mSR_tail = 1.5
 
 lag = 7
 iteration = 21_000
@@ -97,8 +97,15 @@ end
 
 if step == 0 ## Drawing pareto frontier
 
+    mSR_param = []
+    if isfile("standard/posterior.jld2")
+        saved_θ = load("standard/posterior.jld2")["samples"]
+        reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
+        mSR_param = (σ²FF=mean(saved_θ)[:σ²FF], C=ϕ_2_ϕ₀_C(; ϕ=mean(saved_θ)[:ϕ])[2], ΩFF=mean(reduced_θ)[:ΩFF], κQ=mean(saved_θ)[:κQ], kQ_infty=mean(saved_θ)[:kQ_infty])
+    end
+
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_param)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -111,6 +118,13 @@ elseif step == 1 ## Tuning hyperparameter
         pf = load("tuned_pf.jld2")["pf"]
         pf_input = load("tuned_pf.jld2")["pf_input"]
     end
+    mSR_param = []
+    if isfile("standard/posterior.jld2")
+        saved_θ = load("standard/posterior.jld2")["samples"]
+        reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
+        mSR_param = (σ²FF=mean(saved_θ)[:σ²FF], C=ϕ_2_ϕ₀_C(; ϕ=mean(saved_θ)[:ϕ])[2], ΩFF=mean(reduced_θ)[:ΩFF], κQ=mean(saved_θ)[:κQ], kQ_infty=mean(saved_θ)[:kQ_infty])
+    end
+
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
         x0 = []
         if isfile("tuned_pf.jld2")
@@ -125,7 +139,7 @@ elseif step == 1 ## Tuning hyperparameter
             x0 = x0[1:min(length(tuned_), 30), :]
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, medium_τ, μϕ_const)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, medium_τ, μϕ_const, mSR_param)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -212,12 +226,10 @@ else
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; medium_τ)
     else
         tuned_set = load("mSR/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("mSR/tuned.jld2")["opt"]
-        mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; medium_τ)
     end
 
     # from step 2

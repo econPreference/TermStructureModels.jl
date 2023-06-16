@@ -196,6 +196,7 @@ export
     LDL,
     ϕ_σ²FF_2_ΩFF,
     reducedform,
+    ϕ_2_ϕ₀_C,
 
     # GDTSM.jl
     Hyperparameter,
