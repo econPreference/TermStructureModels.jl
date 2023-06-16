@@ -249,3 +249,95 @@ function reducedform(saved_θ, yields, macros, τₙ)
 
     return reduced_θ
 end
+
+function calibration_μϕ_const(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000)
+
+    dQ = dimQ()
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
+    if isempty(μϕ_const_PCs)
+        μϕ_const_PCs = zeros(dQ)
+    end
+
+    prior_TP = Vector{Float64}(undef, iteration)
+    prior_λₚ = Matrix{Float64}(undef, iteration, dQ)
+    for i in 1:iteration
+        κQ = prior_κQ(medium_τ) |> rand
+        kQ_infty = Normal(μkQ_infty, σkQ_infty) |> rand
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        # Jensen's Ineqaulity term
+        jensen = 0
+        for i = 1:(τ-1)
+            jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP)
+        end
+        jensen /= -τ
+
+        # Constant term
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        λₚ = μϕ_const_PCs - KₚQ
+        prior_λₚ[i, :] = μϕ_const_PCs - KₚQ
+
+        prior_TP[i] = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ) |> x -> (-x[1] / τ) + jensen
+    end
+
+    return prior_TP, prior_λₚ
+
+end
+
+function calibration_σkQ_infty(tuned, σkQ_infty, yields, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000)
+
+    (; p, q, ν0, Ω0, μkQ_infty, μϕ_const, fix_const_PC1) = tuned
+    ~, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    dP = length(Ω0)
+    dQ = dimQ()
+
+    prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
+    prior_C_ = prior_C(; Ω0)
+    prior_κQ_ = prior_κQ(medium_τ)
+    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
+    kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
+
+    KₚP = Matrix{Float64}(undef, iteration, dQ)
+    KₚQ = Matrix{Float64}(undef, iteration, dQ)
+    for iter in 1:iteration
+
+        σ²FF = rand.(prior_σ²FF_)
+        C = rand.(prior_C_)
+        for i in 2:dP, j in 1:(i-1)
+            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> rand
+        end
+        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
+        ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
+        ϕ0 = C \ ϕ0
+
+        κQ = rand(prior_κQ_)
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+
+        kQ_infty = rand(kQ_infty_dist)
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+
+        KₚP[iter, :] = ϕ0[:, 1][1:dQ]
+        KₚQ[iter, :] = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+
+    end
+
+    return KₚP, KₚQ
+
+end

@@ -197,6 +197,8 @@ export
     ϕ_σ²FF_2_ΩFF,
     reducedform,
     ϕ_2_ϕ₀_C,
+    calibration_μϕ_const,
+    calibration_σkQ_infty,
 
     # GDTSM.jl
     Hyperparameter,
@@ -236,7 +238,6 @@ export
     PCA,
     fitted_YieldCurve,
     maximum_SR,
-    calibration_kQ_infty,
 
     # utilities.jl
     getindex,

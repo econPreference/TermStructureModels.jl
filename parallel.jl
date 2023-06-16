@@ -90,10 +90,14 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-μϕ_const_PCs = -calibration_kQ_infty(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
+μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
 μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
-@show calibration_kQ_infty(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
+@show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
+
+KₚP, KₚQ = calibration_σkQ_infty(tuned, 0.02, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ)
+@show [mean(KₚP, dims=1), mean(KₚQ, dims=1)]
+@show [std(KₚP, dims=1), std(KₚQ, dims=1)]
 
 if step == 0 ## Drawing pareto frontier
 
