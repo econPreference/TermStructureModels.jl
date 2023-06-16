@@ -95,7 +95,7 @@ end
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
-KₚP, KₚQ = calibration_σkQ_infty(tuned, 0.02, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ)
+KₚP, KₚQ = calibration_σkQ_infty(tuned, σkQ_infty, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ)
 @show [mean(KₚP, dims=1), mean(KₚQ, dims=1)]
 @show [std(KₚP, dims=1), std(KₚQ, dims=1)]
 
