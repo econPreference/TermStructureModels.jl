@@ -49,12 +49,14 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPP = T1X_ * GQ_XX(; κQ) / T1X_
     else
-        (; σ²FF, C, ΩFF, κQ, kQ_infty) = mSR_param
+        (; σ²FF, C, κQ, kQ_infty) = mSR_param
+        CQQ = C[1:dQ, 1:dQ]
+        ΩPP = (CQQ \ diagm(σ²FF[1:dQ])) / CQQ'
 
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
@@ -210,12 +212,14 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPP = T1X_ * GQ_XX(; κQ) / T1X_
     else
-        (; σ²FF, C, ΩFF, κQ, kQ_infty) = mSR_param
+        (; σ²FF, C, κQ, kQ_infty) = mSR_param
+        CQQ = C[1:dQ, 1:dQ]
+        ΩPP = (CQQ \ diagm(σ²FF[1:dQ])) / CQQ'
 
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
