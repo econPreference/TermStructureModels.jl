@@ -30,7 +30,7 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.02
 mSR_const = 1
-mSR_ftn = x -> skewness(x)
+mSR_ftn = x -> maximum(x) - quantile(x, 0.95)
 
 lag = 7
 iteration = 21_000
