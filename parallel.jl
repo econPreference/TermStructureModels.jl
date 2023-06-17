@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX, Distributions
+using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX, StatsBase
 import Plots
 
 ## Setting
