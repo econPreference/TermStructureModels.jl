@@ -19,7 +19,7 @@ date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
-p_max = 12
+p_max = 9
 step = 4
 
 upper_q =
@@ -29,7 +29,8 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_tail = 1.5
+mSR_const = 1
+mSR_ftn = x -> maximum(x) - quantile(x, 0.95)
 
 lag = 7
 iteration = 21_000
@@ -109,7 +110,7 @@ if step == 0 ## Drawing pareto frontier
     end
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_param)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_param, mSR_ftn)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -123,7 +124,7 @@ elseif step == 1 ## Tuning hyperparameter
         pf_input = load("tuned_pf.jld2")["pf_input"]
     end
     mSR_param = []
-    if isfile("standard/posterior.jld2") && !isinf(mSR_tail)
+    if isfile("standard/posterior.jld2") && !isinf(mSR_const)
         println("It will use posterior samples to calculate mSR")
         saved_θ = load("standard/posterior.jld2")["samples"]
         mSR_param = (σ²FF=mean(saved_θ)[:σ²FF], C=ϕ_2_ϕ₀_C(; ϕ=mean(saved_θ)[:ϕ])[2], κQ=mean(saved_θ)[:κQ], kQ_infty=mean(saved_θ)[:kQ_infty])
@@ -133,8 +134,8 @@ elseif step == 1 ## Tuning hyperparameter
         x0 = []
         if isfile("tuned_pf.jld2")
             dP = size(macros, 2) - 1 + dimQ()
-            tuned_ = pf_input[i][findall(x -> x < mSR_tail, pf[i][2])]
-            log_ml = pf[i][1][findall(x -> x < mSR_tail, pf[i][2])]
+            tuned_ = pf_input[i][findall(x -> x < mSR_const, pf[i][2])]
+            log_ml = pf[i][1][findall(x -> x < mSR_const, pf[i][2])]
             x0 = Matrix{Float64}(undef, length(tuned_), 9)
             for j in eachindex(tuned_)
                 x0[j, :] = [tuned_[j].q[1, 1] tuned_[j].q[2, 1] / tuned_[j].q[1, 1] tuned_[j].q[3, 1] tuned_[j].q[4, 1] tuned_[j].q[1, 2] tuned_[j].q[2, 2] / tuned_[j].q[1, 2] tuned_[j].q[3, 2] tuned_[j].q[4, 2] tuned_[j].ν0 - dP - 1]
@@ -143,7 +144,7 @@ elseif step == 1 ## Tuning hyperparameter
             x0 = x0[1:min(length(tuned_), 30), :]
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_tail, initial=x0, medium_τ, μϕ_const, mSR_param)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_const, initial=x0, medium_τ, μϕ_const, mSR_param, mSR_ftn)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -226,7 +227,7 @@ else
     #pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 
     # from step 1
-    if mSR_tail == Inf
+    if mSR_const == Inf
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
@@ -237,7 +238,7 @@ else
     end
 
     # from step 2
-    if mSR_tail == Inf
+    if mSR_const == Inf
         saved_θ = load("standard/posterior.jld2")["samples"]
         acceptPr = load("standard/posterior.jld2")["acceptPr"]
         accept_rate = load("standard/posterior.jld2")["accept_rate"]
