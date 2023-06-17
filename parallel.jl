@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter
 end
-using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
+using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX, Distributions
 import Plots
 
 ## Setting
@@ -30,7 +30,7 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.02
 mSR_const = 1
-mSR_ftn = x -> maximum(x) - quantile(x, 0.95)
+mSR_ftn = x -> skewness(x)
 
 lag = 7
 iteration = 21_000
