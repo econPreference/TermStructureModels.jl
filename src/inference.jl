@@ -27,12 +27,14 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     factors = [PCs macros]
     T = size(factors, 1)
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, lag)
+    Xϕ0 = Xϕ[:, (end-dP+1):end]
     prior_κQ_ = prior_κQ(medium_τ)
 
     if mSR_param |> isempty
 
         σ²FF = AR_re_var_vec
         C = I(dP)
+        CQQ = C[1:dQ, 1:dQ]
         ΩFF = diagm(σ²FF)
         κQ = mean(prior_κQ_)
         kQ_infty = Normal(μkQ_infty, σkQ_infty) |> mean
@@ -48,6 +50,9 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         KₓQ[1] = kQ_infty
         KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+
+        CQQ_KₚQ = CQQ * KₚQ
+        CQQ_GQPP = CQQ * GQPP
     else
         (; σ²FF, C, κQ, kQ_infty) = mSR_param
         CQQ = C[1:dQ, 1:dQ]
@@ -64,6 +69,9 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         KₓQ[1] = kQ_infty
         KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+
+        CQQ_KₚQ = CQQ * KₚQ
+        CQQ_GQPP = CQQ * GQPP
     end
 
     function maximum_SR_inner(Hyperparameter_::Hyperparameter)
@@ -77,9 +85,9 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         for i in 1:dQ
             mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
             Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
-            Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
-            Λ_i_mean[1, i] -= KₚQ[i]
-            Λ_i_mean[2:dQ+1, i] .-= GQPP[i, :]
+            Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(-Xϕ0 * C[i, :], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i])
+            Λ_i_mean[1, i] -= CQQ_KₚQ[i]
+            Λ_i_mean[2:dQ+1, i] .-= CQQ_GQPP[i, :]
         end
 
         mSR = Vector{Float64}(undef, T - p)
