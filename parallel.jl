@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 9
-step = 4
+step = 2
 
 upper_q =
     [1 1
@@ -29,7 +29,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_const = 3
+mSR_const = 8
 mSR_ftn = x -> skewness(x)
 
 lag = 7
