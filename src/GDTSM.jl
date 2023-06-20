@@ -199,6 +199,7 @@ export
     ϕ_2_ϕ₀_C,
     calibration_μϕ_const,
     calibration_σkQ_infty,
+    prior_const_TP,
 
     # GDTSM.jl
     Hyperparameter,

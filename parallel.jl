@@ -100,15 +100,8 @@ end
 
 if step == 0 ## Drawing pareto frontier
 
-    mSR_param = []
-    if isfile("standard/posterior.jld2")
-        println("It will use posterior samples to calculate mSR")
-        saved_θ = load("standard/posterior.jld2")["samples"]
-        mSR_param = (σ²FF=mean(saved_θ)[:σ²FF], C=ϕ_2_ϕ₀_C(; ϕ=mean(saved_θ)[:ϕ])[2], κQ=mean(saved_θ)[:κQ], kQ_infty=mean(saved_θ)[:kQ_infty])
-    end
-
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_param)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -120,12 +113,6 @@ elseif step == 1 ## Tuning hyperparameter
     if isfile("tuned_pf.jld2")
         pf = load("tuned_pf.jld2")["pf"]
         pf_input = load("tuned_pf.jld2")["pf_input"]
-    end
-    mSR_param = []
-    if isfile("standard/posterior.jld2") && !isinf(mSR_const)
-        println("It will use posterior samples to calculate mSR")
-        saved_θ = load("standard/posterior.jld2")["samples"]
-        mSR_param = (σ²FF=mean(saved_θ)[:σ²FF], C=ϕ_2_ϕ₀_C(; ϕ=mean(saved_θ)[:ϕ])[2], κQ=mean(saved_θ)[:κQ], kQ_infty=mean(saved_θ)[:kQ_infty])
     end
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
@@ -142,7 +129,7 @@ elseif step == 1 ## Tuning hyperparameter
             x0 = x0[1:min(length(tuned_), 30), :]
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_const, initial=x0, medium_τ, μϕ_const, mSR_param)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_const, initial=x0, medium_τ, μϕ_const)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
