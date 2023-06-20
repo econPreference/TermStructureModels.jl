@@ -29,7 +29,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
-mSR_const = 8
+const_TP_upper = 8
 
 lag = 7
 iteration = 21_000
@@ -119,8 +119,8 @@ elseif step == 1 ## Tuning hyperparameter
         x0 = []
         if isfile("tuned_pf.jld2")
             dP = size(macros, 2) - 1 + dimQ()
-            tuned_ = pf_input[i][findall(x -> x < mSR_const, pf[i][2])]
-            log_ml = pf[i][1][findall(x -> x < mSR_const, pf[i][2])]
+            tuned_ = pf_input[i][findall(x -> x < const_TP_upper, pf[i][2])]
+            log_ml = pf[i][1][findall(x -> x < const_TP_upper, pf[i][2])]
             x0 = Matrix{Float64}(undef, length(tuned_), 9)
             for j in eachindex(tuned_)
                 x0[j, :] = [tuned_[j].q[1, 1] tuned_[j].q[2, 1] / tuned_[j].q[1, 1] tuned_[j].q[3, 1] tuned_[j].q[4, 1] tuned_[j].q[1, 2] tuned_[j].q[2, 2] / tuned_[j].q[1, 2] tuned_[j].q[3, 2] tuned_[j].q[4, 2] tuned_[j].ν0 - dP - 1]
@@ -129,7 +129,7 @@ elseif step == 1 ## Tuning hyperparameter
             x0 = x0[1:min(length(tuned_), 30), :]
         end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, mSR_const, initial=x0, medium_τ, μϕ_const)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, const_TP_upper, initial=x0, medium_τ, μϕ_const)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -212,7 +212,7 @@ else
     #pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 
     # from step 1
-    if mSR_const == Inf
+    if const_TP_upper == Inf
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
@@ -223,7 +223,7 @@ else
     end
 
     # from step 2
-    if mSR_const == Inf
+    if const_TP_upper == Inf
         saved_θ = load("standard/posterior.jld2")["samples"]
         acceptPr = load("standard/posterior.jld2")["acceptPr"]
         accept_rate = load("standard/posterior.jld2")["accept_rate"]

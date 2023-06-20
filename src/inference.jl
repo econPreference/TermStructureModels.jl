@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct Hyperparameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, mSR_const=Inf, mSR_ftn=x -> std(x), initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=false)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, const_TP_upper=Inf, mSR_ftn=x -> std(x), initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=false)
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -60,7 +60,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         end
 
         tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        if isinf(mSR_const)
+        if isinf(const_TP_upper)
             return 0.0
         else
             return prior_const_TP(tuned, 120, yields, τₙ, ρ; medium_τ) |> mSR_ftn
@@ -73,7 +73,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     bounds = boxconstraints(lb=lx, ub=ux)
     function obj(input)
         fx, gx = negative_log_marginal(input), constraint(input)
-        fx, [gx - mSR_const], zeros(1)
+        fx, [gx - const_TP_upper], zeros(1)
     end
     if !isempty(initial)
         set_user_solutions!(algo, initial, obj)
@@ -95,7 +95,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_param=[], mSR_ftn=x -> std(x))
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn=x -> std(x))
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
