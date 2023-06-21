@@ -12,8 +12,8 @@ df = DataFrame(lag=mesh[:, 1], mSR=mesh[:, 2], ML=mesh[:, 3])
 rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "quantile(maximum SR, 0.95)"))
 plot(
     df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point,
-    Guide.yticks(ticks=-37000:100:-36300),
-    Guide.xticks(ticks=[collect(0:3); collect(3:14)]),
+    Guide.yticks(ticks=-37750:250:-36250),
+    Guide.xticks(ticks=[collect(0:3); collect(3:7)]),
     Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=9),
     #Coord.cartesian(; ymin=-36600, ymax=-36300)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")

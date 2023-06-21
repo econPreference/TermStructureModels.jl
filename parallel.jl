@@ -20,7 +20,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 9
-step = 2
+step = 3
 
 upper_q =
     [1 1
@@ -29,12 +29,12 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
-const_TP_upper = 8
+const_TP_upper = 1.0
 
 lag = 7
 iteration = 21_000
 burnin = 1_000
-post_prec = false
+post_prec = true
 post_coef = false
 sparsity = false
 TPτ_interest = 120
