@@ -227,16 +227,13 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
         # ϕ, σ²FF, isaccept = post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
         # isaccept_C_σ²FF[2:end] += isaccept
 
-        if sparsity == true
-            ηψ, isaccept = post_ηψ(; ηψ, ψ, ψ0)
-            isaccept_ηψ += isaccept
-        end
-
         ϕ, σ²FF, isaccept = post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1)
         isaccept_C_σ²FF += isaccept
 
         if sparsity == true
             ψ0, ψ = post_ψ_ψ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0, fix_const_PC1)
+            ηψ, isaccept = post_ηψ(; ηψ, ψ, ψ0)
+            isaccept_ηψ += isaccept
         end
 
         Σₒ = rand.(post_Σₒ(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ΩPP=ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF), γ))

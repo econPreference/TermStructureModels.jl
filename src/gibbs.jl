@@ -171,7 +171,7 @@ function post_ηψ(; ηψ, ψ, ψ0)
     ηψ_hat = Optim.optimize(x -> -log_target(x[1]; ψ, ψ0), g!, h!, [Float64(ηψ)], NewtonTrustRegion()) |> Optim.minimizer |> x -> x[1]
     ηψ_hess = d2logηψ_dηψ2(ηψ_hat; dP, p)
 
-    proposal_dist = truncated(Normal(ηψ_hat, sqrt(-1 / ηψ_hess)); lower=0)
+    proposal_dist = truncated(TDist(5, ηψ_hat, -1 / ηψ_hess); lower=0)
     prop_ηψ = rand(proposal_dist)
 
     prob = log_target(prop_ηψ; ψ, ψ0)
