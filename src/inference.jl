@@ -16,7 +16,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ = PCA(yields, lag)
-    lx = [0.0; 0.0; 1; 0.0; 0.0; 0.0; 1; 0.0; 1]
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
@@ -30,7 +30,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             input[2] input[6]
             input[3] input[7]
             input[4] input[8]]
-        q[2, :] = q[1, :] .* q[2, :]
+        # q[2, :] = q[1, :] .* q[2, :]
         ν0 = input[9] + dP + 1
         Ω0 = AR_re_var_vec * input[9]
 
@@ -51,7 +51,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             input[2] input[6]
             input[3] input[7]
             input[4] input[8]]
-        q[2, :] = q[1, :] .* q[2, :]
+        # q[2, :] = q[1, :] .* q[2, :]
         ν0 = input[9] + dP + 1
         Ω0 = AR_re_var_vec * input[9]
 
@@ -84,7 +84,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         minimizer(opt)[2] minimizer(opt)[6]
         minimizer(opt)[3] minimizer(opt)[7]
         minimizer(opt)[4] minimizer(opt)[8]]
-    q[2, :] = q[1, :] .* q[2, :]
+    # q[2, :] = q[1, :] .* q[2, :]
     ν0 = minimizer(opt)[9] + dP + 1
     Ω0 = AR_re_var_vec * minimizer(opt)[9]
 
@@ -104,7 +104,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     dQ = dimQ()
     dP = dQ + size(macros, 2)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, lag)
-    lx = [0.0; 0.0; 1; 0.0; 0.0; 0.0; 1; 0.0; 1]
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
@@ -118,7 +118,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
             input[2] input[6]
             input[3] input[7]
             input[4] input[8]]
-        q[2, :] = q[1, :] .* q[2, :]
+        # q[2, :] = q[1, :] .* q[2, :]
         ν0 = input[9] + dP + 1
         Ω0 = AR_re_var_vec * input[9]
 
@@ -146,7 +146,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
             input[2] input[6]
             input[3] input[7]
             input[4] input[8]]
-        q[2, :] = q[1, :] .* q[2, :]
+        # q[2, :] = q[1, :] .* q[2, :]
         ν0 = input[9] + dP + 1
         Ω0 = AR_re_var_vec * input[9]
 

@@ -450,9 +450,9 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], mSR_param=[])
+function maximum_SR(saved_θ, yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
-    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = Hyperparameter_
+    (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
@@ -463,33 +463,20 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
 
-    if mSR_param |> isempty
-        prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
-        prior_C_ = prior_C(; Ω0)
-        kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
+    σ²FF = mean(saved_θ)[:σ²FF]
+    ϕ = mean(saved_θ)[:ϕ]
+    κQ = mean(saved_θ)[:κQ]
+    kQ_infty = mean(saved_θ)[:kQ_infty]
 
-        σ²FF = mean.(prior_σ²FF_)
-        C = mean.(prior_C_)
-        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-        kQ_infty = mean(kQ_infty_dist)
-        κQ = mean(prior_κQ_)
+    ~, C = ϕ_2_ϕ₀_C(; ϕ)
+    CQQ = C[1:dQ, 1:dQ]
+    ΩPP = (CQQ \ diagm(σ²FF[1:dQ])) / CQQ'
 
-        bτ_ = bτ(τₙ[end]; κQ)
-        Bₓ_ = Bₓ(bτ_, τₙ)
-        T1X_ = T1X(Bₓ_, Wₚ)
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    T1X_ = T1X(Bₓ_, Wₚ)
 
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
-    else
-        (; σ²FF, C, κQ, kQ_infty) = mSR_param
-        CQQ = C[1:dQ, 1:dQ]
-        ΩPP = (CQQ \ diagm(σ²FF[1:dQ])) / CQQ'
-
-        bτ_ = bτ(τₙ[end]; κQ)
-        Bₓ_ = Bₓ(bτ_, τₙ)
-        T1X_ = T1X(Bₓ_, Wₚ)
-
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
-    end
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
 
     Aₓ_ = Aₓ(aτ_, τₙ)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
@@ -512,18 +499,19 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
         Λ_i_mean[2:dQ+1, i] .-= CQQ_GQPP[i, :]
     end
 
-    mSR = Vector{Float64}(undef, T - p)
-    for t in p+1:T
-        Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
+    mSR = Matrix{Float64}(undef, iteration, T - p)
+    @showprogress 1 "Sampling mSR..." for iter in 1:iteration
+        for t in p+1:T
+            Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
 
-        λ_dist = Vector{Normal}(undef, dQ)
-        for i in 1:dQ
-            λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FF[i])
+            λ_dist = Vector{Normal}(undef, dQ)
+            for i in 1:dQ
+                λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FF[i])
+            end
+
+            mSR[iter, t-p] = [rand(NoncentralChisq(1, mean(λ_dist[i])^2)) for i in 1:dQ] |> x -> var.(λ_dist)' * x |> sqrt
         end
-
-        mSR[t-p] = var.(λ_dist)' * (((mean.(λ_dist)) .^ 2) .+ 1) # mean of Generalized chi-squared distribution
     end
-
     return mSR
 end
 

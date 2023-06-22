@@ -24,12 +24,12 @@ step = 3
 
 upper_q =
     [1 1
-        1e-4 1
+        1 1
         10 10
-        1e-4 100]
+        100 100]
 μkQ_infty = 0
 σkQ_infty = 0.02
-res_hyper = true
+res_hyper = false
 
 lag = 7
 iteration = 21_000
@@ -91,25 +91,12 @@ begin ## Data: yield data
 end
 
 μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
 # KₚP, KₚQ = calibration_σkQ_infty(tuned, σkQ_infty, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ)
 # @show [mean(KₚP, dims=1), mean(KₚQ, dims=1)]
 # @show [std(KₚP, dims=1), std(KₚQ, dims=1)]
-
-tmp_tuned = Hyperparameter(
-    p=lag,
-    q=[[tuned.q[1, 1]; 1e-4; tuned.q[3, 1]; 1e-4] tuned.q[:, 2]],
-    ν0=tuned.ν0,
-    Ω0=tuned.Ω0,
-    μkQ_infty=μkQ_infty,
-    σkQ_infty=σkQ_infty,
-    μϕ_const=μϕ_const,
-)
-@show prior_const_TP(tmp_tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
-@show prior_mSR = maximum_SR(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tmp_tuned, τₙ, ρ; iteration=1000)
 
 if step == 0 ## Drawing pareto frontier
 
