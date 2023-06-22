@@ -271,6 +271,6 @@ else
     xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
-    mSR = mean(reduced_θ)[:mpr] |> x -> diag(x * x')
+    mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
 end
