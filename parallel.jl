@@ -15,23 +15,23 @@ import Plots
 
 ## Setting
 τₙ = [3; 6; collect(12:12:120)]
-date_start = Date("1986-02-01", "yyyy-mm-dd")
+date_start = Date("1985-11-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
-p_max = 9
-step = 3
+p_max = 12
+step = 1
 
 upper_q =
     [1 1
         1e-4 1
         10 10
-        1e-4 100]
+        1e-3 100]
 μkQ_infty = 0
-σkQ_infty = 0.02
+σkQ_infty = 0.01
 res_hyper = true
 
-lag = 7
+lag = 6
 iteration = 21_000
 burnin = 1_000
 post_prec = false
@@ -99,17 +99,17 @@ end
 # @show [mean(KₚP, dims=1), mean(KₚQ, dims=1)]
 # @show [std(KₚP, dims=1), std(KₚQ, dims=1)]
 
-tmp_tuned = Hyperparameter(
-    p=lag,
-    q=[[tuned.q[1, 1]; 1e-4; tuned.q[3, 1]; 1e-4] tuned.q[:, 2]],
-    ν0=tuned.ν0,
-    Ω0=tuned.Ω0,
-    μkQ_infty=μkQ_infty,
-    σkQ_infty=σkQ_infty,
-    μϕ_const=μϕ_const,
-)
-@show prior_const_TP(tmp_tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
-@show prior_mSR = maximum_SR(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tmp_tuned, τₙ, ρ; iteration=1000)
+# tmp_tuned = Hyperparameter(
+#     p=tuned.p,
+#     q=[[tuned.q[1, 1]; 1e-4; tuned.q[3, 1]; 1e-3] tuned.q[:, 2]],
+#     ν0=tuned.ν0,
+#     Ω0=tuned.Ω0,
+#     μkQ_infty=μkQ_infty,
+#     σkQ_infty=σkQ_infty,
+#     μϕ_const=μϕ_const,
+# )
+# @show prior_const_TP(tmp_tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
+# @show prior_mSR = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tmp_tuned, τₙ, ρ; iteration=1000)
 
 if step == 0 ## Drawing pareto frontier
 
@@ -123,10 +123,10 @@ if step == 0 ## Drawing pareto frontier
 
 elseif step == 1 ## Tuning hyperparameter
 
-    if isfile("tuned_pf.jld2")
-        pf = load("tuned_pf.jld2")["pf"]
-        pf_input = load("tuned_pf.jld2")["pf_input"]
-    end
+    # if isfile("tuned_pf.jld2")
+    #     pf = load("tuned_pf.jld2")["pf"]
+    #     pf_input = load("tuned_pf.jld2")["pf_input"]
+    # end
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
         # x0 = []
@@ -142,7 +142,7 @@ elseif step == 1 ## Tuning hyperparameter
         #     x0 = x0[1:min(length(tuned_), 30), :]
         # end
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, initial=x0, medium_τ, μϕ_const)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -218,10 +218,10 @@ elseif step == 2 ## Estimation
 
 else
 
-    # from step 0
-    pf = load("tuned_pf.jld2")["pf"]
-    pf_input = load("tuned_pf.jld2")["pf_input"]
-    opt = load("tuned_pf.jld2")["opt"]
+    # # from step 0
+    # pf = load("tuned_pf.jld2")["pf"]
+    # pf_input = load("tuned_pf.jld2")["pf_input"]
+    # opt = load("tuned_pf.jld2")["opt"]
     #pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
 
     # from step 1

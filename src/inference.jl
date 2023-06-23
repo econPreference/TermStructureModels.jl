@@ -285,7 +285,7 @@ function sparse_prec(saved_θ, T; lower_penalty=1e-2, nlambda=100)
 
         std_ = sqrt.(diag(ΩFF_))
         # inv_corr_ΩFF = diagm(1 ./ std_) * ΩFF_ * diagm(1 ./ std_) |> inv
-        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda, refit=true))#penalizeMatrix=abs.(inv_corr_ΩFF) .^ (-kappa / 2)))
+        glasso_results = rcopy(rcall(:EBICglasso, ΩFF_, T, returnAllResults=true, var"lambda.min.ratio"=lower_penalty, nlambda=nlambda))#penalizeMatrix=abs.(inv_corr_ΩFF) .^ (-kappa / 2)))
         sparse_prec = glasso_results[:optwi]
         sparse_cov = diagm(std_) * inv(sparse_prec) * diagm(std_) |> Symmetric
 
