@@ -127,7 +127,7 @@ end
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, mSR_data=MOVE[:, 2])
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
