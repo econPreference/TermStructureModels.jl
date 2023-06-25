@@ -9,6 +9,10 @@ using Distributed
 end
 @everywhere begin
     using GDTSM, ProgressMeter, StatsBase
+    function mSR_ftn(mSR, mSR_data)
+        mSR_trun = mSR[end-length(mSR_data)+1:end]
+        return -cor(mSR_trun, mSR_data)
+    end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
@@ -20,7 +24,7 @@ date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 12
-step = 1
+step = 0
 
 upper_q =
     [1 1
@@ -96,10 +100,7 @@ begin # MOVE data
     MOVE = raw_MOVE[idx, :]
     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
 end
-function mSR_ftn(mSR, mSR_data)
-    mSR_trun = mSR[end-length(mSR_data)+1:end]
-    return -cor(mSR_trun, mSR_data)
-end
+
 
 μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
 μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
