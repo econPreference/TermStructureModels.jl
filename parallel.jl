@@ -11,7 +11,8 @@ end
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
         mSR_trun = mSR[end-length(mSR_data)+1:end]
-        return mSR_data - mSR_trun * ((mSR_trun'mSR_trun) \ (mSR_trun'mSR_data)) |> x -> x'x
+        X = [ones(length(mSR_turn)) mSR_trun]
+        return mSR_data - X * ((X'X) \ (X'mSR_data)) |> x -> x'x
     end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
