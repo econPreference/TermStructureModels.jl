@@ -11,7 +11,7 @@ end
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
         mSR_trun = mSR[end-length(mSR_data)+1:end]
-        X = [ones(length(mSR_turn)) mSR_trun]
+        X = [ones(length(mSR_trun)) mSR_trun]
         return mSR_data - X * ((X'X) \ (X'mSR_data)) |> x -> x'x
     end
 end
@@ -128,7 +128,7 @@ end
 
 if step == 0 ## Drawing pareto frontier
 
-    par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
+    par_tuned = @showprogress 1 "Tuning..." pmap(1:1) do i
         tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, mSR_data=MOVE[:, 2])
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
