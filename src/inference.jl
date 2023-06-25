@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct Hyperparameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, const_TP_upper=Inf, mSR_ftn=x -> std(x), initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=false)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=false)
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -44,41 +44,13 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
-    function constraint(input)
-
-        # parameters
-        q = [input[1] input[5]
-            input[2] input[6]
-            input[3] input[7]
-            input[4] input[8]]
-        # q[2, :] = q[1, :] .* q[2, :]
-        ν0 = input[9] + dP + 1
-        Ω0 = AR_re_var_vec * input[9]
-
-        if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
-            return Inf
-        end
-
-        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        if isinf(const_TP_upper)
-            return 0.0
-        else
-            return prior_const_TP(tuned, 120, yields, τₙ, ρ; medium_τ) |> mSR_ftn
-        end
-
-    end
 
     algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter))
-
     bounds = boxconstraints(lb=lx, ub=ux)
-    function obj(input)
-        fx, gx = negative_log_marginal(input), constraint(input)
-        fx, [gx - const_TP_upper], zeros(1)
-    end
     if !isempty(initial)
-        set_user_solutions!(algo, initial, obj)
+        set_user_solutions!(algo, initial, negative_log_marginal)
     end
-    opt = Metaheuristics.optimize(obj, bounds, algo)
+    opt = Metaheuristics.optimize(negative_log_marginal, bounds, algo)
 
     q = [minimizer(opt)[1] minimizer(opt)[5]
         minimizer(opt)[2] minimizer(opt)[6]
@@ -95,20 +67,28 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn=x -> std(x))
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn, mSR_data, ΩPP=[], κQ=0.0609, kQ_infty=0.0)
 
-    if isempty(upper_ν0) == true
+    if isempty(upper_ν0)
         upper_ν0 = size(yields, 1)
     end
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, lag)
+    PCs, ~, Wₚ = PCA(yields, lag)
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
     AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
         μϕ_const = zeros(dP)
+    end
+    if isempty(ΩPP)
+        T = size(PCs, 1)
+        PCs_X = Matrix{Float64}(undef, T - lag, 1 + dQ * lag)
+        for t = lag+1:T
+            PCs_X[t-lag, :] = PCs'[:, t:-1:t-lag+1] |> vec |> x -> [1; x]
+        end
+        ΩPP = (I(T - lag) - PCs_X / (PCs_X'PCs_X) * PCs_X') * PCs[lag+1:end, :] |> x -> x'x / (T - lag - dQ * lag - 1)
     end
 
     function negative_log_marginal(input)
@@ -127,7 +107,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         end
 
         tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mSR_ftn(prior_const_TP(tuned, 120, yields, τₙ, ρ; medium_τ))]
+        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mSR_ftn(maximum_SR(yields, macros, tuned, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ), mSR_data)]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
@@ -153,7 +133,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         pf_input[i] = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
     end
 
-    return [-pf[:, 1], pf[:, 2]], pf_input, opt
+    return -[pf[:, 1], pf[:, 2]], pf_input, opt
 
 end
 

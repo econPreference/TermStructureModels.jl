@@ -24,9 +24,9 @@ step = 1
 
 upper_q =
     [1 1
-        1e-4 1
+        1 1
         10 10
-        1e-3 100]
+        5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
 res_hyper = true
@@ -90,6 +90,17 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
+begin # MOVE data
+    raw_MOVE = CSV.File("MOVE.csv", missingstring="null", types=[Date; fill(Float64, 6)]) |> DataFrame |> (x -> [x[2:end, 1:1] x[2:end, 5:5]]) |> dropmissing
+    idx = month.(raw_MOVE[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
+    MOVE = raw_MOVE[idx, :]
+    MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
+end
+function mSR_ftn(mSR, mSR_data)
+    mSR_trun = mSR[end-length(mSR_data)+1:end]
+    return -cor(mSR_trun, mSR_data)
+end
+
 μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
 μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
@@ -99,9 +110,12 @@ end
 # @show [mean(KₚP, dims=1), mean(KₚQ, dims=1)]
 # @show [std(KₚP, dims=1), std(KₚQ, dims=1)]
 
+# tuned_set = load("standard/tuned.jld2")["tuned"]
+# tuned = tuned_set[lag]
+# saved_θ = load("standard/posterior.jld2")["samples"]
 # tmp_tuned = Hyperparameter(
 #     p=tuned.p,
-#     q=[[tuned.q[1, 1]; 1e-4; tuned.q[3, 1]; 1e-3] tuned.q[:, 2]],
+#     q=[[tuned.q[1:3, 1]; 5e-4] tuned.q[:, 2]],
 #     ν0=tuned.ν0,
 #     Ω0=tuned.Ω0,
 #     μkQ_infty=μkQ_infty,
@@ -109,12 +123,11 @@ end
 #     μϕ_const=μϕ_const,
 # )
 # @show prior_const_TP(tmp_tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
-# @show prior_mSR = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tmp_tuned, τₙ, ρ; iteration=1000)
 
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, mSR_data=MOVE[:, 2])
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -123,25 +136,7 @@ if step == 0 ## Drawing pareto frontier
 
 elseif step == 1 ## Tuning hyperparameter
 
-    # if isfile("tuned_pf.jld2")
-    #     pf = load("tuned_pf.jld2")["pf"]
-    #     pf_input = load("tuned_pf.jld2")["pf_input"]
-    # end
-
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        # x0 = []
-        # if isfile("tuned_pf.jld2")
-        #     dP = size(macros, 2) - 1 + dimQ()
-        #     tuned_ = pf_input[i][findall(x -> x < res_hyper, pf[i][2])]
-        #     log_ml = pf[i][1][findall(x -> x < res_hyper, pf[i][2])]
-        #     x0 = Matrix{Float64}(undef, length(tuned_), 9)
-        #     for j in eachindex(tuned_)
-        #         x0[j, :] = [tuned_[j].q[1, 1] tuned_[j].q[2, 1] / tuned_[j].q[1, 1] tuned_[j].q[3, 1] tuned_[j].q[4, 1] tuned_[j].q[1, 2] tuned_[j].q[2, 2] / tuned_[j].q[1, 2] tuned_[j].q[3, 2] tuned_[j].q[4, 2] tuned_[j].ν0 - dP - 1]
-        #     end
-        #     x0 = x0[sortperm(log_ml, rev=true), :]
-        #     x0 = x0[1:min(length(tuned_), 30), :]
-        # end
-
         tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]

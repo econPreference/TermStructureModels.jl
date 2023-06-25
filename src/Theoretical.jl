@@ -450,9 +450,9 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
+function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5])
 
-    (; p, q, ν0, Ω0, μϕ_const, μkQ_infty, σkQ_infty, fix_const_PC1) = Hyperparameter_
+    (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
@@ -462,61 +462,46 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     Xϕ0 = Xϕ[:, (end-dP+1):end]
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
+    CQQ, σ²FFQ = LDL(ΩPP) |> x -> (inv(x[1]), diag(x[2])[1:dQ])
 
-    # σ²FF = mean(saved_θ)[:σ²FF]
-    # ϕ = mean(saved_θ)[:ϕ]
-    # κQ = mean(saved_θ)[:κQ]
-    # kQ_infty = mean(saved_θ)[:kQ_infty]
-    # ~, C = ϕ_2_ϕ₀_C(; ϕ)
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    T1X_ = T1X(Bₓ_, Wₚ)
 
-    prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
-    prior_C_ = prior_C(; Ω0)
-    kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
 
-    Λ_i = Matrix{Float64}(undef, 1 + dP * p, dQ)
-    mSR = Matrix{Float64}(undef, iteration, T - p)
-    @showprogress 1 "Sampling mSR..." for iter in 1:iteration
+    Aₓ_ = Aₓ(aτ_, τₙ)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        σ²FF = rand.(prior_σ²FF_)
-        C = rand.(prior_C_)
-        for i in 2:dP, j in 1:(i-1)
-            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> rand
-        end
-        kQ_infty = rand(kQ_infty_dist)
-        κQ = rand(prior_κQ_)
+    KₓQ = zeros(dQ)
+    KₓQ[1] = kQ_infty
+    KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+    GQPP = T1X_ * GQ_XX(; κQ) / T1X_
 
-        CQQ = C[1:dQ, 1:dQ]
-        ΩPP = (CQQ \ diagm(σ²FF[1:dQ])) / CQQ'
+    CQQ_KₚQ = CQQ * KₚQ
+    CQQ_GQPP = CQQ * GQPP
 
-        bτ_ = bτ(τₙ[end]; κQ)
-        Bₓ_ = Bₓ(bτ_, τₙ)
-        T1X_ = T1X(Bₓ_, Wₚ)
+    Λ_i_mean = Matrix{Float64}(undef, 1 + dP * p, dQ)
+    ϕ_i_var = Array{Float64}(undef, 1 + dP * p, 1 + dP * p, dQ)
+    for i in 1:dQ
+        mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
+        Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
+        Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(-Xϕ0[:, 1:dQ] * CQQ[i, :], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FFQ[i])
+        Λ_i_mean[1, i] -= CQQ_KₚQ[i]
+        Λ_i_mean[2:dQ+1, i] .-= CQQ_GQPP[i, :]
+    end
 
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+    mSR = Vector{Float64}(undef, T - p)
+    for t in p+1:T
+        Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
 
-        Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-
-        KₓQ = zeros(dQ)
-        KₓQ[1] = kQ_infty
-        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-        GQPP = T1X_ * GQ_XX(; κQ) / T1X_
-
-        CQQ_KₚQ = CQQ * KₚQ
-        CQQ_GQPP = CQQ * GQPP
-
+        λ_dist = Vector{Normal}(undef, dQ)
         for i in 1:dQ
-            mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
-            Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
-            Λ_i[:, i] = Normal_Normal_in_NIG(-Xϕ0 * C[i, :], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FF[i]) |> x -> rand(MvNormal(x[1], x[2]))
-            Λ_i[1, i] -= CQQ_KₚQ[i]
-            Λ_i[2:dQ+1, i] .-= CQQ_GQPP[i, :]
+            λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FFQ[i])
         end
-
-        for t in p+1:T
-            Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
-            mSR[iter, t-p] = Λ_i'Ft |> x -> x ./ (sqrt.(σ²FF[1:dQ])) |> norm
-        end
+        mean_λλ = var.(λ_dist)' * (1 .+ (mean.(λ_dist)) .^ 2)
+        var_λλ = 2 * (((var.(λ_dist)) .^ 2)' * (1 .+ 2 * ((mean.(λ_dist)) .^ 2)))
+        mSR[t-p] = (0.5sqrt(π)) * sqrt(mean_λλ) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ^(-3 / 2)) * var_λλ / (2gamma(-0.5))
     end
     return mSR
 end
