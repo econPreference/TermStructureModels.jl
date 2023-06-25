@@ -11,7 +11,7 @@ end
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
         mSR_trun = mSR[end-length(mSR_data)+1:end]
-        return (mSR_trun - mSR_data) .^ 2 |> mean
+        return mSR_data - mSR_trun * ((mSR_trun'mSR_trun) \ (mSR_trun'mSR_data)) |> x -> x'x
     end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
@@ -19,11 +19,11 @@ import Plots
 
 ## Setting
 τₙ = [3; 6; collect(12:12:120)]
-date_start = Date("1985-11-01", "yyyy-mm-dd")
+date_start = Date("1986-02-01", "yyyy-mm-dd")
 date_end = Date("2020-02-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
-p_max = 12
+p_max = 9
 step = 0
 
 upper_q =
