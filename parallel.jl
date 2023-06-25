@@ -10,7 +10,8 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
-        return mean(mSR)
+        mSR_trun = mSR[end-length(mSR_data)+1:end]
+        return (mSR_trun - mSR_data) .^ 2 |> mean
     end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
@@ -93,12 +94,12 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-# begin # MOVE data
-#     raw_MOVE = CSV.File("MOVE.csv", missingstring="null", types=[Date; fill(Float64, 6)]) |> DataFrame |> (x -> [x[2:end, 1:1] x[2:end, 5:5]]) |> dropmissing
-#     idx = month.(raw_MOVE[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
-#     MOVE = raw_MOVE[idx, :]
-#     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
-# end
+begin # MOVE data
+    raw_MOVE = CSV.File("MOVE.csv", missingstring="null", types=[Date; fill(Float64, 6)]) |> DataFrame |> (x -> [x[2:end, 1:1] x[2:end, 5:5]]) |> dropmissing
+    idx = month.(raw_MOVE[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
+    MOVE = raw_MOVE[idx, :]
+    MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
+end
 
 
 μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
@@ -127,7 +128,7 @@ end
 if step == 0 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn)
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, mSR_data=MOVE[:, 2])
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]

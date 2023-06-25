@@ -133,7 +133,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         pf_input[i] = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
     end
 
-    return -[pf[:, 1], pf[:, 2]], pf_input, opt
+    return [-pf[:, 1], pf[:, 2]], pf_input, opt
 
 end
 
