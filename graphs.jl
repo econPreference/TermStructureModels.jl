@@ -13,9 +13,9 @@ rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "quantile(maximum SR,
 plot(
     df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point,
     Guide.yticks(ticks=-37000:250:-36250),
-    Guide.xticks(ticks=[collect(0:2); collect(3:7)]),
+    Guide.xticks(ticks=[collect(0:2); collect(3:6)]),
     Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=9),
-    Coord.cartesian(; ymin=-37000, ymax=-36250)
+    #Coord.cartesian(; ymin=-36410, ymax=-36300)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
 
 set_default_plot_size(16cm, 8cm)

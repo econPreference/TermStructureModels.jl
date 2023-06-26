@@ -32,7 +32,7 @@ upper_q =
         5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = 2
+mSR_upper = 2.5
 
 lag = 7
 iteration = 21_000
@@ -99,7 +99,6 @@ end
 #     MOVE = raw_MOVE[idx, :]
 #     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
 # end
-
 
 μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
 μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
