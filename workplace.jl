@@ -14,7 +14,7 @@ for t = lag+1:T
 end
 ΩPP = (I(T - lag) - PCs_X / (PCs_X'PCs_X) * PCs_X') * PCs[lag+1:end, :] |> x -> x'x / (T - lag - dQ * lag - 1)
 
-mSR_upper = 2.5
+mSR_upper = 2
 
 tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
 log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
