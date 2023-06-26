@@ -123,7 +123,16 @@ end
 # )
 # @show prior_const_TP(tmp_tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
 
-if step == 0 ## Drawing pareto frontier
+if step == 1 ## Drawing pareto frontier
+
+    par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const)
+    end
+    tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
+    opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
+    save("tuned.jld2", "tuned", tuned, "opt", opt)
+
+elseif step == 2 ## Tuning hyperparameter
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
         tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn)#, mSR_data=MOVE[:, 2])
@@ -133,16 +142,7 @@ if step == 0 ## Drawing pareto frontier
     opt = [par_tuned[i][3] for i in eachindex(par_tuned)]
     save("tuned_pf.jld2", "pf", pf, "pf_input", pf_input, "opt", opt)
 
-elseif step == 1 ## Tuning hyperparameter
-
-    par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const)
-    end
-    tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
-    opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
-    save("tuned.jld2", "tuned", tuned, "opt", opt)
-
-elseif step == 2 ## Estimation
+elseif step == 3 ## Estimation
 
     if !isinf(mSR_upper)
         pf = load("mSR/tuned_pf.jld2")["pf"]
