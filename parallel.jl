@@ -32,9 +32,9 @@ upper_q =
         5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-res_hyper = true
+mSR_upper = 2
 
-lag = 6
+lag = 7
 iteration = 21_000
 burnin = 1_000
 post_prec = false
@@ -145,7 +145,16 @@ elseif step == 1 ## Tuning hyperparameter
 
 elseif step == 2 ## Estimation
 
-    tuned = load("tuned.jld2")["tuned"][lag]
+    if !isinf(mSR_upper)
+        pf = load("mSR/tuned_pf.jld2")["pf"]
+        pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
+
+        tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
+        log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
+        tuned = tuned_set[sortperm(log_ml, rev=true)][1]
+    else
+        tuned = load("standard/tuned.jld2")["tuned"][lag]
+    end
     if post_prec && !post_coef
         saved_θ = load("posterior.jld2")["samples"]
         iteration = length(saved_θ)
@@ -213,14 +222,13 @@ elseif step == 2 ## Estimation
 
 else
 
-    # # from step 0
-    # pf = load("tuned_pf.jld2")["pf"]
-    # pf_input = load("tuned_pf.jld2")["pf_input"]
-    # opt = load("tuned_pf.jld2")["opt"]
-    #pf_plot = Plots.scatter(pf[:, 2], pf[:, 1], ylabel="marginal likelhood", xlabel="E[maximum SR]", label="")
+    # from step 0
+    pf = load("mSR/tuned_pf.jld2")["pf"]
+    pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
+    opt = load("mSR/tuned_pf.jld2")["opt"]
 
     # from step 1
-    if !res_hyper
+    if isinf(mSR_upper)
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
@@ -231,7 +239,7 @@ else
     end
 
     # from step 2
-    if !res_hyper
+    if isinf(mSR_upper)
         saved_θ = load("standard/posterior.jld2")["samples"]
         acceptPr = load("standard/posterior.jld2")["acceptPr"]
         accept_rate = load("standard/posterior.jld2")["accept_rate"]

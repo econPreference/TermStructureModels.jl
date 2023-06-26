@@ -5,17 +5,17 @@ using LinearAlgebra, Cairo, Fontconfig, Colors, XLSX
 set_default_plot_size(16cm, 8cm)
 ## Graphs
 mesh = [1 * ones(length(pf[1][1])) pf[1][2] pf[1][1]]
-for i in 2:9
+for i in 2:p_max
     mesh = vcat(mesh, [i * ones(length(pf[1][1])) pf[i][2] pf[i][1]])
 end
 df = DataFrame(lag=mesh[:, 1], mSR=mesh[:, 2], ML=mesh[:, 3])
 rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "quantile(maximum SR, 0.95)"))
 plot(
     df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point,
-    Guide.yticks(ticks=-37750:250:-36250),
-    Guide.xticks(ticks=[collect(0:0.5:1); collect(3:7)]),
+    Guide.yticks(ticks=-37000:250:-36250),
+    Guide.xticks(ticks=[collect(0:2); collect(3:7)]),
     Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=9),
-    #Coord.cartesian(; ymin=-36600, ymax=-36300)
+    Coord.cartesian(; ymin=-37000, ymax=-36250)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
 
 set_default_plot_size(16cm, 8cm)
