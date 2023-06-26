@@ -74,6 +74,8 @@ begin ## Data: macro data
         end
     end
     macros = macros[3:end, :]
+    mean_macros = mean(macros[:, 2:end] |> Array, dims=1)
+    macros[:, 2:end] .-= mean_macros
 end
 
 begin ## Data: yield data
