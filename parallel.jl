@@ -155,6 +155,7 @@ elseif step == 2 ## Estimation
     else
         tuned = load("standard/tuned.jld2")["tuned"][lag]
     end
+
     if post_prec && !post_coef
         saved_θ = load("posterior.jld2")["samples"]
         iteration = length(saved_θ)

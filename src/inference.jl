@@ -86,7 +86,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         T = size(PCs, 1)
         PCs_X = Matrix{Float64}(undef, T - lag, 1 + dQ * lag)
         for t = lag+1:T
-            PCs_X[t-lag, :] = PCs'[:, t:-1:t-lag+1] |> vec |> x -> [1; x]
+            PCs_X[t-lag, :] = PCs'[:, t-1:-1:t-lag] |> vec |> x -> [1; x]
         end
         ΩPP = (I(T - lag) - PCs_X / (PCs_X'PCs_X) * PCs_X') * PCs[lag+1:end, :] |> x -> x'x / (T - lag - dQ * lag - 1)
     end
