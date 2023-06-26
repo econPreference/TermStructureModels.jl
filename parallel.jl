@@ -32,7 +32,7 @@ upper_q =
         5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = 2.5
+mSR_upper = 2
 
 lag = 7
 iteration = 21_000
@@ -222,20 +222,18 @@ elseif step == 3 ## Estimation
 
 else
 
-    # from step 0
-    pf = load("mSR/tuned_pf.jld2")["pf"]
-    pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
-    opt = load("mSR/tuned_pf.jld2")["opt"]
-
     # from step 1
     if isinf(mSR_upper)
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
     else
-        tuned_set = load("mSR/tuned.jld2")["tuned"]
-        tuned = tuned_set[lag]
-        opt = load("mSR/tuned.jld2")["opt"]
+        pf = load("mSR/tuned_pf.jld2")["pf"]
+        pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
+
+        tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
+        log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
+        tuned = tuned_set[sortperm(log_ml, rev=true)][1]
     end
 
     # from step 2
