@@ -37,9 +37,6 @@ mSR_upper = 2.5
 lag = 7
 iteration = 35_000
 burnin = 5_000
-post_prec = false
-post_coef = false
-sparsity = false
 TPτ_interest = 120
 is_TP = true
 is_ineff = true
@@ -157,57 +154,22 @@ elseif step == 3 ## Estimation
         tuned = load("standard/tuned.jld2")["tuned"][lag]
     end
 
-    if post_prec && !post_coef
-        saved_θ = load("posterior.jld2")["samples"]
-        iteration = length(saved_θ)
+    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
+    saved_θ = saved_θ[burnin+1:end]
+    iteration = length(saved_θ)
 
-        par_sparse_θ = @showprogress 1 "Sparse precision..." pmap(1:iteration) do i
-            sparse_prec([saved_θ[i]], size(macros[p_max-lag+1:end, 2:end], 1) - tuned.p)
-        end
-        saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
-        trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-        save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity)
-    elseif !post_prec && post_coef
-        saved_θ = load("posterior.jld2")["samples"]
-        iteration = length(saved_θ)
-
-        par_sparse_θ = @showprogress 1 "Sparse VAR coef..." pmap(1:iteration) do i
-            sparse_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; lambda=0.01)
-        end
-        saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
-        trace_sparsity = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-        trace_lik = [par_sparse_θ[i][3][1] for i in eachindex(par_sparse_θ)]
-        save("sparse.jld2", "samples", saved_θ, "sparsity", trace_sparsity, "trace_lik", trace_lik)
-    elseif post_prec && post_coef
-        saved_θ = load("posterior.jld2")["samples"]
-        iteration = length(saved_θ)
-
-        par_sparse_θ = @showprogress 1 "Sparse VAR..." pmap(1:iteration) do i
-            sparse_prec_coef([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; lambda=0.01)
-        end
-        saved_θ = [par_sparse_θ[i][1][1] for i in eachindex(par_sparse_θ)]
-        trace_sparsity_coef = [par_sparse_θ[i][3][1] for i in eachindex(par_sparse_θ)]
-        trace_sparsity_prec = [par_sparse_θ[i][2][1] for i in eachindex(par_sparse_θ)]
-        trace_lik = [par_sparse_θ[i][4][1] for i in eachindex(par_sparse_θ)]
-        save("sparse.jld2", "samples", saved_θ, "sparsity_coef", trace_sparsity_coef, "sparsity_prec", trace_sparsity_prec, "trace_lik", trace_lik)
-    else
-        saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ, sparsity)
-        saved_θ = saved_θ[burnin+1:end]
-        iteration = length(saved_θ)
-
-        par_stationary_θ = @showprogress 1 "Stationary filtering..." pmap(1:iteration) do i
-            stationary_θ([saved_θ[i]])
-        end
-        saved_θ = Vector{Parameter}(undef, 0)
-        for i in eachindex(par_stationary_θ)
-            if !isempty(par_stationary_θ[i][1])
-                push!(saved_θ, par_stationary_θ[i][1][1])
-            end
-        end
-        accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
-        iteration = length(saved_θ)
-        save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+    par_stationary_θ = @showprogress 1 "Stationary filtering..." pmap(1:iteration) do i
+        stationary_θ([saved_θ[i]])
     end
+    saved_θ = Vector{Parameter}(undef, 0)
+    for i in eachindex(par_stationary_θ)
+        if !isempty(par_stationary_θ[i][1])
+            push!(saved_θ, par_stationary_θ[i][1][1])
+        end
+    end
+    accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
+    iteration = length(saved_θ)
+    save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
 
     if is_TP
         par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
@@ -246,31 +208,6 @@ else
         iteration = length(saved_θ)
         saved_TP = load("standard/TP.jld2")["TP"]
         ineff = load("standard/ineff.jld2")["ineff"]
-    elseif post_prec == true && post_coef == false
-        saved_θ = load("mSR+prec/sparse.jld2")["samples"]
-        trace_sparsity = load("mSR+prec/sparse.jld2")["sparsity"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        iteration = length(saved_θ)
-        saved_TP = load("mSR+prec/TP.jld2")["TP"]
-        ineff = load("mSR/ineff.jld2")["ineff"]
-    elseif post_prec == false && post_coef == true
-        saved_θ = load("mSR+coef/sparse.jld2")["samples"]
-        trace_sparsity = load("mSR+coef/sparse.jld2")["sparsity"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        iteration = length(saved_θ)
-        saved_TP = load("mSR+coef/TP.jld2")["TP"]
-        ineff = load("mSR/ineff.jld2")["ineff"]
-    elseif post_prec == true && post_coef == true
-        saved_θ = load("mSR+prec+coef/sparse.jld2")["samples"]
-        trace_sparsity_coef = load("mSR+prec+coef/sparse.jld2")["sparsity_coef"]
-        trace_sparsity_prec = load("mSR+prec+coef/sparse.jld2")["sparsity_prec"]
-        acceptPr = load("mSR/posterior.jld2")["acceptPr"]
-        accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        iteration = length(saved_θ)
-        saved_TP = load("mSR+prec+coef/TP.jld2")["TP"]
-        ineff = load("mSR/ineff.jld2")["ineff"]
     else
         saved_θ = load("mSR/posterior.jld2")["samples"]
         acceptPr = load("mSR/posterior.jld2")["acceptPr"]
