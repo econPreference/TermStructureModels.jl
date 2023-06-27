@@ -35,7 +35,7 @@ upper_q =
 mSR_upper = 2
 
 lag = 7
-iteration = 21_000
+iteration = 31_000
 burnin = 1_000
 post_prec = false
 post_coef = false
@@ -224,7 +224,7 @@ elseif step == 3 ## Estimation
 
 else
 
-    # from step 1
+    # from step 1&2
     if isinf(mSR_upper)
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
@@ -238,7 +238,7 @@ else
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
     end
 
-    # from step 2
+    # from step 3
     if isinf(mSR_upper)
         saved_θ = load("standard/posterior.jld2")["samples"]
         acceptPr = load("standard/posterior.jld2")["acceptPr"]
