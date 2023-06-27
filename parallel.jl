@@ -32,11 +32,11 @@ upper_q =
         5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = 2
+mSR_upper = 2.5
 
 lag = 7
-iteration = 31_000
-burnin = 1_000
+iteration = 35_000
+burnin = 5_000
 post_prec = false
 post_coef = false
 sparsity = false
