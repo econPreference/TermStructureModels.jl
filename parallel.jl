@@ -158,24 +158,12 @@ elseif step == 3 ## Estimation
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
-    par_stationary_θ = @showprogress 1 "Stationary filtering..." pmap(1:iteration) do i
-        stationary_θ([saved_θ[i]])
-    end
-    saved_θ = Vector{Parameter}(undef, 0)
-    for i in eachindex(par_stationary_θ)
-        if !isempty(par_stationary_θ[i][1])
-            push!(saved_θ, par_stationary_θ[i][1][1])
-        end
-    end
-    accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
+    saved_θ, accept_rate = stationary_θ(saved_θ)
     iteration = length(saved_θ)
     save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
 
     if is_TP
-        par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
-            term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]))
-        end
-        saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
+        saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]))
         save("TP.jld2", "TP", saved_TP)
     end
 
