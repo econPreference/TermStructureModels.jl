@@ -171,17 +171,17 @@ elseif step == 3 ## Estimation
     iteration = length(saved_θ)
     save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
 
+    if is_ineff
+        ineff = ineff_factor(saved_θ)
+        save("ineff.jld2", "ineff", ineff)
+    end
+
     if is_TP
         par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
             term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]))
         end
         saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
         save("TP.jld2", "TP", saved_TP)
-    end
-
-    if is_ineff
-        ineff = ineff_factor(saved_θ)
-        save("ineff.jld2", "ineff", ineff)
     end
 
 else
