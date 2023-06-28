@@ -499,9 +499,66 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
         for i in 1:dQ
             λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FFQ[i])
         end
-        mean_λλ = var.(λ_dist)' * (1 .+ (mean.(λ_dist)) .^ 2)
-        var_λλ = 2 * (((var.(λ_dist)) .^ 2)' * (1 .+ 2 * ((mean.(λ_dist)) .^ 2)))
+        mean_λλ = mean.(λ_dist) |> x -> x'x + sum(var.(λ_dist))
+        var_λλ = var.(λ_dist) |> x -> 2sum(x .^ 2) + 4mean.(λ_dist)' * diagm(x) * mean.(λ_dist)
         mSR[t-p] = (0.5sqrt(π)) * sqrt(mean_λλ) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ^(-3 / 2)) * var_λλ / (2gamma(-0.5))
+    end
+    return mSR
+end
+
+"""
+maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], iteration=1_000)
+* It calculate a prior distribution of realized maximum Sharpe ratio. It is unobservable because we do not know true parameters.
+* Input: Data should contains initial conditions
+* Output: Matrix{Float64}(maximum SR, time length, simulation)
+"""
+function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
+
+    (; p, q, ν0, Ω0, μϕ_const, μkQ_infty, σkQ_infty, fix_const_PC1) = Hyperparameter_
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    factors = [PCs macros]
+    dP = length(Ω0)
+    dQ = dimQ()
+    T = size(factors, 1)
+    Xϕ = yϕ_Xϕ(PCs, macros, p)[2]
+    Xϕ0 = Xϕ[:, (end-dP+1):end]
+    prior_κQ_ = prior_κQ(medium_τ)
+    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
+    CQQ, σ²FFQ = LDL(ΩPP) |> x -> (inv(x[1]), diag(x[2])[1:dQ])
+
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    T1X_ = T1X(Bₓ_, Wₚ)
+
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+
+    Aₓ_ = Aₓ(aτ_, τₙ)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+    KₓQ = zeros(dQ)
+    KₓQ[1] = kQ_infty
+    KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+    GQPP = T1X_ * GQ_XX(; κQ) / T1X_
+
+    CQQ_KₚQ = CQQ * KₚQ
+    CQQ_GQPP = CQQ * GQPP
+
+    Λ_i = Matrix{Float64}(undef, 1 + dP * p, dQ)
+    mSR = Matrix{Float64}(undef, iteration, T - p)
+    @showprogress 1 "Sampling mSR..." for iter in 1:iteration
+
+        for i in 1:dQ
+            mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
+            Λ_i[:, i] = Normal_Normal_in_NIG(-Xϕ0[:, 1:dQ] * CQQ[i, :], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FFQ[i]) |> x -> rand(MvNormal(x[1], x[2]))
+            Λ_i[1, i] -= CQQ_KₚQ[i]
+            Λ_i[2:dQ+1, i] .-= CQQ_GQPP[i, :]
+        end
+
+        for t in p+1:T
+            Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
+            mSR[iter, t-p] = Λ_i'Ft |> x -> x ./ (sqrt.(σ²FFQ[1:dQ])) |> norm
+        end
     end
     return mSR
 end

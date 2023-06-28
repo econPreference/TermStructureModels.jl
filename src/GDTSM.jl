@@ -239,6 +239,7 @@ export
     PCA,
     fitted_YieldCurve,
     maximum_SR,
+    maximum_SR_simul,
 
     # utilities.jl
     getindex,

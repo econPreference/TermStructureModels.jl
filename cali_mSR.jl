@@ -14,7 +14,7 @@ for t = lag+1:T
 end
 ΩPP = (I(T - lag) - PCs_X / (PCs_X'PCs_X) * PCs_X') * PCs[lag+1:end, :] |> x -> x'x / (T - lag - dQ * lag - 1)
 
-mSR_upper = 2
+mSR_upper = 2.5
 
 tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
 log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
@@ -22,5 +22,7 @@ tuned = tuned_set[sortperm(log_ml, rev=true)][1]
 
 mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=0.0609, kQ_infty=0.0, ΩPP)
 mSR_prior |> mean
+mSR_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=0.0609, kQ_infty=0.0, ΩPP)
 Plots.plot(mSR_prior)
+Plots.plot!(mean(mSR_simul, dims=1)[1, :])
 Plots.plot!(191:398, MOVE[:, 2] |> x -> (x .- mean(x)) ./ std(x) |> x -> std(mSR_prior[191:398]) * x |> x -> x .+ mean(mSR_prior[191:398]))
