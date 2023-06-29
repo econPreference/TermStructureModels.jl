@@ -4,8 +4,8 @@ using Distributed
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
-    Pkg.instantiate()
-    Pkg.precompile()
+    # Pkg.instantiate()
+    # Pkg.precompile()
 end
 @everywhere begin
     using GDTSM, ProgressMeter, StatsBase
@@ -32,7 +32,7 @@ upper_q =
         5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = 2.5
+mSR_upper = 1.5
 
 lag = 7
 iteration = 35_000
