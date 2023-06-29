@@ -18,7 +18,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
     PCs, ~, Wₚ = PCA(yields, lag)
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
-    AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
+    AR_re_var_vec = [AR_res_var([PCs macros][lag+1:end, i], lag)[1] for i in 1:dP]
     if isempty(μϕ_const) == true
         μϕ_const = zeros(dP)
     end
@@ -67,7 +67,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn, mSR_data=[], ΩPP=[], κQ=0.0609, kQ_infty=0.0)
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn, mSR_data=[], ΩPP=[], κQ=[], kQ_infty=[])
 
     if isempty(upper_ν0)
         upper_ν0 = size(yields, 1)
@@ -78,17 +78,18 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
     PCs, ~, Wₚ = PCA(yields, lag)
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
-    AR_re_var_vec = [AR_res_var([PCs macros][:, i], lag)[1] for i in 1:dP]
-    if isempty(μϕ_const) == true
+    AR_re_var_vec = [AR_res_var([PCs macros][lag+1:end, i], lag)[1] for i in 1:dP]
+    if isempty(μϕ_const)
         μϕ_const = zeros(dP)
     end
     if isempty(ΩPP)
-        T = size(PCs, 1)
-        PCs_X = Matrix{Float64}(undef, T - lag, 1 + dQ * lag)
-        for t = lag+1:T
-            PCs_X[t-lag, :] = PCs'[:, t-1:-1:t-lag] |> vec |> x -> [1; x]
-        end
-        ΩPP = (I(T - lag) - PCs_X / (PCs_X'PCs_X) * PCs_X') * PCs[lag+1:end, :] |> x -> x'x / (T - lag - dQ * lag - 1)
+        ΩPP = AR_re_var_vec[1:dQ] |> diagm
+    end
+    if isempty(κQ)
+        κQ = prior_κQ(medium_τ) |> mean
+    end
+    if isempty(kQ_infty)
+        kQ_infty = μkQ_infty
     end
 
     function negative_log_marginal(input)

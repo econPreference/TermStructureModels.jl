@@ -5,14 +5,8 @@ begin # MOVE data
     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
 end
 
-PCs, OCs, Wpo = PCA(Array(yields[p_max-lag+1:end, 2:end]), 7)
-T = size(PCs, 1)
-dQ = dimQ()
-PCs_X = Matrix{Float64}(undef, T - lag, 1 + dQ * lag)
-for t = lag+1:T
-    PCs_X[t-lag, :] = PCs'[:, t-1:-1:t-lag] |> vec |> x -> [1; x]
-end
-ΩPP = (I(T - lag) - PCs_X / (PCs_X'PCs_X) * PCs_X') * PCs[lag+1:end, :] |> x -> x'x / (T - lag - dQ * lag - 1)
+PCs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag)[1]
+ΩPP = [AR_res_var(PCs[lag+1:end, i], lag)[1] for i in 1:dimQ()] |> diagm
 
 mSR_upper = 1.5
 
@@ -20,9 +14,9 @@ tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
 log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
 tuned = tuned_set[sortperm(log_ml, rev=true)][1]
 
-mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=0.0609, kQ_infty=0.0, ΩPP)
+mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
 mSR_prior |> mean
-mSR_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=0.0609, kQ_infty=0.0, ΩPP)
+mSR_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
 Plots.plot(mSR_prior)
 #Plots.plot!(mean(mSR_simul, dims=1)[1, :])
 Plots.ylims!((0, 1.1maximum(mSR_prior)))

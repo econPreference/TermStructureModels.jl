@@ -177,7 +177,7 @@ elseif step == 3 ## Estimation
     end
 
     if is_TP
-        par_TP = @showprogress 1 "Term premium..." pmap(1:iteration) do i
+        par_TP = @showprogress 1 "Term premium..." pmap(1:ceil(Int, maximum(ineff)):iteration) do i
             term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]))
         end
         saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
