@@ -79,16 +79,16 @@ end
 par_prediction = @showprogress 1 "Scenario..." pmap(1:ceil(Int, maximum(ineff)):iteration) do i
     scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mean_macros)
 end
-saved_prediction = [par_prediction[i][1] for i in eachindex(par_prediction)]
-# saved_prediction = Vector{Forecast}(undef, length(par_prediction))
-# for i in eachindex(saved_prediction)
-#     predicted_factors = par_prediction[i][1][:factors]
-#     for j in 1:dP-dQ
-#         if idx_trans[j] == 2
-#             predicted_factors[1, dQ+j] = macros_extended_growth[end-9, j]
-#             predicted_factors[:, dQ+j] = predicted_factors[1:end, dQ+j] |> cumsum
-#         end
-#     end
-#     saved_prediction[i] = Forecast(yields=par_prediction[i][1][:yields], factors=predicted_factors, TP=par_prediction[i][1][:TP])
-# end
+# saved_prediction = [par_prediction[i][1] for i in eachindex(par_prediction)]
+saved_prediction = Vector{Forecast}(undef, length(par_prediction))
+for i in eachindex(saved_prediction)
+    predicted_factors = par_prediction[i][1][:factors]
+    for j in 1:dP-dQ
+        if idx_trans[j] == 2
+            predicted_factors[1, dQ+j] = macros_extended_growth[end-9, j]
+            predicted_factors[:, dQ+j] = predicted_factors[1:end, dQ+j] |> cumsum
+        end
+    end
+    saved_prediction[i] = Forecast(yields=par_prediction[i][1][:yields], factors=predicted_factors, TP=par_prediction[i][1][:TP])
+end
 
