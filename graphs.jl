@@ -12,11 +12,10 @@ df = DataFrame(lag=mesh[:, 1], mSR=mesh[:, 2], ML=mesh[:, 3])
 rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "quantile(maximum SR, 0.95)"))
 plot(
     df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point,
-    Guide.yticks(ticks=-37000:100:-36200),
-    Guide.xticks(ticks=[collect(0:0.25:1); collect(1:0.5:3.5)]),
+    Guide.xticks(ticks=[collect(0:0.25:1); collect(1:0.5:4.5)]),
     Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=9),
-    Coord.cartesian(; ymin=-37000, ymax=-36200)
-    #Coord.cartesian(; ymin=-36400, ymax=-36200)
+    # Coord.cartesian(; ymin=-36900, ymax=-36200), Guide.yticks(ticks=-36900:100:-36200),
+    Guide.yticks(ticks=-36350:25:-36225), Coord.cartesian(; ymin=-36350, ymax=-36225)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
 
 set_default_plot_size(16cm, 8cm)

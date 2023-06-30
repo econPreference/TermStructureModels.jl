@@ -8,7 +8,7 @@ end
 PCs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag)[1]
 ΩPP = [AR_res_var(PCs[lag+1:end, i], lag)[1] for i in 1:dimQ()] |> diagm
 
-mSR_upper = 1.5
+mSR_upper = 1.0
 
 tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
 log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
@@ -19,5 +19,4 @@ mSR_prior |> mean
 mSR_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
 Plots.plot(mSR_prior)
 #Plots.plot!(mean(mSR_simul, dims=1)[1, :])
-Plots.ylims!((0, 1.1maximum(mSR_prior)))
 Plots.plot!(191:398, MOVE[:, 2] |> x -> (x .- mean(x)) ./ std(x) |> x -> std(mSR_prior[191:398]) * x |> x -> x .+ mean(mSR_prior[191:398]))

@@ -32,7 +32,7 @@ upper_q =
         5e-4 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = 1.5
+mSR_upper = 1.0
 
 lag = 7
 iteration = 35_000
@@ -169,6 +169,18 @@ elseif step == 3 ## Estimation
     end
     accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
     iteration = length(saved_θ)
+
+    par_mSR_θ = @showprogress 1 "filtering with mSR_ftn..." pmap(1:iteration) do i
+        mSR_ftn_filter([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mSR_ftn, mSR_upper)
+    end
+    saved_θ = Vector{Parameter}(undef, 0)
+    for i in eachindex(par_mSR_θ)
+        if !isempty(par_mSR_θ[i][1])
+            push!(saved_θ, par_mSR_θ[i][1][1])
+        end
+    end
+    iteration = length(saved_θ)
+
     save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
 
     if is_ineff

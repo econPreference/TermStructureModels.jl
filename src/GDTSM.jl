@@ -200,6 +200,7 @@ export
     calibration_μϕ_const,
     calibration_σkQ_infty,
     prior_const_TP,
+    mSR_ftn_filter,
 
     # GDTSM.jl
     Hyperparameter,

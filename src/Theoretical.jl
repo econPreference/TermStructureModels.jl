@@ -514,7 +514,7 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 """
 function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
-    (; p, q, ν0, Ω0, μϕ_const, μkQ_infty, σkQ_infty, fix_const_PC1) = Hyperparameter_
+    (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
@@ -557,7 +557,7 @@ function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ
 
         for t in p+1:T
             Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
-            mSR[iter, t-p] = Λ_i'Ft |> x -> x ./ (sqrt.(σ²FFQ[1:dQ])) |> norm
+            mSR[iter, t-p] = Λ_i'Ft |> x -> x ./ (sqrt.(σ²FFQ)) |> norm
         end
     end
     return mSR

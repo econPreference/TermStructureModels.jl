@@ -398,3 +398,62 @@ function prior_const_TP(tuned, τ, yields, τₙ, ρ; medium_τ=12 * [2, 2.5, 3,
     return prior_TP
 
 end
+
+function mSR_ftn_filter(saved_θ, yields, macros, τₙ; mSR_ftn, mSR_upper, mSR_data=[])
+
+    dQ = dimQ()
+    dP = dQ + size(macros, 2)
+    p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    factors = [PCs macros]
+
+    iteration = length(saved_θ)
+    filtered_θ = Vector{Parameter}(undef, 0)
+    mSR = Matrix{Float64}(undef, iteration, size(factors, 1) - p)
+    @showprogress 1 "Filtering..." for iter in 1:iteration
+
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter]
+        σ²FF = saved_θ[:σ²FF][iter]
+        ηψ = saved_θ[:ηψ][iter]
+        ψ = saved_θ[:ψ][iter]
+        ψ0 = saved_θ[:ψ0][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
+        γ = saved_θ[:γ][iter]
+
+        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+        CKₚF = ϕ0[:, 1]
+        CGₚFF = ϕ0[:, 2:end]
+        CQQ = C[1:dQ, 1:dQ]
+        ΩFF = (C \ diagm(σ²FF)) / C'
+
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+
+        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+        Aₓ_ = Aₓ(aτ_, τₙ)
+        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+        KₓQ = zeros(dQ)
+        KₓQ[1] = kQ_infty
+        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
+        λₚ = CKₚF[1:dQ] - CQQ * KₚQ
+
+        GQ_PP = T1X_ * GQ_XX(; κQ) / T1X_
+        Λ_PF = CGₚFF[1:dQ, :]
+        Λ_PF[1:dQ, 1:dQ] -= CQQ * GQ_PP
+
+        for t in axes(mSR, 2)
+            Ft = factors'[:, t+p:-1:t+1] |> vec |> x -> [1; x]
+            mSR[iter, t] = [λₚ Λ_PF] * Ft |> x -> x ./ (sqrt.(σ²FF[1:dQ])) |> norm
+        end
+
+        if mSR_ftn(mSR[iter, :], mSR_data) < mSR_upper
+            push!(filtered_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ))
+        end
+    end
+
+    return filtered_θ, mSR
+end
