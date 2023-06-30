@@ -12,7 +12,7 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
     - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
     - function "load\\_object" can be applied
 """
-function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; PCAs=[])
+function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; PCAs=[], mean_macros=0.0)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
@@ -23,7 +23,7 @@ function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; PCAs=
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
 
-        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs)
+        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs, mean_macros)
 
         scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
     end
@@ -38,7 +38,7 @@ _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
 * Output(3): spanned_yield, spanned_F, predicted_TP
     - Matrix{Float64}(scenario,horizon,dP or N or 1)
 """
-function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs)
+function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs, mean_macros)
 
     R"library(MASS)"
     ## Construct GDTSM parameters
@@ -179,7 +179,13 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     if isempty(τ)
         predicted_TP = []
     else
-        predicted_TP = _termPremium(τ, spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
+        predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
+        for i in eachindex(τ)
+            predicted_TP[:, i] = _termPremium(τ[i], spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
+        end
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_F[(end-horizon+1):end, :], predicted_TP
+
+    spanned_F = spanned_F[(end-horizon+1):end, :]
+    spanned_F[:, dQ+1:end] .+= mean_macros
+    return spanned_yield[(end-horizon+1):end, :], spanned_F, predicted_TP
 end

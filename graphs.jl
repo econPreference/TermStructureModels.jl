@@ -2,95 +2,95 @@ using GDTSM
 import StatsPlots: @df
 using LinearAlgebra, Cairo, Fontconfig, Colors, XLSX
 
-set_default_plot_size(20cm, 8cm)
-## Graphs
+set_default_plot_size(16cm, 8cm)
+
+## load unrestricted results
+unres_lag = 6
+unres_saved_θ = load("standard/posterior.jld2")["samples"]
+unres_saved_TP = load("standard/TP.jld2")["TP"]
+unres_ineff = load("standard/ineff.jld2")["ineff"]
+unres_iteration = length(unres_saved_θ)
+unres_reduced_θ = reducedform(unres_saved_θ[1:ceil(Int, maximum(unres_ineff)):unres_iteration], Array(yields[p_max-unres_lag+1:end, 2:end]), Array(macros[p_max-unres_lag+1:end, 2:end]), τₙ)
+unres_mSR = [unres_reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(unres_reduced_θ)] |> mean
+
+## Pareto frontier
 mesh = [1 * ones(length(pf[1][1])) pf[1][2] pf[1][1]]
 for i in 2:p_max
     mesh = vcat(mesh, [i * ones(length(pf[1][1])) pf[i][2] pf[i][1]])
 end
-df = DataFrame(lag=mesh[:, 1], mSR=mesh[:, 2], ML=mesh[:, 3])
-rename!(df, Dict(:ML => "log marginal likelihood", :mSR => "quantile(maximum SR, 0.95)"))
+df = DataFrame(lag=mesh[:, 1], skew=mesh[:, 2], ML=mesh[:, 3])
+rename!(df, Dict(:ML => "log marginal likelihood", :skew => "skewness"))
 plot(
-    df, x="quantile(maximum SR, 0.95)", y="log marginal likelihood", color=:lag, Geom.point,
-    Guide.xticks(ticks=[collect(0:0.25:1); collect(1:0.5:4.5)]),
+    df, x="skewness", y="log marginal likelihood", color=:lag, Geom.point,
+    Guide.xticks(ticks=[collect(0:0.5:1); collect(1:0.5:4.5)]),
     Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=9),
-    # Coord.cartesian(; ymin=-36900, ymax=-36200), Guide.yticks(ticks=-36900:100:-36200),
-    Guide.yticks(ticks=-36350:25:-36225), Coord.cartesian(; ymin=-36350, ymax=-36225)
+    Coord.cartesian(; ymin=-36900, ymax=-36200), Guide.yticks(ticks=-36900:100:-36200),
+    #Guide.yticks(ticks=-36350:25:-36225), Coord.cartesian(; ymin=-36350, ymax=-36225)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
 
-set_default_plot_size(16cm, 8cm)
+## TP components
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2001-03-01" "2001-11-01"
     "2007-12-01" "2009-06-01"
     "2020-02-01" "2020-04-01"])
+
+plot(
+    layer(x=yields[10:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(x=yields[10:end, 1], y=quantile(saved_TP, 0.025)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=yields[10:end, 1], y=quantile(saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=yields[10:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/TP10.pdf")
+
+## EH components
 survey = XLSX.readdata("Dispersion_BILL10.xlsx", "D1", "B104:C217")[1:4:end, :] |> x -> convert(Matrix{Float64}, x)
-Plots.plot!(yields[13+12*5, 1]:Month(12):yields[end, 1], survey, seriestype=:scatter)
 plot(
-    layer(x=yields[7:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, 1], Geom.line, color=[colorant"blue"]),
-    layer(x=yields[7:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, linestyle=[:dash], color=[colorant"red"]),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["one month yield", "expected one month yield over 10 years", "NBER recessions", "", ""], ["blue", "red", "grey", RGBA(1, 1, 1, 0.0000001), RGBA(1, 1, 1, 0.0000002)]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[-1; 0; collect(2:3:10)])
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/EH10.pdf")
+    layer(x=yields[10:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(x=yields[10+12*5, 1]:Month(12):yields[end, 1], y=survey[:, 1], ymin=survey[:, 1], ymax=survey[:, 2], Geom.errorbar, color=[colorant"#A9A9A9"], Theme(line_width=0.75pt)),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[0; collect(2:2:8)])
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/EH10.pdf")
 
+## maximum Sharpe ratio
 plot(
-    layer(x=yields[7:end, 1], y=mSR, Geom.line, color=[colorant"blue"]),
-    layer(x=[], y=[]),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["maximum SR", " ", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel(""), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(60):DateTime("2020-08-01")), Guide.yticks(ticks=range(0, ceil(maximum(mSR) + 0.1, digits=2), length=7) |> collect |> x -> ceil.(x, digits=2))
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/mSR.pdf")
+    layer(x=yields[10:end, 1], y=mSR, Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(x=yields[10:end, 1], y=unres_mSR, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt)),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=collect(0:5))
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR.pdf")
 
-# Plots.histogram(mSR, bins=range(0, 3, length=31), normalize=:pdf, labels="maximum SR", alpha=0.9)
-# Plots.histogram!(rand(realized_SR, length(mSR)), bins=range(0, 3, length=31), normalize=:pdf, labels="realized SR", xlabel="Sharpe ratio", ylabel="density", alpha=0.9) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/vanilla_mSR_hist.pdf")
-
-dP = size(macros, 2) - 1 + dimQ()
-PCs = PCA(Array(yields[:, 2:end]), tuned.p)[1]
-starting = []
-for i in 1:dP
-    push!(starting, AR_res_var([PCs Array(macros[:, 2:end])][:, i], tuned.p))
-end
-Plots.histogram(tuned.Ω0 / (tuned.ν0 - dP - 1) |> x -> x ./ starting, bins=range(0.8, 1.2, length=41), label="", ylabel="counts") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+prec/Optimized_Omega.pdf")
-
-rec_dates = DateTime.(["1990-07-01" "1991-03-01"
-    "2001-03-01" "2001-11-01"
-    "2007-12-01" "2009-06-01"
-    "2020-02-01" "2020-04-01"])
-plot(
-    layer(x=yields[7:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"blue"]),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["term premium", "", "NBER recessions"], ["blue", "white", "grey"]), Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=0:1:5)
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/TP.pdf")
-
-# Plots.histogram(mSR_prior0, normalize=:pdf, label="", xlabel="Sharpe ratio", ylabel="density", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prior_mSR1.pdf")
-# Plots.histogram(mSR_prior1, normalize=:pdf, label="", xlabel="Sharpe ratio", ylabel="density", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/prior_mSR2.pdf")
-
-Plots.histogram(mSR, bins=range(0, maximum([mSR; mSR_prior]), length=41), normalize=:pdf, label="posterior", alpha=0.9)
-Plots.histogram!(mSR_prior, bins=range(0, maximum([mSR; mSR_prior]), length=41), normalize=:pdf, label="prior", xlabel="Sharpe ratio", ylabel="density", tickfont=(10), alpha=0.6) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/standard/post_mSR.pdf")
-
-plot(x=[vec(mean(saved_θ)[:ψ]); vec(mean(saved_θ)[:ψ0])], Geom.histogram, Scale.x_log10, Theme(line_width=2pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("counts"), Guide.xlabel("E[ψ|data]")) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+sparsity/psi_hist.pdf")
-
-dP = size(macros, 2) - 1 + dimQ()
-Plots.histogram(100 * trace_sparsity / dP^2, label="", xlabel="Ratio of non-zeros (%)", ylabel="counts", tickfont=(10)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR+prec/prec_hist.pdf")
-
-rec_dates = DateTime.(["1990-07-01" "1991-03-01"
-    "2001-03-01" "2001-11-01"
-    "2007-12-01" "2009-06-01"
-    "2020-02-01" "2020-04-01"])
-plot(
-    layer(x=yields[7:end, 1], y=mean(load("standard/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"black"]),
-    layer(x=yields[7:end, 1], y=mean(load("mSR/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"blue"]),
-    layer(x=yields[7:end, 1], y=mean(load("mSR+sparsity/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"red"], linestyle=[:dash]),
-    layer(x=yields[7:end, 1], y=mean(load("mSR+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"green"], linestyle=[:dot]),
-    layer(x=yields[7:end, 1], y=mean(load("mSR+sparsity+prec/TP.jld2")["TP"])[:TP], Geom.line, color=[colorant"purple"], linestyle=[:dashdot]),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"grey"]),
-    Guide.manual_color_key("", ["", "no restriction", "restricted SR", "sparse slope", "", "", "", "", "", "sparse precision", "full sparse", "NBER recessions", "", "", "", ""], [RGBA(1, 1, 1, 0.0000001), "black", "blue", "red", RGBA(1, 1, 1, 0.0000002), RGBA(1, 1, 1, 0.0000003), RGBA(1, 1, 1, 0.0000004), RGBA(1, 1, 1, 0.0000005), RGBA(1, 1, 1, 0.0000006), "green", "purple", "grey", RGBA(1, 1, 1, 0.0000007), RGBA(1, 1, 1, 0.0000008), RGBA(1, 1, 1, 0.0000009), RGBA(1, 1, 1, 0.000001)]),
-    Theme(line_width=1.5pt, key_position=:top, major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt),
-    Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=0:1:5)
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/extended_TP.pdf")
-
-## Scenario analysis
-yield_res = max.(mean(prediction)[:yields], 0)
-yield_res[:, 1:3] .= 0
+## Scenario analysis(yields)
+yield_res = max.(mean(saved_prediction)[:yields], 0)
+yield_res[:, 1] .= 0
 Plots.surface(τₙ, DateTime("2020-03-01"):Month(1):DateTime("2020-12-01"), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_yield.pdf")
-macro_res = mean(prediction)[:factors][:, 4:end] .+ mean_macro |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
+
+## Scenario analysis(EH)
+EH_res = max.(mean(saved_prediction)[:yields][:, [4, 12]] - mean(saved_prediction)[:TP], 0)
+EH_res_dist_24 = Matrix{Float64}(undef, length(saved_prediction), size(EH_res, 1))
+for i in axes(EH_res_dist_24, 1)
+    EH_res_dist_24[i, :] = saved_prediction[:yields][i][:, 4] - saved_prediction[:TP][i][:, 1]
+end
+EH_res_dist_24 = max.(EH_res_dist_24, 0)
+EH_res_dist_120 = Matrix{Float64}(undef, length(saved_prediction), size(EH_res, 1))
+for i in axes(EH_res_dist_120, 1)
+    EH_res_dist_120[i, :] = saved_prediction[:yields][i][:, end] - saved_prediction[:TP][i][:, 2]
+end
+EH_res_dist_120 = max.(EH_res_dist_120, 0)
+
+scenario_dates = DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")
+plot(
+    layer(x=scenario_dates, y=EH_res[:, 1], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(x=scenario_dates, y=[quantile(EH_res_dist_24[:, i], 0.25) for i in axes(EH_res_dist_24, 2)], Geom.line, color=[colorant"#4682B4"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=scenario_dates, y=[quantile(EH_res_dist_24[:, i], 0.75) for i in axes(EH_res_dist_24, 2)], Geom.line, color=[colorant"#4682B4"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=scenario_dates, y=EH_res[:, 2], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
+    layer(x=scenario_dates, y=[quantile(EH_res_dist_120[:, i], 0.25) for i in axes(EH_res_dist_120, 2)], Geom.line, color=[colorant"#DC143C"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=scenario_dates, y=[quantile(EH_res_dist_120[:, i], 0.75) for i in axes(EH_res_dist_120, 2)], Geom.line, color=[colorant"#DC143C"], Theme(line_width=0.5pt, line_style=[:dash])),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.yticks(ticks=collect(0:0.5:2)), Guide.xticks(ticks=DateTime("2020-02-01"):Month(2):DateTime("2021-01-01")),
+    Coord.cartesian(; xmin=DateTime("2020-02-01"), xmax=DateTime("2021-01-01"))
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_EH.pdf")
+
+## Scenario analysis(macros)
+macro_res = mean(saved_prediction)[:factors][:, 4:end] |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
 rename!(macro_res, Dict("S&P 500" => "SP500"))
-@df macro_res[1:4, :] Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST], xlabel="time", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "SP500" "INVEST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")
+@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "SP500" "INVEST" "HOUST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")

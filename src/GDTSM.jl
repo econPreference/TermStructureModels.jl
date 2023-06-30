@@ -172,7 +172,7 @@ end
 @kwdef struct Forecast <: PosteriorSample
     yields::Matrix{Float64}
     factors::Matrix{Float64}
-    TP::Array{Float64}
+    TP::Matrix{Float64}
 end
 
 include("utilities.jl") # utility functions
