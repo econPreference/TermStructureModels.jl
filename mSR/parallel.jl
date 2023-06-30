@@ -186,6 +186,7 @@ elseif step == 3 ## Estimation
     else
         save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
     end
+
     if is_ineff
         ineff = ineff_factor(saved_θ)
         save("ineff.jld2", "ineff", ineff)
@@ -239,7 +240,8 @@ else
     log_price = -collect(1:τₙ[end])' .* fitted_yield[tuned.p+1:end, :]
     xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
-    reduced_θ = reducedform(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
+    reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
+    include("ex_scenario.jl")
 
 end
