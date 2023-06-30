@@ -16,7 +16,7 @@ unres_mSR = [unres_reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in each
 ## Pareto frontier
 mesh = [1 * ones(length(pf[1][1])) pf[1][2] pf[1][1]]
 for i in 2:p_max
-    mesh = vcat(mesh, [i * ones(length(pf[1][1])) pf[i][2] pf[i][1]])
+    global mesh = vcat(mesh, [i * ones(length(pf[1][1])) pf[i][2] pf[i][1]])
 end
 df = DataFrame(lag=mesh[:, 1], skew=mesh[:, 2], ML=mesh[:, 3])
 rename!(df, Dict(:ML => "log marginal likelihood", :skew => "skewness"))
