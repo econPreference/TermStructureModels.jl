@@ -32,7 +32,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = 1.0
+mSR_upper = [0.5; 1.0]
 
 lag = 7
 iteration = 35_000
@@ -71,8 +71,8 @@ begin ## Data: macro data
         end
     end
     macros = macros[3:end, :]
-    mean_macros = mean(macros[:, 2:end] |> Array, dims=1)
-    macros[:, 2:end] .-= mean_macros
+    # mean_macros = mean(macros[:, 2:end] |> Array, dims=1)
+    # macros[:, 2:end] .-= mean_macros
 end
 
 begin ## Data: yield data

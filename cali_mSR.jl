@@ -8,7 +8,7 @@ end
 PCs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag)[1]
 ΩPP = [AR_res_var(PCs[lag+1:end, i], lag)[1] for i in 1:dimQ()] |> diagm
 
-mSR_upper = 1.0
+mSR_upper = [0.5; 1.0]
 
 idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
 tuned_set = pf_input[lag][idx]
