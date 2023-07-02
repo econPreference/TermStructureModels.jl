@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
-        return skewness(mSR)
+        return [mean(mSR), skewness(mSR)]
     end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
@@ -29,7 +29,7 @@ upper_q =
     [1 1
         1 1
         10 10
-        5e-4 100]
+        100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
 mSR_upper = 1.0
@@ -147,8 +147,9 @@ elseif step == 3 ## Estimation
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
-        log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
+        idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
+        tuned_set = pf_input[lag][idx]
+        log_ml = pf[lag][idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
     else
         tuned = load("standard/tuned.jld2")["tuned"][lag]
@@ -211,8 +212,9 @@ else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
-        log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
+        idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
+        tuned_set = pf_input[lag][idx]
+        log_ml = pf[lag][idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
     end
 

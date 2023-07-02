@@ -10,8 +10,9 @@ PCs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag)[1]
 
 mSR_upper = 1.0
 
-tuned_set = pf_input[lag][findall(x -> x < mSR_upper, pf[lag][2])]
-log_ml = pf[lag][1][findall(x -> x < mSR_upper, pf[lag][2])]
+idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
+tuned_set = pf_input[lag][idx]
+log_ml = pf[lag][idx, 1]
 tuned = tuned_set[sortperm(log_ml, rev=true)][1]
 
 mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)

@@ -104,11 +104,12 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         Ω0 = AR_re_var_vec * input[9]
 
         if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
-            return [Inf, Inf]
+            mSR_length = mSR_ftn(rand(10), []) |> length
+            return [Inf; fill(Inf, mSR_length)]
         end
 
         tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ), mSR_ftn(maximum_SR(yields, macros, tuned, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ), mSR_data)]
+        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ); mSR_ftn(maximum_SR(yields, macros, tuned, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ), mSR_data)]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
@@ -134,7 +135,8 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         pf_input[i] = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
     end
 
-    return [-pf[:, 1], pf[:, 2]], pf_input, opt
+    pf[:, 1] .*= -1
+    return pf, pf_input, opt
 
 end
 
