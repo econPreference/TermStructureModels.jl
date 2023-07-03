@@ -32,7 +32,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = [1.0; 0.25]
+mSR_upper = [1.5; 0.25]
 
 lag = 7
 iteration = 35_000
