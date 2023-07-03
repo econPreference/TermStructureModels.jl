@@ -32,7 +32,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = [1.5; 0.25]
+mSR_upper = [2; 0.25]
 
 lag = 7
 iteration = 35_000
@@ -92,35 +92,10 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-# begin # MOVE data
-#     raw_MOVE = CSV.File("MOVE.csv", missingstring="null", types=[Date; fill(Float64, 6)]) |> DataFrame |> (x -> [x[2:end, 1:1] x[2:end, 5:5]]) |> dropmissing
-#     idx = month.(raw_MOVE[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
-#     MOVE = raw_MOVE[idx, :]
-#     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
-# end
-
 μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-# μϕ_const_PCs = [0.07, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
-
-# KₚP, KₚQ = calibration_σkQ_infty(tuned, σkQ_infty, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ)
-# @show [mean(KₚP, dims=1), mean(KₚQ, dims=1)]
-# @show [std(KₚP, dims=1), std(KₚQ, dims=1)]
-
-# tuned_set = load("standard/tuned.jld2")["tuned"]
-# tuned = tuned_set[lag]
-# saved_θ = load("standard/posterior.jld2")["samples"]
-# tmp_tuned = Hyperparameter(
-#     p=tuned.p,
-#     q=[[tuned.q[1:3, 1]; 5e-4] tuned.q[:, 2]],
-#     ν0=tuned.ν0,
-#     Ω0=tuned.Ω0,
-#     μkQ_infty=μkQ_infty,
-#     σkQ_infty=σkQ_infty,
-#     μϕ_const=μϕ_const,
-# )
-# @show prior_const_TP(tmp_tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
 
 if step == 1 ## Drawing pareto frontier
 
