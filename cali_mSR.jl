@@ -5,15 +5,21 @@ begin # MOVE data
     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
 end
 
+mSR_upper = [1; 0.1]
+pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
+pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
+for i in 1:p_max
+    pf_vec[MOEA_size*(i-1)+1:MOEA_size*i, :] = pf[i]
+    pf_input_vec[MOEA_size*(i-1)+1:MOEA_size*i] = pf_input[i]
+end
+idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
+tuned_set = pf_input_vec[idx]
+log_ml = pf_vec[idx, 1]
+tuned = tuned_set[sortperm(log_ml, rev=true)][1]
+@show lag = tuned.p
+
 PCs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag)[1]
 ΩPP = [AR_res_var(PCs[lag+1:end, i], lag)[1] for i in 1:dimQ()] |> diagm
-
-mSR_upper = [1; 0.05]
-
-idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
-tuned_set = pf_input[lag][idx]
-log_ml = pf[lag][idx, 1]
-tuned = tuned_set[sortperm(log_ml, rev=true)][1]
 
 @show prior_const_TP(tuned, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, ρ; iteration=1000) |> std
 

@@ -32,9 +32,9 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = [2; 0.25]
+MOEA_size = 100
+mSR_upper = [1; 0.1]
 
-lag = 7
 iteration = 35_000
 burnin = 5_000
 TPτ_interest = 120
@@ -92,14 +92,20 @@ begin ## Data: yield data
     yields = yields[3:end, :]
 end
 
-μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
-μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
-@show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
+# aux_lag = 7
+# μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
+# μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+# μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
+# @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
 if step == 1 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
+        μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
+        μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+        μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
+        @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
+
         tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
@@ -109,7 +115,12 @@ if step == 1 ## Drawing pareto frontier
 elseif step == 2 ## Tuning hyperparameter
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn)#, mSR_data=MOVE[:, 2])
+        μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
+        μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+        μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
+        @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
+
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=MOEA_size)#, mSR_data=MOVE[:, 2])
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -119,15 +130,26 @@ elseif step == 2 ## Tuning hyperparameter
 elseif step == 3 ## Estimation
 
     if isinf.(mSR_upper) |> minimum
-        tuned = load("standard/tuned.jld2")["tuned"][lag]
+        opt = load("standard/tuned.jld2")["opt"]
+        lag = minimum.(opt) |> findmin |> x -> x[2]
+
+        tuned_set = load("standard/tuned.jld2")["tuned"]
+        tuned = tuned_set[lag]
     else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
-        tuned_set = pf_input[lag][idx]
-        log_ml = pf[lag][idx, 1]
+        pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
+        pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
+        for i in 1:p_max
+            pf_vec[MOEA_size*(i-1)+1:MOEA_size*i, :] = pf[i]
+            pf_input_vec[MOEA_size*(i-1)+1:MOEA_size*i] = pf_input[i]
+        end
+        idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
+        tuned_set = pf_input_vec[idx]
+        log_ml = pf_vec[idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
+        lag = tuned.p
     end
 
     saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
@@ -180,17 +202,26 @@ else
 
     # from step 1&2
     if isinf.(mSR_upper) |> minimum
+        opt = load("standard/tuned.jld2")["opt"]
+        lag = minimum.(opt) |> findmin |> x -> x[2]
+
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
-        opt = load("standard/tuned.jld2")["opt"]
     else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        idx = (pf[lag][:, 2] .< mSR_upper[1]) .* (pf[lag][:, 3] .< mSR_upper[2])
-        tuned_set = pf_input[lag][idx]
-        log_ml = pf[lag][idx, 1]
+        pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
+        pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
+        for i in 1:p_max
+            pf_vec[MOEA_size*(i-1)+1:MOEA_size*i, :] = pf[i]
+            pf_input_vec[MOEA_size*(i-1)+1:MOEA_size*i] = pf_input[i]
+        end
+        idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
+        tuned_set = pf_input_vec[idx]
+        log_ml = pf_vec[idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
+        lag = tuned.p
     end
 
     # from step 3

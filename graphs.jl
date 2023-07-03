@@ -14,19 +14,22 @@ unres_reduced_θ = reducedform(unres_saved_θ[1:ceil(Int, maximum(unres_ineff)):
 unres_mSR = [unres_reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(unres_reduced_θ)] |> mean
 
 ## Pareto frontier
-mesh = [1 * ones(length(pf[1][1])) pf[1][2] pf[1][1]]
-for i in 2:p_max
-    global mesh = vcat(mesh, [i * ones(length(pf[1][1])) pf[i][2] pf[i][1]])
+begin
+    Plots.scatter3d()
+    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#0000FF", colorant"#87CEFA", colorant"#4682B4"]
+    for i in 1:p_max
+        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(45, 30), legend=:right, color=colors[i])
+    end
+    Plots.xlabel!("skewness")
+    Plots.ylabel!("mSR_const")
+    Plots.zlabel!("log marginal likelihood")
+    Plots.ylims!(0, 0.7)
+    # Plots.zlims!(-36450, -36300)
+    # Plots.xaxis!(false)
+    # Plots.yaxis!(false)
+    # Plots.zaxis!(false)
 end
-df = DataFrame(lag=mesh[:, 1], skew=mesh[:, 2], ML=mesh[:, 3])
-rename!(df, Dict(:ML => "log marginal likelihood", :skew => "skewness"))
-plot(
-    df, x="skewness", y="log marginal likelihood", color=:lag, Geom.point,
-    Guide.xticks(ticks=[collect(0:0.5:1); collect(1:0.5:4.5)]),
-    Theme(major_label_font_size=12pt, minor_label_font_size=10pt, key_label_font_size=10pt, point_size=3pt, key_title_font_size=12pt), Scale.color_continuous(minvalue=0, maxvalue=9),
-    Coord.cartesian(; ymin=-36900, ymax=-36200), Guide.yticks(ticks=-36900:100:-36200),
-    #Guide.yticks(ticks=-36350:25:-36225), Coord.cartesian(; ymin=-36350, ymax=-36225)
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
+Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
 
 ## TP components
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
