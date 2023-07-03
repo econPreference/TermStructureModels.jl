@@ -104,7 +104,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         Ω0 = AR_re_var_vec * input[9]
 
         if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
-            mSR_length = mSR_ftn(rand(10), []) |> length
+            mSR_length = mSR_ftn((rand(10), rand()), []) |> length
             return [Inf; fill(Inf, mSR_length)]
         end
 

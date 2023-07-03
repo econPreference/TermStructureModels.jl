@@ -449,8 +449,9 @@ function mSR_ftn_filter(saved_θ, yields, macros, τₙ; mSR_ftn, mSR_upper, mSR
             Ft = factors'[:, t+p:-1:t+1] |> vec |> x -> [1; x]
             mSR[iter, t] = [λₚ Λ_PF] * Ft |> x -> x ./ (sqrt.(σ²FF[1:dQ])) |> norm
         end
+        mSR_const = λₚ ./ sqrt.(σ²FF[1:dQ]) |> norm
 
-        if minimum(mSR_ftn(mSR[iter, :], mSR_data) .< mSR_upper)
+        if minimum(mSR_ftn((mSR[iter, :], mSR_const), mSR_data) .< mSR_upper)
             push!(filtered_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ))
         end
     end
