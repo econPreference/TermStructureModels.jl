@@ -15,9 +15,10 @@ tuned_set = pf_input[lag][idx]
 log_ml = pf[lag][idx, 1]
 tuned = tuned_set[sortperm(log_ml, rev=true)][1]
 
-mSR_prior = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
+mSR_prior, mSR_const = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
 mSR_prior |> mean
-mSR_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
+mSR_simul, mSR_const_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
 Plots.plot(mSR_prior)
-#Plots.plot!(mean(mSR_simul, dims=1)[1, :])
+# Plots.plot!(mean(mSR_simul, dims=1)[1, :])
+# mSR_const_simul |> mean
 Plots.plot!(191:398, MOVE[:, 2] |> x -> (x .- mean(x)) ./ std(x) |> x -> std(mSR_prior[191:398]) * x |> x -> x .+ mean(mSR_prior[191:398]))

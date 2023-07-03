@@ -491,6 +491,14 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
         Λ_i_mean[2:dQ+1, i] .-= CQQ_GQPP[i, :]
     end
 
+    λ_dist_const = Vector{Normal}(undef, dQ)
+    for i in 1:dQ
+        λ_dist_const[i] = Normal(Λ_i_mean[1, i], sqrt(ϕ_i_var[1, 1, i])) / sqrt(σ²FFQ[i])
+    end
+    mean_λλ_const = mean.(λ_dist_const) |> x -> x'x + sum(var.(λ_dist_const))
+    var_λλ_const = var.(λ_dist_const) |> x -> 2sum(x .^ 2) + 4mean.(λ_dist_const)' * diagm(x) * mean.(λ_dist_const)
+    mSR_const = (0.5sqrt(π)) * sqrt(mean_λλ_const) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ_const^(-3 / 2)) * var_λλ_const / (2gamma(-0.5))
+
     mSR = Vector{Float64}(undef, T - p)
     for t in p+1:T
         Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
@@ -503,7 +511,7 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
         var_λλ = var.(λ_dist) |> x -> 2sum(x .^ 2) + 4mean.(λ_dist)' * diagm(x) * mean.(λ_dist)
         mSR[t-p] = (0.5sqrt(π)) * sqrt(mean_λλ) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ^(-3 / 2)) * var_λλ / (2gamma(-0.5))
     end
-    return mSR
+    return mSR, mSR_const
 end
 
 """
@@ -545,6 +553,7 @@ function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ
 
     Λ_i = Matrix{Float64}(undef, 1 + dP * p, dQ)
     mSR = Matrix{Float64}(undef, iteration, T - p)
+    mSR_const = Vector{Float64}(undef, iteration)
     @showprogress 1 "Sampling mSR..." for iter in 1:iteration
 
         for i in 1:dQ
@@ -559,7 +568,8 @@ function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ
             Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
             mSR[iter, t-p] = Λ_i'Ft |> x -> x ./ (sqrt.(σ²FFQ)) |> norm
         end
+        mSR_const[iter] = Λ_i[1, :] |> x -> x ./ (sqrt.(σ²FFQ)) |> norm
     end
-    return mSR
+    return mSR, mSR_const
 end
 

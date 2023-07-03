@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
-        return [mean(mSR), skewness(mSR)]
+        return [skewness(mSR[1]), mSR[2]]
     end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
