@@ -143,7 +143,9 @@ elseif step == 2 ## Tuning hyperparameter
 
 elseif step == 3 ## Estimation
 
-    if !isinf(mSR_upper)
+    if isinf.(mSR_upper) |> minimum
+        tuned = load("standard/tuned.jld2")["tuned"][lag]
+    else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
@@ -151,8 +153,6 @@ elseif step == 3 ## Estimation
         tuned_set = pf_input[lag][idx]
         log_ml = pf[lag][idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
-    else
-        tuned = load("standard/tuned.jld2")["tuned"][lag]
     end
 
     saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
@@ -171,7 +171,9 @@ elseif step == 3 ## Estimation
     accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
     iteration = length(saved_θ)
 
-    if !isinf(mSR_upper)
+    if isinf.(mSR_upper) |> minimum
+        save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+    else
         par_mSR_θ = @showprogress 1 "filtering with mSR_ftn..." pmap(1:iteration) do i
             mSR_ftn_filter([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mSR_ftn, mSR_upper)
         end
@@ -184,8 +186,6 @@ elseif step == 3 ## Estimation
         accept_mSR = 100length(saved_θ) / iteration
         iteration = length(saved_θ)
         save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate, "accept_rate_mSR", accept_mSR)
-    else
-        save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
     end
 
     if is_ineff
@@ -204,7 +204,7 @@ elseif step == 3 ## Estimation
 else
 
     # from step 1&2
-    if isinf(mSR_upper)
+    if isinf.(mSR_upper) |> minimum
         tuned_set = load("standard/tuned.jld2")["tuned"]
         tuned = tuned_set[lag]
         opt = load("standard/tuned.jld2")["opt"]
@@ -219,7 +219,7 @@ else
     end
 
     # from step 3
-    if isinf(mSR_upper)
+    if isinf.(mSR_upper) |> minimum
         saved_θ = load("standard/posterior.jld2")["samples"]
         acceptPr = load("standard/posterior.jld2")["acceptPr"]
         accept_rate = load("standard/posterior.jld2")["accept_rate"]
