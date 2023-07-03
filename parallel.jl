@@ -32,7 +32,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = [0.5; 1.0]
+mSR_upper = [1.0; 0.25]
 
 lag = 7
 iteration = 35_000
@@ -239,8 +239,8 @@ else
     saved_Xθ = latentspace(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
     fitted_yield = mean(fitted)[:yields] / 1200
-    log_price = -collect(1:τₙ[end])' .* fitted_yield[tuned.p+1:end, :]
-    xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p+1:end-1, 1]
+    log_price = -collect(1:τₙ[end])' .* fitted_yield[tuned.p:end, :]
+    xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
