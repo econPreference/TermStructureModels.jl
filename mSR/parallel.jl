@@ -33,7 +33,7 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.01
 MOEA_size = 100
-mSR_upper = [1; 0.1]
+mSR_upper = [1.5; 0.1]
 
 iteration = 35_000
 burnin = 5_000
@@ -168,22 +168,22 @@ elseif step == 3 ## Estimation
     accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
     iteration = length(saved_θ)
 
-    if isinf.(mSR_upper) |> minimum
-        save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
-    else
-        par_mSR_θ = @showprogress 1 "filtering with mSR_ftn..." pmap(1:iteration) do i
-            mSR_ftn_filter([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mSR_ftn, mSR_upper)
-        end
-        saved_θ = Vector{Parameter}(undef, 0)
-        for i in eachindex(par_mSR_θ)
-            if !isempty(par_mSR_θ[i][1])
-                push!(saved_θ, par_mSR_θ[i][1][1])
-            end
-        end
-        accept_mSR = 100length(saved_θ) / iteration
-        iteration = length(saved_θ)
-        save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate, "accept_rate_mSR", accept_mSR)
-    end
+    # if isinf.(mSR_upper) |> minimum
+    save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+    # else
+    #     par_mSR_θ = @showprogress 1 "filtering with mSR_ftn..." pmap(1:iteration) do i
+    #         mSR_ftn_filter([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mSR_ftn, mSR_upper)
+    #     end
+    #     saved_θ = Vector{Parameter}(undef, 0)
+    #     for i in eachindex(par_mSR_θ)
+    #         if !isempty(par_mSR_θ[i][1])
+    #             push!(saved_θ, par_mSR_θ[i][1][1])
+    #         end
+    #     end
+    #     accept_mSR = 100length(saved_θ) / iteration
+    #     iteration = length(saved_θ)
+    #     save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate, "accept_rate_mSR", accept_mSR)
+    # end
 
     if is_ineff
         ineff = ineff_factor(saved_θ)
@@ -236,7 +236,7 @@ else
         saved_θ = load("mSR/posterior.jld2")["samples"]
         acceptPr = load("mSR/posterior.jld2")["acceptPr"]
         accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        accept_mSR = load("mSR/posterior.jld2")["accept_rate_mSR"]
+        # accept_mSR = load("mSR/posterior.jld2")["accept_rate_mSR"]
         iteration = length(saved_θ)
         saved_TP = load("mSR/TP.jld2")["TP"]
         ineff = load("mSR/ineff.jld2")["ineff"]

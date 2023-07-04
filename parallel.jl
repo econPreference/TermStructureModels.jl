@@ -33,7 +33,7 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.01
 MOEA_size = 100
-mSR_upper = [1; 0.1]
+mSR_upper = [1.5; 0.1]
 
 iteration = 35_000
 burnin = 5_000
@@ -236,7 +236,7 @@ else
         saved_θ = load("mSR/posterior.jld2")["samples"]
         acceptPr = load("mSR/posterior.jld2")["acceptPr"]
         accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        accept_mSR = load("mSR/posterior.jld2")["accept_rate_mSR"]
+        # accept_mSR = load("mSR/posterior.jld2")["accept_rate_mSR"]
         iteration = length(saved_θ)
         saved_TP = load("mSR/TP.jld2")["TP"]
         ineff = load("mSR/ineff.jld2")["ineff"]

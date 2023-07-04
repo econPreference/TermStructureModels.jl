@@ -118,3 +118,10 @@ plot(
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
     Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01"))
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR_prior.pdf")
+
+plot(
+    layer(x=yields[10:end, 1], y=mSR_prior, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt, line_style=[:dash])),
+    layer(x=yields[10:end, 1], y=mSR, Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01"))
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR_post.pdf")
