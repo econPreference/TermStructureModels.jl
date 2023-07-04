@@ -452,17 +452,18 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 """
 function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5])
 
+    σ²FFQ = diag(ΩPP)
+    ΩPP = diagm(σ²FFQ)
+
     (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
     T = size(factors, 1)
-    Xϕ = yϕ_Xϕ(PCs, macros, p)[2]
-    Xϕ0 = Xϕ[:, (end-dP+1):end]
+    yϕ, ~, Xϕ0 = yϕ_Xϕ(PCs, macros, p)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
-    CQQ, σ²FFQ = LDL(ΩPP) |> x -> (inv(x[1]), diag(x[2])[1:dQ])
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
@@ -478,17 +479,14 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
     GQPP = T1X_ * GQ_XX(; κQ) / T1X_
 
-    CQQ_KₚQ = CQQ * KₚQ
-    CQQ_GQPP = CQQ * GQPP
-
     Λ_i_mean = Matrix{Float64}(undef, 1 + dP * p, dQ)
     ϕ_i_var = Array{Float64}(undef, 1 + dP * p, 1 + dP * p, dQ)
     for i in 1:dQ
         mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
         Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
-        Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(-Xϕ0[:, 1:dQ] * CQQ[i, :], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FFQ[i])
-        Λ_i_mean[1, i] -= CQQ_KₚQ[i]
-        Λ_i_mean[2:dQ+1, i] .-= CQQ_GQPP[i, :]
+        Λ_i_mean[:, i], ϕ_i_var[:, :, i] = Normal_Normal_in_NIG(yϕ[:, i], Xϕ0, mᵢ, diagm(Vᵢ), σ²FFQ[i])
+        Λ_i_mean[1, i] -= KₚQ[i]
+        Λ_i_mean[2:dQ+1, i] .-= GQPP[i, :]
     end
 
     λ_dist_const = Vector{Normal}(undef, dQ)
@@ -522,17 +520,18 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 """
 function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
+    σ²FFQ = diag(ΩPP)
+    ΩPP = diagm(σ²FFQ)
+
     (; p, q, ν0, Ω0, μϕ_const, fix_const_PC1) = Hyperparameter_
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     factors = [PCs macros]
     dP = length(Ω0)
     dQ = dimQ()
     T = size(factors, 1)
-    Xϕ = yϕ_Xϕ(PCs, macros, p)[2]
-    Xϕ0 = Xϕ[:, (end-dP+1):end]
+    yϕ, ~, Xϕ0 = yϕ_Xϕ(PCs, macros, p)
     prior_κQ_ = prior_κQ(medium_τ)
     prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
-    CQQ, σ²FFQ = LDL(ΩPP) |> x -> (inv(x[1]), diag(x[2])[1:dQ])
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
@@ -548,9 +547,6 @@ function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ
     KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
     GQPP = T1X_ * GQ_XX(; κQ) / T1X_
 
-    CQQ_KₚQ = CQQ * KₚQ
-    CQQ_GQPP = CQQ * GQPP
-
     Λ_i = Matrix{Float64}(undef, 1 + dP * p, dQ)
     mSR = Matrix{Float64}(undef, iteration, T - p)
     mSR_const = Vector{Float64}(undef, iteration)
@@ -559,9 +555,9 @@ function maximum_SR_simul(yields, macros, Hyperparameter_::Hyperparameter, τₙ
         for i in 1:dQ
             mᵢ = mean.(prior_ϕ0_[i, 1:(1+p*dP)])
             Vᵢ = var.(prior_ϕ0_[i, 1:(1+p*dP)])
-            Λ_i[:, i] = Normal_Normal_in_NIG(-Xϕ0[:, 1:dQ] * CQQ[i, :], Xϕ[:, 1:(end-dP)], mᵢ, diagm(Vᵢ), σ²FFQ[i]) |> x -> rand(MvNormal(x[1], x[2]))
-            Λ_i[1, i] -= CQQ_KₚQ[i]
-            Λ_i[2:dQ+1, i] .-= CQQ_GQPP[i, :]
+            Λ_i[:, i] = Normal_Normal_in_NIG(yϕ[:, i], Xϕ0, mᵢ, diagm(Vᵢ), σ²FFQ[i]) |> x -> rand(MvNormal(x[1], x[2]))
+            Λ_i[1, i] -= KₚQ[i]
+            Λ_i[2:dQ+1, i] .-= GQPP[i, :]
         end
 
         for t in p+1:T

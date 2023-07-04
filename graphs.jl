@@ -14,7 +14,7 @@ unres_reduced_θ = reducedform(unres_saved_θ[1:ceil(Int, maximum(unres_ineff)):
 unres_mSR = [unres_reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(unres_reduced_θ)] |> mean
 
 ## Pareto frontier
-begin
+begin #overall
     Plots.scatter3d()
     colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
     for i in 1:p_max
@@ -23,13 +23,64 @@ begin
     Plots.xlabel!("skewness")
     Plots.ylabel!("mSR_const")
     Plots.zlabel!("log marginal likelihood")
-    # Plots.ylims!(0, 0.25)
-    # Plots.zlims!(-36350, -36240)
-    # Plots.xaxis!(false)
-    # Plots.yaxis!(false)
-    # Plots.zaxis!(false)
 end
 Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
+
+begin #zoom in
+    Plots.scatter3d()
+    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
+    for i in 1:p_max
+        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(45, 30), legend=:right, color=colors[i])
+    end
+    Plots.xlabel!("skewness")
+    Plots.ylabel!("mSR_const")
+    Plots.zlabel!("log marginal likelihood")
+    Plots.zlims!(-36350, -36240)
+end
+Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_zoom.pdf")
+
+begin #x-axis
+    Plots.scatter3d()
+    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
+    for i in 1:p_max
+        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(0, 0), legend=:right, color=colors[i])
+    end
+    Plots.xlabel!("skewness")
+    Plots.ylabel!("mSR_const")
+    Plots.zlabel!("log marginal likelihood")
+    Plots.zlims!(-36350, -36240)
+    Plots.yaxis!(false)
+end
+Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_x.pdf")
+
+begin # y-axis
+    Plots.scatter3d()
+    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
+    for i in 1:p_max
+        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(90, 0), legend=:right, color=colors[i])
+    end
+    Plots.xlabel!("skewness")
+    Plots.ylabel!("mSR_const")
+    Plots.yticks!(0.05:0.05:0.25)
+    Plots.zlabel!("log marginal likelihood")
+    Plots.zlims!(-36350, -36240)
+    Plots.xaxis!(false)
+end
+Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_y.pdf")
+
+begin #z-axis
+    Plots.scatter3d()
+    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
+    for i in 1:p_max
+        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(0, 90), legend=:right, color=colors[i])
+    end
+    Plots.xlabel!("skewness")
+    Plots.ylabel!("mSR_const", yrotation=90)
+    Plots.yticks!(0.05:0.05:0.25)
+    Plots.zlabel!("log marginal likelihood")
+    Plots.zaxis!(false)
+end
+Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_z.pdf")
 
 ## TP components
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
@@ -116,12 +167,13 @@ plot(
     layer(x=yields[10:end, 1], y=mSR_prior, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt, line_style=[:dash])),
     layer(x=yields[10:end, 1], y=mean(mSR_simul, dims=1)[1, :], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01"))
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.ylabel(""),
+    Guide.xlabel("Constant part: simul = $(round(mean(mSR_const_simul),digits=4)), approx = $(round(mSR_const,digits=4))")
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR_prior.pdf")
 
 plot(
     layer(x=yields[10:end, 1], y=mSR_prior, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt, line_style=[:dash])),
     layer(x=yields[10:end, 1], y=mSR, Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01"))
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.ylabel("maximum SR"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01"))
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR_post.pdf")
