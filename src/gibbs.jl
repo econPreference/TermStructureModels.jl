@@ -12,7 +12,7 @@ function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, �
 
     N = length(τₙ) # of maturities
     T = size(yields, 1) # length of dependent variables
-    PCs, OCs, Wₚ, Wₒ = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
@@ -31,7 +31,7 @@ function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, �
 
     # Dependent variable
     y = vec(OCs')
-    y -= kron(ones(T), Wₒ * (I(N) - Bₓ_ / T1X_ * Wₚ) * A0_kQ_infty)
+    y -= kron(ones(T), Wₒ * (I(N) - Bₓ_ / T1X_ * Wₚ) * A0_kQ_infty + Wₒ * Bₓ_ / T1X_ * mean_PCs)
     y -= vec(Bₚ_ * PCs')
     y = y ./ kron(ones(T), sqrt.(1 ./ Σₒ))
 

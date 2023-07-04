@@ -12,7 +12,7 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
     - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
     - function "load\\_object" can be applied
 """
-function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; PCAs=[], mean_macros=0.0)
+function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=0.0)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
@@ -23,7 +23,7 @@ function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; PCAs=
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
 
-        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs, mean_macros)
+        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros)
 
         scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
     end
@@ -38,7 +38,7 @@ _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
 * Output(3): spanned_yield, spanned_F, predicted_TP
     - Matrix{Float64}(scenario,horizon,dP or N or 1)
 """
-function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, PCAs, mean_macros)
+function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros)
 
     R"library(MASS)"
     ## Construct GDTSM parameters
@@ -51,19 +51,16 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     N = length(τₙ)
     dQ = dimQ()
     dP = size(ΩFF, 1)
-    k = size(GₚFF, 2) # of factors in the companion from
-    p = Int(k / dP)
+    k = size(GₚFF, 2) + N # of factors in the companion from
+    p = Int((k - N) / dP)
     if S != []
         dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
     else
         dh = 0
     end
-    if isempty(PCAs)
-        PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
-    else
-        PCs, Wₚ, Wₒ, mean_PCs = PCAs[1], PCAs[3], PCAs[4], PCAs[5]
-    end
-    data = [PCs macros] # no initial observations
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+
+    data = [PCs macros]
     T = size(data, 1)
 
     bτ_ = bτ(τₙ[end]; κQ)
@@ -77,26 +74,27 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
 
     if dh > 0
         ## Construct the Kalman filter parameters
-        # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p vector
+        # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
         μT = [KₚF
-            zeros(dP * (p - 1))]
-        G = [GₚFF
-            I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
-        Ω = [ΩFF zeros(dP, dP * (p - 1))
-            zeros(dP * (p - 1), dP * p)]
-        # Measurement equation: Y(t) = μM + H*F(t) + N(0,Σ), where Y(t): N + (dP-dQ) vector
+            zeros(N + dP * (p - 1))]
+        G = [GₚFF[:, 1:dP] zeros(dP, N) GₚFF[:, dP+1:end]
+            zeros(N, dP * p + N)
+            I(dP) zeros(dP, dP * p - dP + N)
+            zeros(dP * p - 2dP, dP + N) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+        Ω = zeros(dP * p + N, dP * p + N)
+        Ω[1:dP, 1:dP] = ΩFF
+        Ω[dP+1:dP+N, dP+1:dP+N] = Σᵣ
+        # Measurement equation: Y(t) = μM + H*F(t), where Y(t): N + (dP-dQ) vector
         μM = [Aₓ_ + Bₓ_ * T0P_
             zeros(dP - dQ, 1)]
-        H = [Bₓ_*T1P_ zeros(N, dP - dQ + dP * (p - 1))
-            zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * (p - 1))]
-
-        Σ = [Σᵣ zeros(N, dP - dQ)
-            zeros(dP - dQ, N + dP - dQ)]
+        H = [Bₓ_*T1P_ zeros(N, dP - dQ) I(N) zeros(N, dP * p - dP)
+            zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p - dP + N)]
 
         ## Kalman filtering step
         f_ttm = zeros(k, 1, dh)
         P_ttm = zeros(k, k, dh)
-        f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X'))
+        mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ]
+        f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; mea_error; x[dP+1:end]]
         P_ll = zeros(k, k)
         for t = 1:dh
 
@@ -105,8 +103,8 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
 
             St = S[t].combinations
             st = S[t].values
-            # st = St*μM + St*H*F(t) + N(0,St*Σ*St')
-            var_tl = (St * H) * P_tl * (St * H)' + St * Σ * St' |> Symmetric
+            # st = St*μM + St*H*F(t)
+            var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
             e_tl = st - St * μM - St * H * f_tl
             Kalgain = P_tl * (St * H)' / var_tl
             f_tt = f_tl + Kalgain * e_tl
@@ -121,7 +119,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         end
 
         ## Backward recursion
-        predicted_F = zeros(dh, dP)  # T by k
+        predicted_F = zeros(dh, dP + N)  # T by k
         predicted_yield = zeros(dh, N)
 
         # beta(T|T) sampling
@@ -131,24 +129,22 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         ft = deepcopy(f_tt)
         idx = diag(P_tt) .> eps()
         ft[idx] = rcopy(Array, rcall(:mvrnorm, mu=f_tt[idx], Sigma=P_tt[idx, idx]))
-        predicted_F[dh, :] = ft[1:dP]
-
-        mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
-        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + mea_error
+        predicted_F[dh, :] = ft[1:dP+N]
+        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:dP+N]
 
         for t in (dh-1):-1:1
 
             f_tt = f_ttm[:, 1, t]
             P_tt = P_ttm[:, :, t]
 
-            GPG_Q = G[1:dP, :] * P_tt * G[1:dP, :]' + Ω[1:dP, 1:dP] |> Symmetric # P[t+1|t], k by k
+            GPG_Q = G[1:dP+N, :] * P_tt * G[1:dP+N, :]' + Ω[1:dP+N, 1:dP+N] |> Symmetric # P[t+1|t], k by k
 
-            e_tl = predicted_F[t+1, :] - μT[1:dP] - G[1:dP, :] * f_tt
+            e_tl = predicted_F[t+1, :] - μT[1:dP+N] - G[1:dP+N, :] * f_tt
 
-            PGG = P_tt * G[1:dP, :]' / GPG_Q
+            PGG = P_tt * G[1:dP+N, :]' / GPG_Q
             f_tt1 = f_tt + PGG * e_tl
 
-            PGP = PGG * G[1:dP, :] * P_tt
+            PGP = PGG * G[1:dP+N, :] * P_tt
             P_tt1 = P_tt - PGP |> Symmetric
 
             # beta(t|t+1) sampling
@@ -156,36 +152,35 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
             idx = diag(P_tt1) .> eps()
             ft[idx] = rcopy(Array, rcall(:mvrnorm, mu=f_tt1[idx], Sigma=P_tt1[idx, idx]))
 
-            predicted_F[t, :] = ft[1:dP]
-            mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
-            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + mea_error
+            predicted_F[t, :] = ft[1:dP+N]
+            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:dP+N]
         end
     end
 
-    spanned_F = Matrix{Float64}(undef, T + horizon, dP)
+    spanned_factors = Matrix{Float64}(undef, T + horizon, dP)
     spanned_yield = Matrix{Float64}(undef, T + horizon, N)
-    spanned_F[1:T, :] = data
+    spanned_factors[1:T, :] = data
     spanned_yield[1:T, :] = yields
     if dh > 0
-        spanned_F[(T+1):(T+dh), :] = predicted_F
+        spanned_factors[(T+1):(T+dh), :] = predicted_F[:, 1:dP]
         spanned_yield[(T+1):(T+dh), :] = predicted_yield
     end
     for t in (T+dh+1):(T+horizon) # predicted period
-        X = spanned_F[t-1:-1:t-p, :] |> (X -> vec(X'))
-        spanned_F[t, :] = KₚF + GₚFF * X + rand(MvNormal(zeros(dP), ΩFF))
+        X = spanned_factors[t-1:-1:t-p, :] |> (X -> vec(X'))
+        spanned_factors[t, :] = KₚF + GₚFF * X + rand(MvNormal(zeros(dP), ΩFF))
         mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
-        spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_F[t, 1:dQ] + mea_error
+        spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
         predicted_TP = []
     else
         predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
-            predicted_TP[:, i] = _termPremium(τ[i], spanned_F[(T-p+1):end, 1:dQ], spanned_F[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
+            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
         end
     end
 
-    spanned_F = spanned_F[(end-horizon+1):end, :]
-    spanned_F[:, dQ+1:end] .+= mean_macros
-    return spanned_yield[(end-horizon+1):end, :], spanned_F, predicted_TP
+    spanned_factors = spanned_factors[(end-horizon+1):end, :]
+    spanned_factors[:, dQ+1:end] .+= mean_macros
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
 end

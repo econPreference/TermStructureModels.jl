@@ -1,3 +1,6 @@
+pf = load("mSR/tuned_pf.jld2")["pf"]
+pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
+
 begin # MOVE data
     raw_MOVE = CSV.File("MOVE.csv", types=[Date; Float64]) |> DataFrame |> x -> x[9:end, :] |> reverse
     idx = month.(raw_MOVE[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
@@ -5,7 +8,7 @@ begin # MOVE data
     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
 end
 
-mSR_upper = [1; 0.1]
+mSR_upper = [2; 0.1]
 pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
 pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
 for i in 1:p_max

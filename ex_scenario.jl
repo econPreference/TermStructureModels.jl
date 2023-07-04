@@ -39,7 +39,7 @@ begin ## Data: macro data
     end
     macros_extended = macros_extended[3:end, :]
     macros_extended_growth = macros_extended_growth[3:end, :]
-    # macros_extended[:, 2:end] .-= mean_macros
+    macros_extended[:, 2:end] .-= mean_macros
 end
 
 begin ## Data: yield data
@@ -69,7 +69,7 @@ vals[1] = 0.0
 combs[2:end, length(τₙ)+1:length(τₙ)+dP-dQ] = I(dP - dQ)
 vals[2:end] = macros_extended[end-9, 2:end] |> Array
 push!(scene, Scenario(combinations=combs, values=vals))
-for h = 2:3
+for h = 2:10
     local combs = zeros(1, dP - dQ + length(τₙ))
     local combs[1, 1] = 1
     local vals = [0.0]
@@ -77,7 +77,7 @@ for h = 2:3
 end
 
 par_prediction = @showprogress 1 "Scenario..." pmap(1:ceil(Int, maximum(ineff)):iteration) do i
-    scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
+    scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mean_macros)
 end
 # saved_prediction = [par_prediction[i][1] for i in eachindex(par_prediction)]
 saved_prediction = Vector{Forecast}(undef, length(par_prediction))
