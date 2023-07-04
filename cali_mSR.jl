@@ -32,7 +32,7 @@ mSR_prior, mSR_const = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(m
 @show mSR_const
 mSR_simul, mSR_const_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
 Plots.plot(yields[10:end, 1], mSR_prior, linewidth=2)
-# Plots.plot!(mean(mSR_simul, dims=1)[1, :], line=:dash, linewidth=2)
+# Plots.plot!(yields[10:end, 1], mean(mSR_simul, dims=1)[1, :], line=:dash, linewidth=2)
 # mSR_const_simul |> mean
 aux_idx = length(mSR_prior)-length(MOVE[:, 1])+1:length(mSR_prior)
 Plots.plot!(yields[10:end, 1][aux_idx], MOVE[:, 2] |> x -> (x .- mean(x)) ./ std(x) |> x -> std(mSR_prior[aux_idx]) * x |> x -> x .+ mean(mSR_prior[aux_idx]), line=:dash, linewidth=2)
