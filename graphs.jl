@@ -77,6 +77,7 @@ begin #z-axis
     Plots.xlabel!("skewness")
     Plots.ylabel!("mSR_const", yrotation=90)
     Plots.yticks!(0.05:0.05:0.25)
+    Plots.ylims!(0.05, 0.25)
     Plots.zlabel!("log marginal likelihood")
     Plots.zaxis!(false)
 end
