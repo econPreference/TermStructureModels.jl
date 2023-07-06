@@ -17,9 +17,9 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
-τₙ = [3; 6; collect(12:12:120)]
+τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
 date_start = Date("1986-02-01", "yyyy-mm-dd")
-date_end = Date("2020-02-01", "yyyy-mm-dd")
+date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 9
@@ -32,7 +32,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-MOEA_size = 100
+opt_size = 100
 mSR_upper = [1.5; 0.1]
 
 iteration = 35_000
@@ -42,8 +42,10 @@ is_TP = true
 is_ineff = true
 
 begin ## Data: macro data
-    R"library(fbi)"
-    raw_fred = rcopy(rcall(:fredmd, file="current.csv", date_start=date_start, date_end=date_end, transform=false))
+    raw_fred = CSV.File("current.csv") |> DataFrame |> x -> x[314:774, :]
+    raw_fred = [Date.(raw_fred[:, 1], DateFormat("mm/dd/yyyy")) raw_fred[:, 2:end]]
+    raw_fred = raw_fred[findall(x -> x == yearmonth(date_start), yearmonth.(raw_fred[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(raw_fred[:, 1]))[1], :]
+
     excluded = ["FEDFUNDS", "CP3Mx", "TB3MS", "TB6MS", "GS1", "GS5", "GS10", "TB3SMFFM", "TB6SMFFM", "T1YFFM", "T5YFFM", "T10YFFM", "COMPAPFFx", "AAAFFM", "BAAFFM"]
     macros = raw_fred[:, findall(x -> !(x ∈ excluded), names(raw_fred))]
     idx = ones(Int, 1)
@@ -56,6 +58,9 @@ begin ## Data: macro data
     excluded = ["W875RX1", "IPFPNSS", "IPFINAL", "IPCONGD", "IPDCONGD", "IPNCONGD", "IPBUSEQ", "IPMAT", "IPDMAT", "IPNMAT", "IPMANSICS", "IPB51222S", "IPFUELS", "HWIURATIO", "CLF16OV", "CE16OV", "UEMPLT5", "UEMP5TO14", "UEMP15OV", "UEMP15T26", "UEMP27OV", "USGOOD", "CES1021000001", "USCONS", "MANEMP", "DMANEMP", "NDMANEMP", "SRVPRD", "USTPU", "USWTRADE", "USTRADE", "USFIRE", "USGOVT", "AWOTMAN", "AWHMAN", "CES2000000008", "CES3000000008", "HOUSTNE", "HOUSTMW", "HOUSTS", "HOUSTW", "PERMITNE", "PERMITMW", "PERMITS", "PERMITW", "NONBORRES", "DTCOLNVHFNM", "AAAFFM", "BAAFFM", "EXSZUSx", "EXJPUSx", "EXUSUKx", "EXCAUSx", "WPSFD49502", "WPSID61", "WPSID62", "CPIAPPSL", "CPITRNSL", "CPIMEDSL", "CUSR0000SAC", "CUSR0000SAS", "CPIULFSL", "CUSR0000SA0L2", "CUSR0000SA0L5", "DDURRG3M086SBEA", "DNDGRG3M086SBEA", "DSERRG3M086SBEA"]
     push!(excluded, "CMRMTSPLx", "RETAILx", "HWI", "UEMPMEAN", "CLAIMSx", "AMDMNOx", "ANDENOx", "AMDMUOx", "BUSINVx", "ISRATIOx", "BUSLOANS", "NONREVSL", "CONSPI", "S&P: indust", "S&P div yield", "S&P PE ratio", "M1SL", "BOGMBASE")
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
+    macros = [macros[:, 1] Float64.(macros[:, 2:end])]
+    rename!(macros, Dict(:x1 => "date"))
+
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if names(macros[:, 2:end])[i] ∈ ["CUMFNS", "AAA", "UNRATE", "BAA"]
@@ -76,19 +81,8 @@ begin ## Data: macro data
 end
 
 begin ## Data: yield data
-    # yield(3 months) and yield(6 months)
-    raw_yield = CSV.File("FRB_H15.csv", missingstring="ND", types=[Date; fill(Float64, 11)]) |> DataFrame |> (x -> [x[5137:end, 1] x[5137:end, 3:4]]) |> dropmissing
-    idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
-    yield_month = raw_yield[idx, :]
-    yield_month = yield_month[findall(x -> x == yearmonth(date_start), yearmonth.(yield_month[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(yield_month[:, 1]))[1], :] |> x -> x[:, 2:end]
-    # longer than one year
-    raw_yield = CSV.File("feds200628.csv", missingstring="NA", types=[Date; fill(Float64, 99)]) |> DataFrame |> (x -> [x[8:end, 1] x[8:end, 69:78]]) |> dropmissing
-    idx = month.(raw_yield[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
-    yield_year = raw_yield[idx, :]
-    yield_year = yield_year[findall(x -> x == yearmonth(date_start), yearmonth.(yield_year[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(yield_year[:, 1]))[1], :]
-    yields = DataFrame([Matrix(yield_month) Matrix(yield_year[:, 2:end])], [:M3, :M6, :Y1, :Y2, :Y3, :Y4, :Y5, :Y6, :Y7, :Y8, :Y9, :Y10])
-    yields = [yield_year[:, 1] yields]
-    rename!(yields, Dict(:x1 => "date"))
+    raw_yield = XLSX.readdata("LW_monthly.xlsx", "Sheet1", "A132:DQ748") |> x -> [Date.(string.(x[:, 1]), DateFormat("yyyymm")) convert(Matrix{Float64}, x[:, τₙ.+1])] |> x -> DataFrame(x, ["date"; ["Y$i" for i in τₙ]])
+    yields = raw_yield[findall(x -> x == yearmonth(date_start), yearmonth.(raw_yield[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(raw_yield[:, 1]))[1], :]
     yields = yields[3:end, :]
 end
 
@@ -102,11 +96,10 @@ if step == 1 ## Drawing pareto frontier
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
         μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-        μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
         μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
         @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const)
+        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const, populationsize=opt_size)
     end
     tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
     opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -120,7 +113,7 @@ elseif step == 2 ## Tuning hyperparameter
         μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
         @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=MOEA_size)#, mSR_data=MOVE[:, 2])
+        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=opt_size)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -139,11 +132,11 @@ elseif step == 3 ## Estimation
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
-        pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
+        pf_vec = Matrix{Float64}(undef, p_max * opt_size, 3)
+        pf_input_vec = Vector{Hyperparameter}(undef, p_max * opt_size)
         for i in 1:p_max
-            pf_vec[MOEA_size*(i-1)+1:MOEA_size*i, :] = pf[i]
-            pf_input_vec[MOEA_size*(i-1)+1:MOEA_size*i] = pf_input[i]
+            pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
+            pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
         end
         idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
         tuned_set = pf_input_vec[idx]
@@ -211,11 +204,11 @@ else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
-        pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
+        pf_vec = Matrix{Float64}(undef, p_max * opt_size, 3)
+        pf_input_vec = Vector{Hyperparameter}(undef, p_max * opt_size)
         for i in 1:p_max
-            pf_vec[MOEA_size*(i-1)+1:MOEA_size*i, :] = pf[i]
-            pf_input_vec[MOEA_size*(i-1)+1:MOEA_size*i] = pf_input[i]
+            pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
+            pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
         end
         idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
         tuned_set = pf_input_vec[idx]

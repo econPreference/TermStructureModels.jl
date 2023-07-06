@@ -72,7 +72,7 @@ begin #z-axis
     Plots.scatter3d()
     colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
     for i in 1:p_max
-        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(0, 90), legend=:right, color=colors[i])
+        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(0, 90), legend=:left, color=colors[i])
     end
     Plots.xlabel!("skewness")
     Plots.ylabel!("mSR_const", yrotation=90)

@@ -9,11 +9,11 @@ begin # MOVE data
 end
 
 mSR_upper = [1.5; 0.1]
-pf_vec = Matrix{Float64}(undef, p_max * MOEA_size, 3)
-pf_input_vec = Vector{Hyperparameter}(undef, p_max * MOEA_size)
+pf_vec = Matrix{Float64}(undef, p_max * opt_size, 3)
+pf_input_vec = Vector{Hyperparameter}(undef, p_max * opt_size)
 for i in 1:p_max
-    pf_vec[MOEA_size*(i-1)+1:MOEA_size*i, :] = pf[i]
-    pf_input_vec[MOEA_size*(i-1)+1:MOEA_size*i] = pf_input[i]
+    pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
+    pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
 end
 idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
 tuned_set = pf_input_vec[idx]
