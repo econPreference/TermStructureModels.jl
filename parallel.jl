@@ -84,11 +84,14 @@ begin ## Data: yield data
     raw_yield = XLSX.readdata("LW_monthly.xlsx", "Sheet1", "A132:DQ748") |> x -> [Date.(string.(x[:, 1]), DateFormat("yyyymm")) convert(Matrix{Float64}, x[:, τₙ.+1])] |> x -> DataFrame(x, ["date"; ["Y$i" for i in τₙ]])
     yields = raw_yield[findall(x -> x == yearmonth(date_start), yearmonth.(raw_yield[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(raw_yield[:, 1]))[1], :]
     yields = yields[3:end, :]
+
+    yields = [Date.(string.(yields[:, 1]), DateFormat("yyyy-mm-dd")) Float64.(yields[:, 2:end])]
+    rename!(yields, Dict(:x1 => "date"))
 end
 
 # aux_lag = 7
 # μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-# μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+# μϕ_const_PCs = [0.09, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 # μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 # @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
@@ -109,7 +112,7 @@ elseif step == 2 ## Tuning hyperparameter
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
         μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-        μϕ_const_PCs = [0.06, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+        μϕ_const_PCs = [0.09, μϕ_const_PCs[2], μϕ_const_PCs[3]]
         μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
         @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
