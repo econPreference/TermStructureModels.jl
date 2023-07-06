@@ -23,7 +23,7 @@ date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 9
-step = 0
+step = 1
 
 upper_q =
     [1 1
@@ -33,7 +33,7 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.01
 opt_size = 100
-mSR_upper = [1.5; 0.1]
+mSR_upper = [Inf; Inf]
 
 iteration = 35_000
 burnin = 5_000
