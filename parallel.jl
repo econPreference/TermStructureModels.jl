@@ -23,7 +23,7 @@ date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 p_max = 9
-step = 1
+step = 0
 
 upper_q =
     [1 1

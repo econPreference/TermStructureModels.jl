@@ -70,7 +70,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     T1X_ = T1X(Bₓ_, Wₚ)
     T1P_ = inv(T1X_)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-    Σᵣ = [Wₚ; Wₒ] \ [zeros(dQ, N); zeros(N - dQ, dQ) diagm(Σₒ)] / [Wₚ' Wₒ'] |> Symmetric
+    Σᵣ = [Wₚ; Wₒ] \ [diagm(minimum(Σₒ) .* rand(dQ) .+ eps()) zeros(dQ, N - dQ); zeros(N - dQ, dQ) diagm(Σₒ)] / [Wₚ' Wₒ'] |> Symmetric
 
     if dh > 0
         ## Construct the Kalman filter parameters
