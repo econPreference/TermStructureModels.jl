@@ -35,7 +35,7 @@ begin #zoom in
     Plots.xlabel!("skewness")
     Plots.ylabel!("mSR_const")
     Plots.zlabel!("log marginal likelihood")
-    Plots.zlims!(-36350, -36240)
+    Plots.zlims!(-41700, -41600)
 end
 Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_zoom.pdf")
 
@@ -48,7 +48,7 @@ begin #x-axis
     Plots.xlabel!("skewness")
     Plots.ylabel!("mSR_const")
     Plots.zlabel!("log marginal likelihood")
-    Plots.zlims!(-36350, -36240)
+    Plots.zlims!(-41700, -41600)
     Plots.yaxis!(false)
 end
 Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_x.pdf")
@@ -63,7 +63,7 @@ begin # y-axis
     Plots.ylabel!("mSR_const")
     Plots.yticks!(0.05:0.05:0.25)
     Plots.zlabel!("log marginal likelihood")
-    Plots.zlims!(-36350, -36240)
+    Plots.zlims!(-41700, -41600)
     Plots.xaxis!(false)
 end
 Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_y.pdf")

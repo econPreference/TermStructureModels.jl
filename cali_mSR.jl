@@ -8,7 +8,7 @@ begin # MOVE data
     MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
 end
 
-mSR_upper = [1.5; 0.1]
+mSR_upper = [1; 0.1]
 pf_vec = Matrix{Float64}(undef, p_max * opt_size, 3)
 pf_input_vec = Vector{Hyperparameter}(undef, p_max * opt_size)
 for i in 1:p_max

@@ -32,8 +32,8 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-opt_size = 100
-mSR_upper = [Inf; Inf]
+opt_size = 200
+mSR_upper = [1; 0.1]
 
 iteration = 35_000
 burnin = 5_000
