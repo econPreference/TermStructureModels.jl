@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct Hyperparameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, initial=[], upper_ν0=[], μϕ_const=[], fix_const_PC1=false)
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_lag=6, μϕ_const_PC1=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -15,13 +15,21 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
 
     dQ = dimQ()
     dP = dQ + size(macros, 2)
-    PCs, ~, Wₚ = PCA(yields, lag)
-    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
-    ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1)]
-    AR_re_var_vec = [AR_res_var([PCs macros][lag+1:end, i], lag)[1] for i in 1:dP]
-    if isempty(μϕ_const) == true
-        μϕ_const = zeros(dP)
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
+    ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1); upper_lag]
+    if isempty(μϕ_const)
+        μϕ_const = Matrix{Float64}(undef, dP, upper_lag)
+        for i in axes(μϕ_const, 2)
+            μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_lag-i+1:end, :], τₙ, i; medium_τ, iteration=10_000)[2] |> x -> mean(x, dims=1)[1, :]
+            if !isempty(μϕ_const_PC1)
+                μϕ_const_PCs = [μϕ_const_PC1, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+            end
+            μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
+            @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_lag-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
+        end
     end
+    starting = (lx + ux) ./ 2
+    starting[end] = 1
 
     function negative_log_marginal(input)
 
@@ -30,37 +38,41 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=30, max
             input[2] input[6]
             input[3] input[7]
             input[4] input[8]]
-        # q[2, :] = q[1, :] .* q[2, :]
         ν0 = input[9] + dP + 1
-        Ω0 = AR_re_var_vec * input[9]
+        lag = Int(input[10])
 
-        if minimum([vec(q); ν0 - dP + 1; Ω0]) <= 0
-            return Inf
+        PCs, ~, Wₚ = PCA(yields[(upper_lag-lag)+1:end, :], lag)
+        factors = [PCs macros[(upper_lag-lag)+1:end, :]]
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = (AR_res_var(factors[:, i], lag)[1]) * input[9]
         end
 
-        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        return -log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ)
+        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, lag], fix_const_PC1=fix_const_PC1)
+        return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], ρ, tuned, τₙ, Wₚ; medium_τ)
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    algo = WOA(; N=populationsize, options=Options(debug=true, iterations=maxiter))
-    bounds = boxconstraints(lb=lx, ub=ux)
-    if !isempty(initial)
-        set_user_solutions!(algo, initial, negative_log_marginal)
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
+    opt = bboptimize(bbsetup(negative_log_marginal; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q = $(best_candidate(x)[1:8]), ν0 = $(best_candidate(x)[9] + dP + 1)")), starting)
+
+    q = [best_candidate(opt)[1] best_candidate(opt)[5]
+        best_candidate(opt)[2] best_candidate(opt)[6]
+        best_candidate(opt)[3] best_candidate(opt)[7]
+        best_candidate(opt)[4] best_candidate(opt)[8]]
+    ν0 = best_candidate(opt)[9] + dP + 1
+    p = best_candidate(opt)[10] |> Int
+
+    PCs = PCA(yields[(lag_upper-p)+1:end, :], p)[1]
+    factors = [PCs macros[(lag_upper-p)+1:end, :]]
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
-    opt = Metaheuristics.optimize(negative_log_marginal, bounds, algo)
 
-    q = [minimizer(opt)[1] minimizer(opt)[5]
-        minimizer(opt)[2] minimizer(opt)[6]
-        minimizer(opt)[3] minimizer(opt)[7]
-        minimizer(opt)[4] minimizer(opt)[8]]
-    # q[2, :] = q[1, :] .* q[2, :]
-    ν0 = minimizer(opt)[9] + dP + 1
-    Ω0 = AR_re_var_vec * minimizer(opt)[9]
-
-    return Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1), opt
+    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, p], fix_const_PC1=fix_const_PC1), opt
 
 end
 
