@@ -107,7 +107,7 @@ plot(
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/unres_TP10.pdf")
 
 ## EH components
-survey = XLSX.readdata("Dispersion_BILL10.xlsx", "D1", "B104:C217")[1:4:end, :] |> x -> convert(Matrix{Float64}, x)
+survey = XLSX.readdata("Dispersion_BILL10.xlsx", "D1", "B104:C229")[1:4:end, :] |> x -> convert(Matrix{Float64}, x)
 plot(
     layer(x=yields[10:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
     layer(x=yields[10+12*5, 1]:Month(12):yields[end, 1], y=survey[:, 1], ymin=survey[:, 1], ymax=survey[:, 2], Geom.errorbar, color=[colorant"#A9A9A9"], Theme(line_width=0.75pt)),
