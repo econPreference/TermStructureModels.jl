@@ -22,8 +22,8 @@ date_start = Date("1986-02-01", "yyyy-mm-dd")
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
-p_max = 12
-step = 0
+upper_lag = 9
+step = 1
 
 upper_q =
     [1 1
@@ -32,7 +32,6 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-opt_size = 100
 mSR_upper = [Inf; Inf]
 
 iteration = 35_000
@@ -97,26 +96,18 @@ end
 
 if step == 1 ## Drawing pareto frontier
 
-    par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-        μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
-        @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
-
-        tuning_hyperparameter(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const, populationsize=opt_size)
-    end
-    tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
-    opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
+    tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag, upper_q, μkQ_infty, σkQ_infty, medium_τ)
     save("tuned.jld2", "tuned", tuned, "opt", opt)
 
 elseif step == 2 ## Tuning hyperparameter
 
-    par_tuned = @showprogress 1 "Tuning..." pmap(1:p_max) do i
-        μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
+    par_tuned = @showprogress 1 "Tuning..." pmap(1:upper_lag) do i
+        μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
         μϕ_const_PCs = [0.09, μϕ_const_PCs[2], μϕ_const_PCs[3]]
         μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
-        @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[p_max-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
+        @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
-        tuning_hyperparameter_MOEA(Array(yields[p_max-i+1:end, 2:end]), Array(macros[p_max-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=opt_size)
+        tuning_hyperparameter_MOEA(Array(yields[upper_lag-i+1:end, 2:end]), Array(macros[upper_lag-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=200)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
@@ -127,17 +118,15 @@ elseif step == 3 ## Estimation
 
     if isinf.(mSR_upper) |> minimum
         opt = load("standard/tuned.jld2")["opt"]
-        lag = minimum.(opt) |> findmin |> x -> x[2]
-
-        tuned_set = load("standard/tuned.jld2")["tuned"]
-        tuned = tuned_set[lag]
+        tuned = load("standard/tuned.jld2")["tuned"]
+        lag = tuned.p
     else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        pf_vec = Matrix{Float64}(undef, p_max * opt_size, 3)
-        pf_input_vec = Vector{Hyperparameter}(undef, p_max * opt_size)
-        for i in 1:p_max
+        pf_vec = Matrix{Float64}(undef, upper_lag * opt_size, 3)
+        pf_input_vec = Vector{Hyperparameter}(undef, upper_lag * opt_size)
+        for i in 1:upper_lag
             pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
             pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
         end
@@ -148,7 +137,7 @@ elseif step == 3 ## Estimation
         lag = tuned.p
     end
 
-    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
+    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
@@ -188,7 +177,7 @@ elseif step == 3 ## Estimation
 
     if is_TP
         par_TP = @showprogress 1 "Term premium..." pmap(1:ceil(Int, maximum(ineff)):iteration) do i
-            term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]))
+            term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]))
         end
         saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
         save("TP.jld2", "TP", saved_TP)
@@ -199,17 +188,15 @@ else
     # from step 1&2
     if isinf.(mSR_upper) |> minimum
         opt = load("standard/tuned.jld2")["opt"]
-        lag = minimum.(opt) |> findmin |> x -> x[2]
-
-        tuned_set = load("standard/tuned.jld2")["tuned"]
-        tuned = tuned_set[lag]
+        tuned = load("standard/tuned.jld2")["tuned"]
+        lag = tuned.p
     else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        pf_vec = Matrix{Float64}(undef, p_max * opt_size, 3)
-        pf_input_vec = Vector{Hyperparameter}(undef, p_max * opt_size)
-        for i in 1:p_max
+        pf_vec = Matrix{Float64}(undef, upper_lag * opt_size, 3)
+        pf_input_vec = Vector{Hyperparameter}(undef, upper_lag * opt_size)
+        for i in 1:upper_lag
             pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
             pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
         end
@@ -238,13 +225,13 @@ else
         ineff = load("mSR/ineff.jld2")["ineff"]
     end
 
-    saved_Xθ = latentspace(saved_θ, Array(yields[p_max-lag+1:end, 2:end]), τₙ)
+    saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
     fitted_yield = mean(fitted)[:yields] / 1200
     log_price = -collect(1:τₙ[end])' .* fitted_yield[tuned.p:end, :]
     xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[tuned.p:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
-    reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ)
+    reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
     include("ex_scenario.jl")
 

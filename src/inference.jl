@@ -7,7 +7,7 @@ tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
     - If gradient == true, the LBFGS method is applied at the last.
 * Output: struct Hyperparameter
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxstep=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_lag=6, μϕ_const_PC1=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_lag=6, μϕ_const_PC1=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -56,7 +56,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     end
 
     ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
-    opt = bboptimize(bbsetup(negative_log_marginal; SearchSpace=ss, MaxSteps=maxstep, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q = $(best_candidate(x)[1:8]), ν0 = $(best_candidate(x)[9] + dP + 1)")), starting)
+    opt = bboptimize(bbsetup(negative_log_marginal; SearchSpace=ss, MaxSteps=maxiter, Workers=workers(), PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q = $(best_candidate(x)[1:8]), ν0 = $(best_candidate(x)[9] + dP + 1)")), starting)
 
     q = [best_candidate(opt)[1] best_candidate(opt)[5]
         best_candidate(opt)[2] best_candidate(opt)[6]
@@ -65,8 +65,8 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     ν0 = best_candidate(opt)[9] + dP + 1
     p = best_candidate(opt)[10] |> Int
 
-    PCs = PCA(yields[(lag_upper-p)+1:end, :], p)[1]
-    factors = [PCs macros[(lag_upper-p)+1:end, :]]
+    PCs = PCA(yields[(upper_lag-p)+1:end, :], p)[1]
+    factors = [PCs macros[(upper_lag-p)+1:end, :]]
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
         Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]

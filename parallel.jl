@@ -18,11 +18,11 @@ import Plots
 
 ## Setting
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
-date_start = Date("1985-11-01", "yyyy-mm-dd")
+date_start = Date("1986-02-01", "yyyy-mm-dd")
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
-upper_lag = 12
+upper_lag = 9
 step = 0
 
 upper_q =
@@ -32,7 +32,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = [0.75; 0.1]
+mSR_upper = [5; 0.1]
 
 iteration = 35_000
 burnin = 5_000
