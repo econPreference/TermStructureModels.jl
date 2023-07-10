@@ -20,17 +20,17 @@ date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 upper_lag = 15
 
-step = 0
+step = 1
 init_upper_q =
     [1 1
         1 1
         10 10
         100 100] .+ 0.0
-q41_list = [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+q41_list = [1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 μkQ_infty = 0
 σkQ_infty = 0.01
 
-select_q41 = 3
+select_q41 = 5
 iteration = 35_000
 burnin = 5_000
 TPτ_interest = 120
@@ -93,16 +93,8 @@ end
 # μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 # @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
 
-# tmp_tuned = Hyperparameter(
-#     p=tuned.p,
-#     q=[[tuned.q[1:3, 1]; 1e-5] tuned.q[:, 2]],
-#     ν0=tuned.ν0,
-#     Ω0=tuned.Ω0,
-#     μkQ_infty=μkQ_infty,
-#     σkQ_infty=σkQ_infty,
-#     μϕ_const=μϕ_const,
-# )
-# @show prior_const_TP(tmp_tuned, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
+# tmp_idx = 5
+# @show prior_const_TP(tuned[tmp_idx], 120, Array(yields[upper_lag-tmp_tuned[idx].p+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
 
 if step == 1 ## Drawing pareto frontier
 
@@ -118,8 +110,8 @@ if step == 1 ## Drawing pareto frontier
 
 elseif step == 2 ## Estimation
 
-    opt = load("results/tuned.jld2")["opt"][select_q41]
-    tuned = load("results/tuned.jld2")["tuned"][select_q41]
+    opt = load("restricted/tuned.jld2")["opt"][select_q41]
+    tuned = load("restricted/tuned.jld2")["tuned"][select_q41]
     lag = tuned.p
 
     saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
@@ -155,19 +147,19 @@ elseif step == 2 ## Estimation
 else
 
     # from step 1
-    opt = load("results/tuned.jld2")["opt"][select_q41]
-    tuned = load("results/tuned.jld2")["tuned"][select_q41]
+    opt = load("restricted/tuned.jld2")["opt"][select_q41]
+    tuned = load("restricted/tuned.jld2")["tuned"][select_q41]
     lag = tuned.p
     @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
     @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
 
     # from step 2
-    saved_θ = load("results/posterior.jld2")["samples"]
-    acceptPr = load("results/posterior.jld2")["acceptPr"]
-    accept_rate = load("results/posterior.jld2")["accept_rate"]
+    saved_θ = load("restricted/posterior.jld2")["samples"]
+    acceptPr = load("restricted/posterior.jld2")["acceptPr"]
+    accept_rate = load("restricted/posterior.jld2")["accept_rate"]
     iteration = length(saved_θ)
-    saved_TP = load("results/TP.jld2")["TP"]
-    ineff = load("results/ineff.jld2")["ineff"]
+    saved_TP = load("restricted/TP.jld2")["TP"]
+    ineff = load("restricted/ineff.jld2")["ineff"]
 
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
