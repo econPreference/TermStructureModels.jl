@@ -18,13 +18,12 @@ import Plots
 
 ## Setting
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
-date_start = Date("1986-02-01", "yyyy-mm-dd")
+date_start = Date("1985-08-01", "yyyy-mm-dd")
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
+upper_lag = 15
 
-upper_lag = 9
-step = 1
-
+step = 3
 upper_q =
     [1 1
         1 1
@@ -33,6 +32,7 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.01
 mSR_upper = [Inf; Inf]
+opt_size = 200
 
 iteration = 35_000
 burnin = 5_000
@@ -62,10 +62,12 @@ begin ## Data: macro data
 
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if names(macros[:, 2:end])[i] ∈ ["CUMFNS", "AAA", "UNRATE", "BAA"]
+        if names(macros[:, 2:end])[i] ∈ ["AAA", "BAA"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
-        elseif names(macros[:, 2:end])[i] ∈ ["DPCERA3M086SBEA", "HOUST", "M2SL", "M2REAL", "REALLN", "WPSFD49207", "PCEPI", "DTCTHFNM", "INVEST"]
+        elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
+            ρ[i] = 1.0
+        elseif names(macros[:, 2:end])[i] ∈ ["HOUST", "PERMIT", "REALLN", "S&P 500", "CPIAUCSL", "PCEPI", "CES0600000008", "DTCTHFNM"]
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
@@ -107,7 +109,7 @@ elseif step == 2 ## Tuning hyperparameter
         μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
         @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
-        tuning_hyperparameter_MOEA(Array(yields[upper_lag-i+1:end, 2:end]), Array(macros[upper_lag-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=200)
+        tuning_hyperparameter_MOEA(Array(yields[upper_lag-i+1:end, 2:end]), Array(macros[upper_lag-i+1:end, 2:end]), τₙ, ρ; lag=i, μkQ_infty, σkQ_infty, upper_q, medium_τ, μϕ_const, mSR_ftn, populationsize=opt_size)
     end
     pf = [par_tuned[i][1] for i in eachindex(par_tuned)]
     pf_input = [par_tuned[i][2] for i in eachindex(par_tuned)]
