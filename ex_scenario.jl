@@ -21,14 +21,16 @@ begin ## Data: macro data
     rename!(scenario_macros, Dict(:x1 => "date"))
 
     ρ = Vector{Float64}(undef, size(scenario_macros[:, 2:end], 2))
-    idx_trans = Vector{Float64}(undef, size(macros_extended[:, 2:end], 2))
+    idx_trans = Vector{Float64}(undef, size(scenario_macros[:, 2:end], 2))
     scenario_macros_growth = similar(scenario_macros[:, 2:end] |> Array)
     for i in axes(scenario_macros[:, 2:end], 2) # i'th macro variable (excluding date)
-        if names(scenario_macros[:, 2:end])[i] ∈ ["CUMFNS", "AAA", "UNRATE", "BAA"]
+        if names(scenario_macros[:, 2:end])[i] ∈ ["AAA", "BAA"]
             scenario_macros[2:end, i+1] = scenario_macros[2:end, i+1] - scenario_macros[1:end-1, i+1]
             ρ[i] = 0.0
             idx_trans[i] = 0
-        elseif names(scenario_macros[:, 2:end])[i] ∈ ["DPCERA3M086SBEA", "HOUST", "M2SL", "M2REAL", "REALLN", "WPSFD49207", "PCEPI", "DTCTHFNM", "INVEST"]
+        elseif names(scenario_macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
+            ρ[i] = 1.0
+        elseif names(scenario_macros[:, 2:end])[i] ∈ ["HOUST", "PERMIT", "REALLN", "S&P 500", "CPIAUCSL", "PCEPI", "CES0600000008", "DTCTHFNM"]
             scenario_macros_growth[2:end, i] = log.(scenario_macros[2:end, i+1]) - log.(scenario_macros[1:end-1, i+1]) |> x -> 1200 * x
             scenario_macros[2:end, i+1] = scenario_macros_growth[2:end, i]
             scenario_macros[2:end, i+1] = scenario_macros[2:end, i+1] - scenario_macros[1:end-1, i+1]
