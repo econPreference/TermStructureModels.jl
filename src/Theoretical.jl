@@ -450,7 +450,7 @@ maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; medium_τ
 * Input: Data should contains initial conditions
 * Output: Matrix{Float64}(maximum SR, time length, simulation)
 """
-function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5])
+function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], is_mSR_total=true)
 
     σ²FFQ = diag(ΩPP)
     ΩPP = diagm(σ²FFQ)
@@ -498,16 +498,18 @@ function maximum_SR(yields, macros, Hyperparameter_::Hyperparameter, τₙ, ρ; 
     mSR_const = (0.5sqrt(π)) * sqrt(mean_λλ_const) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ_const^(-3 / 2)) * var_λλ_const / (2gamma(-0.5))
 
     mSR = Vector{Float64}(undef, T - p)
-    for t in p+1:T
-        Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
+    if is_mSR_total
+        for t in p+1:T
+            Ft = factors'[:, t:-1:t-p+1] |> vec |> x -> [1; x]
 
-        λ_dist = Vector{Normal}(undef, dQ)
-        for i in 1:dQ
-            λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FFQ[i])
+            λ_dist = Vector{Normal}(undef, dQ)
+            for i in 1:dQ
+                λ_dist[i] = Normal(Λ_i_mean[:, i]'Ft, sqrt(Ft' * ϕ_i_var[:, :, i] * Ft)) / sqrt(σ²FFQ[i])
+            end
+            mean_λλ = mean.(λ_dist) |> x -> x'x + sum(var.(λ_dist))
+            var_λλ = var.(λ_dist) |> x -> 2sum(x .^ 2) + 4mean.(λ_dist)' * diagm(x) * mean.(λ_dist)
+            mSR[t-p] = (0.5sqrt(π)) * sqrt(mean_λλ) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ^(-3 / 2)) * var_λλ / (2gamma(-0.5))
         end
-        mean_λλ = mean.(λ_dist) |> x -> x'x + sum(var.(λ_dist))
-        var_λλ = var.(λ_dist) |> x -> 2sum(x .^ 2) + 4mean.(λ_dist)' * diagm(x) * mean.(λ_dist)
-        mSR[t-p] = (0.5sqrt(π)) * sqrt(mean_λλ) / gamma(1.5) + (0.5sqrt(π)) * (mean_λλ^(-3 / 2)) * var_λλ / (2gamma(-0.5))
     end
     return mSR, mSR_const
 end

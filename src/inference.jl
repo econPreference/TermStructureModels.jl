@@ -79,7 +79,7 @@ end
 """
 tuning_hyperparameter_mSR(yields, macros, τₙ, ρ; medium_τ=12 * [1.5, 2, 2.5, 3, 3.5], maxstep=10_000, mSR_scale=1.0, mSR_mean=1.0, upper_lag=9, upper_q1=1, upper_q45=100, μkQ_infty=1)
 """
-function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn, mSR_data=[], ΩPP=[], κQ=[], kQ_infty=[])
+function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=100, maxiter=0, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], lag=1, upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=1, μϕ_const=[], upper_ν0=[], fix_const_PC1=false, mSR_ftn, mSR_data=[], ΩPP=[], κQ=[], kQ_infty=[], is_mSR_total=false)
 
     if isempty(upper_ν0)
         upper_ν0 = size(yields, 1)
@@ -121,7 +121,7 @@ function tuning_hyperparameter_MOEA(yields, macros, τₙ, ρ; populationsize=10
         end
 
         tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const, fix_const_PC1=fix_const_PC1)
-        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ); mSR_ftn(maximum_SR(yields, macros, tuned, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ), mSR_data)]
+        return [-log_marginal(PCs, macros, ρ, tuned, τₙ, Wₚ; medium_τ); mSR_ftn(maximum_SR(yields, macros, tuned, τₙ, ρ; ΩPP, κQ, kQ_infty, medium_τ, is_mSR_total), mSR_data)]
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end

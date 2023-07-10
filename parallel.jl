@@ -10,7 +10,7 @@ end
 @everywhere begin
     using GDTSM, ProgressMeter, StatsBase
     function mSR_ftn(mSR, mSR_data)
-        return [skewness(mSR[1]), mSR[2]]
+        return mSR[2]
     end
 end
 using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
@@ -31,7 +31,7 @@ upper_q =
         100 100]
 μkQ_infty = 0
 σkQ_infty = 0.01
-mSR_upper = [Inf; Inf]
+mSR_upper = 0.1
 opt_size = 100
 
 iteration = 35_000
@@ -92,7 +92,7 @@ end
 
 # aux_lag = 7
 # μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-# μϕ_const_PCs = [0.09, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+# μϕ_const_PCs = [0.1065, μϕ_const_PCs[2], μϕ_const_PCs[3]]
 # μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 # @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
@@ -105,7 +105,7 @@ elseif step == 2 ## Tuning hyperparameter
 
     par_tuned = @showprogress 1 "Tuning..." pmap(1:upper_lag) do i
         μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-i+1:end, 2:end]), τₙ, i; medium_τ, iteration=10000)[2] |> x -> mean(x, dims=1)[1, :]
-        μϕ_const_PCs = [0.09, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+        μϕ_const_PCs = [0.1065, μϕ_const_PCs[2], μϕ_const_PCs[3]]
         μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
         @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-i+1:end, 2:end]), τₙ, i; medium_τ, μϕ_const_PCs, iteration=10000)[1] |> mean
 
@@ -126,13 +126,13 @@ elseif step == 3 ## Estimation
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        pf_vec = Matrix{Float64}(undef, upper_lag * opt_size, 3)
+        pf_vec = Matrix{Float64}(undef, upper_lag * opt_size, 2)
         pf_input_vec = Vector{Hyperparameter}(undef, upper_lag * opt_size)
         for i in 1:upper_lag
             pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
             pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
         end
-        idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
+        idx = pf_vec[:, 2] .< mSR_upper
         tuned_set = pf_input_vec[idx]
         log_ml = pf_vec[idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
@@ -154,23 +154,8 @@ elseif step == 3 ## Estimation
     end
     accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
     iteration = length(saved_θ)
-
-    # if isinf.(mSR_upper) |> minimum
     save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
-    # else
-    #     par_mSR_θ = @showprogress 1 "filtering with mSR_ftn..." pmap(1:iteration) do i
-    #         mSR_ftn_filter([saved_θ[i]], Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), τₙ; mSR_ftn, mSR_upper)
-    #     end
-    #     saved_θ = Vector{Parameter}(undef, 0)
-    #     for i in eachindex(par_mSR_θ)
-    #         if !isempty(par_mSR_θ[i][1])
-    #             push!(saved_θ, par_mSR_θ[i][1][1])
-    #         end
-    #     end
-    #     accept_mSR = 100length(saved_θ) / iteration
-    #     iteration = length(saved_θ)
-    #     save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate, "accept_rate_mSR", accept_mSR)
-    # end
+
 
     if is_ineff
         ineff = ineff_factor(saved_θ)
@@ -196,13 +181,13 @@ else
         pf = load("mSR/tuned_pf.jld2")["pf"]
         pf_input = load("mSR/tuned_pf.jld2")["pf_input"]
 
-        pf_vec = Matrix{Float64}(undef, upper_lag * opt_size, 3)
+        pf_vec = Matrix{Float64}(undef, upper_lag * opt_size, 2)
         pf_input_vec = Vector{Hyperparameter}(undef, upper_lag * opt_size)
         for i in 1:upper_lag
             pf_vec[opt_size*(i-1)+1:opt_size*i, :] = pf[i]
             pf_input_vec[opt_size*(i-1)+1:opt_size*i] = pf_input[i]
         end
-        idx = (pf_vec[:, 2] .< mSR_upper[1]) .* (pf_vec[:, 3] .< mSR_upper[2])
+        idx = pf_vec[:, 2] .< mSR_upper
         tuned_set = pf_input_vec[idx]
         log_ml = pf_vec[idx, 1]
         tuned = tuned_set[sortperm(log_ml, rev=true)][1]
@@ -221,7 +206,6 @@ else
         saved_θ = load("mSR/posterior.jld2")["samples"]
         acceptPr = load("mSR/posterior.jld2")["acceptPr"]
         accept_rate = load("mSR/posterior.jld2")["accept_rate"]
-        # accept_mSR = load("mSR/posterior.jld2")["accept_rate_mSR"]
         iteration = length(saved_θ)
         saved_TP = load("mSR/TP.jld2")["TP"]
         ineff = load("mSR/ineff.jld2")["ineff"]
