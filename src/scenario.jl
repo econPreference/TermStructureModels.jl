@@ -12,7 +12,7 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
     - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
     - function "load\\_object" can be applied
 """
-function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=0.0)
+function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[])
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
@@ -59,6 +59,10 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         dh = 0
     end
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+
+    if isempty(mean_macros)
+        mean_macros = zeros(dP - dQ)
+    end
 
     data = [PCs macros]
     T = size(data, 1)
@@ -181,6 +185,8 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
-    spanned_factors[:, dQ+1:end] .+= mean_macros
+    for i in 1:dP-dQ
+        spanned_factors[:, dQ+i] .+= mean_macros[i]
+    end
     return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
 end

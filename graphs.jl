@@ -1,87 +1,30 @@
 using GDTSM
 import StatsPlots: @df
-using LinearAlgebra, Cairo, Fontconfig, Colors, XLSX
+using LinearAlgebra, Cairo, Fontconfig, Colors, XLSX, LaTeXStrings
 
 set_default_plot_size(16cm, 8cm)
 
 ## load unrestricted results
-unres_lag = 6
-unres_saved_θ = load("standard/posterior.jld2")["samples"]
 unres_saved_TP = load("standard/TP.jld2")["TP"]
-unres_ineff = load("standard/ineff.jld2")["ineff"]
-unres_iteration = length(unres_saved_θ)
-unres_reduced_θ = reducedform(unres_saved_θ[1:ceil(Int, maximum(unres_ineff)):unres_iteration], Array(yields[p_max-unres_lag+1:end, 2:end]), Array(macros[p_max-unres_lag+1:end, 2:end]), τₙ)
-unres_mSR = [unres_reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(unres_reduced_θ)] |> mean
+unres_tuned = load("standard/tuned.jld2")["tuned"]
 
-## Pareto frontier
-begin #overall
-    Plots.scatter3d()
-    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
-    for i in 1:p_max
-        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(45, 30), legend=:right, color=colors[i])
-    end
-    Plots.xlabel!("skewness")
-    Plots.ylabel!("mSR_const")
-    Plots.zlabel!("log marginal likelihood")
+## hyperparameter plots
+q_set = Matrix{Float64}(undef, length(tuned_set) + 1, 8)
+q_set[1, :] = vec(unres_tuned.q)
+for i in eachindex(tuned_set)
+    q_set[i+1, :] = vec(tuned_set[i].q)
 end
-Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf.pdf")
+ν0_set = [tuned_set[i].ν0 for i in eachindex(tuned_set)]
+ν0_set = [unres_tuned.ν0; ν0_set]
+Plots.plot(1:9, q_set[:, 1], ylabel=L"${q}_{11}$ and $0.001 \times \nu_0$", c=colorant"#4682B4", labels="", linewidth=2, ylims=(0, 0.15))
+Plots.plot!(1:9, ν0_set ./ 1000, c=colorant"#008000", labels="", linewidth=2, ls=:dot)
+Plots.plot!(Plots.twinx(), q_set[:, 4], ylabel=L"${q}_{41}$", c=colorant"#DC143C", labels="", linewidth=2, ls=:dash)
+Plots.plot!(xticks=([1:9;], ["unrestricted"; string.(q41_list)]))
+Plots.xlabel!(L"restriction: ${q}_{41} {\leq}$ above values") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/hyperparameters.pdf")
 
-begin #zoom in
-    Plots.scatter3d()
-    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
-    for i in 1:p_max
-        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(45, 30), legend=:right, color=colors[i])
-    end
-    Plots.xlabel!("skewness")
-    Plots.ylabel!("mSR_const")
-    Plots.zlabel!("log marginal likelihood")
-    Plots.zlims!(-41700, -41600)
-end
-Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_zoom.pdf")
-
-begin #x-axis
-    Plots.scatter3d()
-    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
-    for i in 1:p_max
-        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(0, 0), legend=:right, color=colors[i])
-    end
-    Plots.xlabel!("skewness")
-    Plots.ylabel!("mSR_const")
-    Plots.zlabel!("log marginal likelihood")
-    Plots.zlims!(-41700, -41600)
-    Plots.yaxis!(false)
-end
-Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_x.pdf")
-
-begin # y-axis
-    Plots.scatter3d()
-    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
-    for i in 1:p_max
-        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(90, 0), legend=:right, color=colors[i])
-    end
-    Plots.xlabel!("skewness")
-    Plots.ylabel!("mSR_const")
-    Plots.yticks!(0.05:0.05:0.25)
-    Plots.zlabel!("log marginal likelihood")
-    Plots.zlims!(-41700, -41600)
-    Plots.xaxis!(false)
-end
-Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_y.pdf")
-
-begin #z-axis
-    Plots.scatter3d()
-    colors = [colorant"#FFA07A", colorant"#FF0000", colorant"#800000", colorant"#7CFC00", colorant"#006400", colorant"#E6E6FA", colorant"#87CEFA", colorant"#4682B4", colorant"#0000FF"]
-    for i in 1:p_max
-        Plots.scatter3d!(pf[i][:, 2], pf[i][:, 3], pf[i][:, 1], label="lag $i", camera=(0, 90), legend=:left, color=colors[i])
-    end
-    Plots.xlabel!("skewness")
-    Plots.ylabel!("mSR_const", yrotation=90)
-    Plots.yticks!(0.05:0.05:0.25)
-    Plots.ylims!(0.05, 0.25)
-    Plots.zlabel!("log marginal likelihood")
-    Plots.zaxis!(false)
-end
-Plots.scatter3d!() |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/pf_z.pdf")
+## decay parameter
+κQ_support = [reverse(medium_τ) support(prior_κQ(medium_τ))]
+Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], string.(κQ_support[:, 1])), bins=40, xlabel="maturity") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/decay.pdf")
 
 ## TP components
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
@@ -90,55 +33,60 @@ rec_dates = DateTime.(["1990-07-01" "1991-03-01"
     "2020-02-01" "2020-04-01"])
 
 plot(
-    layer(x=yields[10:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
-    layer(x=yields[10:end, 1], y=quantile(saved_TP, 0.025)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
-    layer(x=yields[10:end, 1], y=quantile(saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
-    layer(x=yields[10:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
+    layer(x=yields[16:end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(x=yields[16:end, 1], y=quantile(saved_TP, 0.025)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=yields[16:end, 1], y=quantile(saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=yields[16:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/TP10.pdf")
 
 plot(
-    layer(x=yields[10:end, 1], y=quantile(unres_saved_TP, 0.025)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
-    layer(x=yields[10:end, 1], y=quantile(unres_saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
-    layer(x=yields[10:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
+    layer(x=yields[16:end, 1], y=quantile(unres_saved_TP, 0.025)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=yields[16:end, 1], y=quantile(unres_saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
+    layer(x=yields[16:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/unres_TP10.pdf")
+
+## individual TP components
+ind_TP_ratio = mean(saved_TP)[:timevarying_TP] |> x -> var(x, dims=1) ./ var(mean(saved_TP)[:TP]) |> x -> x[1, :]
+ind_TP_order = sortperm(ind_TP_ratio, rev=true)
+n_top = 7
+ind_TP_names = ["PC1"; "PC2"; "PC3"; names(macros[1, 2:end])]
+
+ind_TP = mean(saved_TP)[:timevarying_TP][:, ind_TP_order[1]]
+mesh = [yields[16:end, 1] fill(ind_TP_names[ind_TP_order[1]], size(ind_TP)) ind_TP]
+for i in 2:n_top
+    local ind_TP = mean(saved_TP)[:timevarying_TP][:, ind_TP_order[i]]
+    global mesh = [mesh; [yields[16:end, 1] fill(ind_TP_names[ind_TP_order[i]], size(ind_TP)) ind_TP]]
+end
+df = DataFrame(dates=Date.(string.(mesh[:, 1]), DateFormat("yyyy-mm-dd")), macros=string.(mesh[:, 2]), TP=Float64.(mesh[:, 3]))
+
+plot(df,
+    layer(x=:dates, y=:TP, Geom.line, color=:macros, Theme(line_width=1pt)),
+    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(72):DateTime("2023-06-01"), orientation=:horizontal), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/ind_TP10.pdf")
 
 ## EH components
 survey = XLSX.readdata("Dispersion_BILL10.xlsx", "D1", "B104:C229")[1:4:end, :] |> x -> convert(Matrix{Float64}, x)
 plot(
-    layer(x=yields[10:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
-    layer(x=yields[10+12*5, 1]:Month(12):yields[end, 1], y=survey[:, 1], ymin=survey[:, 1], ymax=survey[:, 2], Geom.errorbar, color=[colorant"#A9A9A9"], Theme(line_width=0.75pt)),
+    layer(x=yields[16:end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+    layer(x=yields[16+12*5-1, 1]:Month(12):yields[end, 1], y=survey[:, 1], ymin=survey[:, 1], ymax=survey[:, 2], Geom.errorbar, color=[colorant"#A9A9A9"], Theme(line_width=0.75pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=[0; collect(2:2:8)])
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[0; collect(1:7)])
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/EH10.pdf")
-
-## maximum Sharpe ratio
-plot(
-    layer(x=yields[10:end, 1], y=mSR, Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
-    layer(x=yields[10:end, 1], y=unres_mSR, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt)),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=collect(0:5))
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR.pdf")
-
-plot(
-    layer(x=yields[10:end, 1], y=unres_mSR, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt)),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.yticks(ticks=collect(0:5))
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/unres_mSR.pdf")
 
 ## Scenario analysis(yields)
 yield_res = mean(saved_prediction)[:yields]
-yield_res[:, 1] .= 0
 Plots.surface(τₙ, DateTime("2020-03-01"):Month(1):DateTime("2020-12-01"), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_yield.pdf")
 
 ## Scenario analysis(EH)
-EH_res = mean(saved_prediction)[:yields][:, [4, 12]] - mean(saved_prediction)[:TP]
+EH_res = mean(saved_prediction)[:yields][:, [7, 18]] - mean(saved_prediction)[:TP]
 EH_res_dist_24 = Matrix{Float64}(undef, length(saved_prediction), size(EH_res, 1))
 for i in axes(EH_res_dist_24, 1)
-    EH_res_dist_24[i, :] = saved_prediction[:yields][i][:, 4] - saved_prediction[:TP][i][:, 1]
+    EH_res_dist_24[i, :] = saved_prediction[:yields][i][:, 7] - saved_prediction[:TP][i][:, 1]
 end
 EH_res_dist_120 = Matrix{Float64}(undef, length(saved_prediction), size(EH_res, 1))
 for i in axes(EH_res_dist_120, 1)
@@ -158,37 +106,6 @@ plot(
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_EH.pdf")
 
 ## Scenario analysis(macros)
-macro_res = mean(saved_prediction)[:factors][:, 4:end] |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
+macro_res = mean(saved_prediction)[:factors][:, dimQ()+1:end] |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
 rename!(macro_res, Dict("S&P 500" => "SP500"))
-@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", ylabel="M/M (%)", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "SP500" "INVEST" "HOUST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")
-
-## Comparing mSR
-begin # MOVE data
-    raw_MOVE = CSV.File("MOVE.csv", types=[Date; Float64]) |> DataFrame |> x -> x[9:end, :] |> reverse
-    idx = month.(raw_MOVE[:, 1]) |> x -> (x .!= [x[2:end]; x[end]])
-    MOVE = raw_MOVE[idx, :]
-    MOVE = MOVE[1:findall(x -> x == yearmonth(date_end), yearmonth.(MOVE[:, 1]))[1], :]
-end
-
-PCs = PCA(Array(yields[p_max-lag+1:end, 2:end]), lag)[1]
-ΩPP = [AR_res_var(PCs[lag+1:end, i], lag)[1] for i in 1:dimQ()] |> diagm
-
-mSR_prior, mSR_const = maximum_SR(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
-mSR_simul, mSR_const_simul = maximum_SR_simul(Array(yields[p_max-lag+1:end, 2:end]), Array(macros[p_max-lag+1:end, 2:end]), tuned, τₙ, ρ; κQ=mean(prior_κQ(medium_τ)), kQ_infty=μkQ_infty, ΩPP)
-aux_idx = length(mSR_prior)-length(MOVE[:, 1])+1:length(mSR_prior)
-std_MOVE = MOVE[:, 2] |> x -> (x .- mean(x)) ./ std(x) |> x -> std(mSR_prior[aux_idx]) * x |> x -> x .+ mean(mSR_prior[aux_idx])
-plot(
-    layer(x=yields[10:end, 1][aux_idx], y=std_MOVE, Geom.point, color=[RGBA(0, 128 / 255, 0, 0)], Theme(point_size=1.5pt)),
-    layer(x=yields[10:end, 1], y=mSR_prior, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt, line_style=[:dash])),
-    layer(x=yields[10:end, 1], y=mean(mSR_simul, dims=1)[1, :], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01")), Guide.ylabel(""),
-    Guide.xlabel("Constant part: simul = $(round(mean(mSR_const_simul),digits=4)), approx = $(round(mSR_const,digits=4))")
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR_prior.pdf")
-
-plot(
-    layer(x=yields[10:end, 1], y=mSR_prior, Geom.line, color=[colorant"#DC143C"], Theme(line_width=1pt, line_style=[:dash])),
-    layer(x=yields[10:end, 1], y=mSR, Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
-    layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.xlabel("time"), Guide.ylabel("maximum SR"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2020-08-01"))
-) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/mSR_post.pdf")
+@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", ylabel="M/M (%)", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "S&P 500" "INVEST" "HOUST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")

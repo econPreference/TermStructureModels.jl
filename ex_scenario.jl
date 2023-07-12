@@ -21,25 +21,26 @@ begin ## Data: macro data
     rename!(scenario_macros, Dict(:x1 => "date"))
 
     ρ = Vector{Float64}(undef, size(scenario_macros[:, 2:end], 2))
-    idx_trans = Vector{Float64}(undef, size(scenario_macros[:, 2:end], 2))
+    idx_diff = Vector{Float64}(undef, size(scenario_macros[:, 2:end], 2))
     scenario_macros_growth = similar(scenario_macros[:, 2:end] |> Array)
     for i in axes(scenario_macros[:, 2:end], 2) # i'th macro variable (excluding date)
         if names(scenario_macros[:, 2:end])[i] ∈ ["AAA", "BAA"]
             scenario_macros[2:end, i+1] = scenario_macros[2:end, i+1] - scenario_macros[1:end-1, i+1]
             ρ[i] = 0.0
-            idx_trans[i] = 0
+            idx_diff[i] = 1
         elseif names(scenario_macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
             ρ[i] = 1.0
+            idx_diff[i] = 0
         elseif names(scenario_macros[:, 2:end])[i] ∈ ["HOUST", "PERMIT", "REALLN", "S&P 500", "CPIAUCSL", "PCEPI", "CES0600000008", "DTCTHFNM"]
             scenario_macros_growth[2:end, i] = log.(scenario_macros[2:end, i+1]) - log.(scenario_macros[1:end-1, i+1]) |> x -> 1200 * x
             scenario_macros[2:end, i+1] = scenario_macros_growth[2:end, i]
             scenario_macros[2:end, i+1] = scenario_macros[2:end, i+1] - scenario_macros[1:end-1, i+1]
             ρ[i] = 0.0
-            idx_trans[i] = 2
+            idx_diff[i] = 2
         else
             scenario_macros[2:end, i+1] = log.(scenario_macros[2:end, i+1]) - log.(scenario_macros[1:end-1, i+1]) |> x -> 1200 * x
             ρ[i] = 0.0
-            idx_trans[i] = 1
+            idx_diff[i] = 1
         end
     end
     scenario_macros = scenario_macros[3:end, :]
@@ -74,18 +75,20 @@ for h = 2:10
 end
 
 par_prediction = @showprogress 1 "Scenario..." pmap(1:ceil(Int, maximum(ineff)):iteration) do i
-    scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(scenario_yields[p_max-lag+1:end, 2:end]), Array(scenario_macros[p_max-lag+1:end, 2:end]), τₙ; mean_macros)
+    scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(scenario_yields[upper_lag-lag+1:end, 2:end]), Array(scenario_macros[upper_lag-lag+1:end, 2:end]), τₙ; mean_macros)
 end
+
 # saved_prediction = [par_prediction[i][1] for i in eachindex(par_prediction)]
 saved_prediction = Vector{Forecast}(undef, length(par_prediction))
 for i in eachindex(saved_prediction)
-    predicted_factors = par_prediction[i][1][:factors]
+    predicted_factors = deepcopy(par_prediction[i][1][:factors])
     for j in 1:dP-dQ
-        if idx_trans[j] == 2
+        if idx_diff[j] == 2
             predicted_factors[1, dQ+j] = scenario_macros_growth[end, j]
-            predicted_factors[:, dQ+j] = predicted_factors[1:end, dQ+j] |> cumsum
+            predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] |> cumsum
         end
     end
     saved_prediction[i] = Forecast(yields=par_prediction[i][1][:yields], factors=predicted_factors, TP=par_prediction[i][1][:TP])
 end
 
+save("scenario.jld2", "forecasts", saved_prediction)

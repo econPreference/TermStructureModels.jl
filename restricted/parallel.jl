@@ -1,6 +1,6 @@
 ## Setting
 using Distributed
-# addprocs(2)
+# addprocs(3)
 @everywhere begin
     using Pkg
     Pkg.activate(@__DIR__)
@@ -20,7 +20,7 @@ date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 upper_lag = 15
 
-step = 0
+step = 2
 μϕ_const_PC1 = 0.1065
 init_upper_q =
     [1 1
@@ -146,14 +146,11 @@ elseif step == 2 ## Estimation
         save("TP.jld2", "TP", saved_TP)
     end
 
-    include("ex_scenario.jl")
-
 else
 
     # from step 1
     opt = load("restricted/tuned.jld2")["opt"][select_q41]
-    tuned_set = load("restricted/tuned.jld2")["tuned"]
-    tuned = tuned_set[select_q41]
+    tuned = load("restricted/tuned.jld2")["tuned"][select_q41]
     lag = tuned.p
     @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
     @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
@@ -174,6 +171,6 @@ else
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
+    include("ex_scenario.jl")
 
-    saved_prediction = load("restricted/scenario.jld2")["forecasts"]
 end
