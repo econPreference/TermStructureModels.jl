@@ -14,13 +14,13 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
-upper_lag = 15
-date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
-date_end = Date("2022-12-01", "yyyy-mm-dd")
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
+date_start = Date("1985-08-01", "yyyy-mm-dd")
+date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
+upper_lag = 15
 
-step = 0
+step = 1
 μϕ_const_PC1 = 0.1065
 init_upper_q =
     [1 1
@@ -69,7 +69,7 @@ begin ## Data: macro data
         elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
             ρ[i] = 1.0
             idx_diff[i] = 0
-        elseif names(macros[:, 2:end])[i] ∈ ["HOUST", "PERMIT", "REALLN", "S&P 500", "CPIAUCSL", "PCEPI", "CES0600000008", "DTCTHFNM"]
+        elseif names(macros[:, 2:end])[i] ∈ []
             macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             macros[2:end, i+1] = macros_growth[2:end, i]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]

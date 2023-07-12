@@ -14,24 +14,24 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
-upper_lag = 15
-date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
-date_end = Date("2022-12-01", "yyyy-mm-dd")
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
+date_start = Date("1985-08-01", "yyyy-mm-dd")
+date_end = Date("2022-12-01", "yyyy-mm-dd")
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
+upper_lag = 15
 
-step = 0
-μϕ_const_PC1 = 0.1065
+step = 1
+μϕ_const_PC1 = []
 init_upper_q =
     [1 1
         1 1
         10 10
         100 100] .+ 0.0
-q41_list = [1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+q41_list = [100]
 μkQ_infty = 0
 σkQ_infty = 0.01
 
-select_q41 = 4
+select_q41 = 1
 iteration = 35_000
 burnin = 5_000
 TPτ_interest = 120
@@ -69,7 +69,7 @@ begin ## Data: macro data
         elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
             ρ[i] = 1.0
             idx_diff[i] = 0
-        elseif names(macros[:, 2:end])[i] ∈ ["HOUST", "PERMIT", "REALLN", "S&P 500", "CPIAUCSL", "PCEPI", "CES0600000008", "DTCTHFNM"]
+        elseif names(macros[:, 2:end])[i] ∈ []
             macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             macros[2:end, i+1] = macros_growth[2:end, i]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
@@ -102,7 +102,7 @@ end
 # μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 # @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
 
-# tuned = load("restricted/tuned.jld2")["tuned"]
+# tuned = load("unrestricted/tuned.jld2")["tuned"]
 # tmp_idx = 3
 # @show prior_const_TP(tuned[tmp_idx], 120, Array(yields[upper_lag-tuned[tmp_idx].p+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
 
@@ -120,8 +120,8 @@ if step == 1 ## Drawing pareto frontier
 
 elseif step == 2 ## Estimation
 
-    opt = load("restricted/tuned.jld2")["opt"][select_q41]
-    tuned = load("restricted/tuned.jld2")["tuned"][select_q41]
+    opt = load("unrestricted/tuned.jld2")["opt"][select_q41]
+    tuned = load("unrestricted/tuned.jld2")["tuned"][select_q41]
     lag = tuned.p
 
     saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
@@ -159,20 +159,20 @@ elseif step == 2 ## Estimation
 else
 
     # from step 1
-    opt = load("restricted/tuned.jld2")["opt"][select_q41]
-    tuned_set = load("restricted/tuned.jld2")["tuned"]
+    opt = load("unrestricted/tuned.jld2")["opt"][select_q41]
+    tuned_set = load("unrestricted/tuned.jld2")["tuned"]
     tuned = tuned_set[select_q41]
     lag = tuned.p
     @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
     @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
 
     # from step 2
-    saved_θ = load("restricted/posterior.jld2")["samples"]
-    acceptPr = load("restricted/posterior.jld2")["acceptPr"]
-    accept_rate = load("restricted/posterior.jld2")["accept_rate"]
+    saved_θ = load("unrestricted/posterior.jld2")["samples"]
+    acceptPr = load("unrestricted/posterior.jld2")["acceptPr"]
+    accept_rate = load("unrestricted/posterior.jld2")["accept_rate"]
     iteration = length(saved_θ)
-    saved_TP = load("restricted/TP.jld2")["TP"]
-    ineff = load("restricted/ineff.jld2")["ineff"]
+    saved_TP = load("unrestricted/TP.jld2")["TP"]
+    ineff = load("unrestricted/ineff.jld2")["ineff"]
 
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
@@ -183,5 +183,5 @@ else
     reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
-    saved_prediction = load("restricted/scenario.jld2")["forecasts"]
+    saved_prediction = load("unrestricted/scenario.jld2")["forecasts"]
 end
