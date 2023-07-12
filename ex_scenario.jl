@@ -75,7 +75,7 @@ for h = 2:10
 end
 
 par_prediction = @showprogress 1 "Scenario..." pmap(1:ceil(Int, maximum(ineff)):iteration) do i
-    scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(scenario_yields[upper_lag-lag+1:end, 2:end]), Array(scenario_macros[upper_lag-lag+1:end, 2:end]), τₙ; mean_macros)
+    scenario_sampler(scene, [24, 120], 10, [saved_θ[i]], Array(scenario_yields[upper_lag-lag+1:end-1, 2:end]), Array(scenario_macros[upper_lag-lag+1:end-1, 2:end]), τₙ; mean_macros)
 end
 
 # saved_prediction = [par_prediction[i][1] for i in eachindex(par_prediction)]
