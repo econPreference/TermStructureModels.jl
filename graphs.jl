@@ -1,6 +1,6 @@
 using GDTSM
 import StatsPlots: @df
-using LinearAlgebra, Cairo, Fontconfig, Colors, XLSX, LaTeXStrings
+using LinearAlgebra, Cairo, Fontconfig, Colors, XLSX, LaTeXStrings, Distributions
 
 set_default_plot_size(16cm, 8cm)
 
@@ -38,7 +38,7 @@ plot(
     layer(x=yields[16:end, 1], y=quantile(saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
     layer(x=yields[16:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=-4:2:4)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/TP10.pdf")
 
 plot(
@@ -46,7 +46,7 @@ plot(
     layer(x=yields[16:end, 1], y=quantile(unres_saved_TP, 0.975)[:TP], Geom.line, color=[colorant"#A9A9A9"], Theme(line_width=0.5pt, line_style=[:dash])),
     layer(x=yields[16:end, 1], y=mean(unres_saved_TP)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=-4:2:6)
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/unres_TP10.pdf")
 
 ## individual TP components
@@ -66,7 +66,8 @@ df = DataFrame(dates=Date.(string.(mesh[:, 1]), DateFormat("yyyy-mm-dd")), macro
 plot(df,
     layer(x=:dates, y=:TP, Geom.line, color=:macros, Theme(line_width=1pt)),
     layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(72):DateTime("2023-06-01"), orientation=:horizontal), Guide.yticks(ticks=[-2; 0; collect(2:2:5)])
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(72):DateTime("2023-06-01"), orientation=:horizontal),
+    Guide.yticks(ticks=[-8; collect(-6:2:10)])
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/ind_TP10.pdf")
 
 ## EH components
@@ -101,11 +102,11 @@ plot(
     layer(x=scenario_dates, y=EH_res[:, 2], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt)),
     layer(x=scenario_dates, y=[quantile(EH_res_dist_120[:, i], 0.25) for i in axes(EH_res_dist_120, 2)], Geom.line, color=[colorant"#DC143C"], Theme(line_width=0.5pt, line_style=[:dash])),
     layer(x=scenario_dates, y=[quantile(EH_res_dist_120[:, i], 0.75) for i in axes(EH_res_dist_120, 2)], Geom.line, color=[colorant"#DC143C"], Theme(line_width=0.5pt, line_style=[:dash])),
-    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.yticks(ticks=collect(0:0.5:2)), Guide.xticks(ticks=DateTime("2020-02-01"):Month(2):DateTime("2021-01-01")),
+    Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel("time"), Guide.yticks(ticks=collect(0:0.5:3.5)), Guide.xticks(ticks=DateTime("2020-02-01"):Month(2):DateTime("2021-01-01")),
     Coord.cartesian(; xmin=DateTime("2020-02-01"), xmax=DateTime("2021-01-01"))
 ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_EH.pdf")
 
 ## Scenario analysis(macros)
 macro_res = mean(saved_prediction)[:factors][:, dimQ()+1:end] |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
 rename!(macro_res, Dict("S&P 500" => "SP500"))
-@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", ylabel="M/M (%)", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "S&P 500" "INVEST" "HOUST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")
+@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", ylabel="M/M (%) or ΔM/M (%p)", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "S&P 500" "INVEST" "HOUST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")
