@@ -24,7 +24,7 @@ Plots.xlabel!(L"restriction: ${q}_{41} {\leq}$ above values") |> x -> Plots.pdf(
 
 ## decay parameter
 κQ_support = [reverse(medium_τ) support(prior_κQ(medium_τ))]
-Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], ["$(round(κQ_support[i,2],digits=4))\n(τ = $(κQ_support[i,1]))" for i in axes(κQ_support, 1)]), bins=40, xlabel=L"\kappa_{Q} ( maturity \, \tau )", labels="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/decay.pdf")
+Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], ["$(round(κQ_support[i,2],digits=4))\n(τ = $(round(Int,κQ_support[i,1])))" for i in axes(κQ_support, 1)]), bins=40, xlabel=L"\kappa_{Q} ( maturity \, \tau )", labels="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/decay.pdf")
 
 ## TP components
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
@@ -83,6 +83,16 @@ plot(
 yield_res = mean(saved_prediction)[:yields]
 Plots.surface(τₙ, DateTime("2020-03-01"):Month(1):DateTime("2020-12-01"), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_yield.pdf")
 
+p = []
+for i in [3, 7, 13, 18]
+    local ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4")
+    Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), quantile(saved_prediction, 0.05)[:yields][:, i], ls=:dash, c=colorant"#4682B4", label="")
+    Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), quantile(saved_prediction, 0.95)[:yields][:, i], ls=:dash, c=colorant"#4682B4", label="")
+    Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), yields[sdate(2020, 3):sdate(2020, 12), 1+i], c=colorant"#DC143C", label="")
+    push!(p, ind_p)
+end
+Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_yield2.pdf")
+
 ## Scenario analysis(EH)
 EH_res = mean(saved_prediction)[:yields][:, [7, 18]] - mean(saved_prediction)[:TP]
 EH_res_dist_24 = Matrix{Float64}(undef, length(saved_prediction), size(EH_res, 1))
@@ -109,4 +119,20 @@ plot(
 ## Scenario analysis(macros)
 macro_res = mean(saved_prediction)[:factors][:, dimQ()+1:end] |> x -> DataFrame([collect(DateTime("2020-03-01"):Month(1):DateTime("2020-12-01")) x], ["dates"; names(macros[:, 2:end])])
 rename!(macro_res, Dict("S&P 500" => "SP500"))
-@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", ylabel="M/M (%)", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "S&P 500" "INVEST" "HOUST"]) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")
+@df macro_res Plots.plot(:dates, [:RPI :INDPRO :CPIAUCSL :SP500 :INVEST :HOUST], xlabel="time", ylabel="M/M (%)", tickfont=(10), legendfontsize=10, linewidth=2, label=["RPI" "INDPRO" "CPIAUCSL" "S&P 500" "INVEST" "HOUST"], legend=:bottomright) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_macro.pdf")
+
+p = []
+for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
+    ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
+
+    local ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4")
+    Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), quantile(saved_prediction, 0.05)[:factors][:, dimQ()+ind_macro], ls=:dash, c=colorant"#4682B4", label="")
+    Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), quantile(saved_prediction, 0.95)[:factors][:, dimQ()+ind_macro], ls=:dash, c=colorant"#4682B4", label="")
+    if idx_diff[ind_macro] == 2
+        Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), macros_growth[sdate(2020, 3):sdate(2020, 12), ind_macro], c=colorant"#DC143C", label="")
+    else
+        Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), macros[sdate(2020, 3):sdate(2020, 12), 1+ind_macro] .+ mean_macros[ind_macro], c=colorant"#DC143C", label="")
+    end
+    push!(p, ind_p)
+end
+Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/res_yield2.pdf")
