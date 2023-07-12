@@ -24,7 +24,7 @@ Plots.xlabel!(L"restriction: ${q}_{41} {\leq}$ above values") |> x -> Plots.pdf(
 
 ## decay parameter
 κQ_support = [reverse(medium_τ) support(prior_κQ(medium_τ))]
-Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], string.(κQ_support[:, 1])), bins=40, xlabel="maturity") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/decay.pdf")
+Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], ["$(round(κQ_support[i,2],digits=4))\n(τ = $(κQ_support[i,1]))" for i in axes(κQ_support, 1)]), bins=40, xlabel=L"\kappa_{Q} ( maturity \, \tau )", labels="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior for TS/slide/decay.pdf")
 
 ## TP components
 rec_dates = DateTime.(["1990-07-01" "1991-03-01"
