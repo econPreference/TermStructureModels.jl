@@ -14,11 +14,11 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
-τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
-date_start = Date("1985-08-01", "yyyy-mm-dd")
+upper_lag = 24
+date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
+τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
-upper_lag = 15
 
 step = 1
 μϕ_const_PC1 = 0.1065
@@ -39,7 +39,7 @@ is_TP = true
 is_ineff = true
 
 begin ## Data: macro data
-    raw_fred = CSV.File("current.csv") |> DataFrame |> x -> x[314:774, :]
+    raw_fred = CSV.File("current.csv") |> DataFrame |> x -> x[302:774, :]
     raw_fred = [Date.(raw_fred[:, 1], DateFormat("mm/dd/yyyy")) raw_fred[:, 2:end]]
     raw_fred = raw_fred[findall(x -> x == yearmonth(date_start), yearmonth.(raw_fred[:, 1]))[1]:findall(x -> x == yearmonth(date_end), yearmonth.(raw_fred[:, 1]))[1], :]
 
