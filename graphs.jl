@@ -6,8 +6,8 @@ set_default_plot_size(16cm, 8cm)
 sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
 ## load unrestricted results
-unres_saved_TP = load("standard/TP.jld2")["TP"]
-unres_tuned = load("standard/tuned.jld2")["tuned"]
+unres_saved_TP = load("uninformative/TP.jld2")["TP"]
+unres_tuned = load("uninformative/tuned.jld2")["tuned"][1]
 
 ## hyperparameter plots
 q_set = Matrix{Float64}(undef, length(tuned_set) + 1, 8)

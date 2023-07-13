@@ -14,7 +14,7 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
-upper_lag = 24
+upper_lag = 15
 date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
@@ -59,14 +59,19 @@ begin ## Data: macro data
     rename!(macros, Dict(:x1 => "date"))
 
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
+    is_percent = fill(false, size(macros[:, 2:end], 2))
     idx_diff = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     macros_growth = similar(macros[:, 2:end] |> Array)
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
+        if names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
+            is_percent[i] = true
+        end
+
         if names(macros[:, 2:end])[i] ∈ ["AAA", "BAA"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
             idx_diff[i] = 1
-        elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
+        elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE"]
             ρ[i] = 1.0
             idx_diff[i] = 0
         elseif names(macros[:, 2:end])[i] ∈ []
@@ -75,10 +80,14 @@ begin ## Data: macro data
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
             idx_diff[i] = 2
-        else
+        elseif names(macros[:, 2:end])[i] ∈ ["RPI", "DPCERA3M086SBEA", "INDPRO", "PAYEMS", "M2SL", "M2REAL", "TOTRESNS", "REALLN", "S&P 500", "WPSFD49207", "OILPRICEx", "PPICMM", "CPIAUCSL", "CUSR0000SAD", "PCEPI", "CES0600000008", "DTCTHFNM", "INVEST"]
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             ρ[i] = 0.0
             idx_diff[i] = 1
+        else
+            macros[:, i+1] = log.(macros[:, i+1]) |> x -> 100x
+            ρ[i] = 1.0
+            idx_diff[i] = 0
         end
     end
     macros = macros[3:end, :]
@@ -159,7 +168,8 @@ elseif step == 2 ## Estimation
 else
 
     # from step 1
-    opt = load("restricted/tuned.jld2")["opt"][select_q41]
+    opt_set = load("restricted/tuned.jld2")["opt"]
+    opt = opt_set[select_q41]
     tuned_set = load("restricted/tuned.jld2")["tuned"]
     tuned = tuned_set[select_q41]
     lag = tuned.p
