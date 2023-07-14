@@ -14,7 +14,7 @@ using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
 import Plots
 
 ## Setting
-upper_lag = 15
+upper_lag = 18
 date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
@@ -22,16 +22,14 @@ medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 step = 2
 μϕ_const_PC1 = 0.1065
-init_upper_q =
+upper_q =
     [1 1
         1 1
         10 10
         100 100] .+ 0.0
-q41_list = [1e-0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
 μkQ_infty = 0
 σkQ_infty = 0.01
 
-select_q41 = 4
 iteration = 35_000
 burnin = 5_000
 TPτ_interest = 120
@@ -57,16 +55,22 @@ begin ## Data: macro data
     macros = macros[:, findall(x -> !(x ∈ excluded), names(macros))]
     macros = [macros[:, 1] Float64.(macros[:, 2:end])]
     rename!(macros, Dict(:x1 => "date"))
+    raw_macros = deepcopy(macros)
 
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
+    is_percent = fill(false, size(macros[:, 2:end], 2))
     idx_diff = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     macros_growth = similar(macros[:, 2:end] |> Array)
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
+        if names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
+            is_percent[i] = true
+        end
+
         if names(macros[:, 2:end])[i] ∈ ["AAA", "BAA"]
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
             idx_diff[i] = 1
-        elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "CES0600000007", "VIXCLSx"]
+        elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE"]
             ρ[i] = 1.0
             idx_diff[i] = 0
         elseif names(macros[:, 2:end])[i] ∈ ["HOUST", "PERMIT", "REALLN", "S&P 500", "CPIAUCSL", "PCEPI", "CES0600000008", "DTCTHFNM"]
@@ -75,12 +79,18 @@ begin ## Data: macro data
             macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
             ρ[i] = 0.0
             idx_diff[i] = 2
+        elseif names(macros[:, 2:end])[i] ∈ ["CES0600000007", "VIXCLSx"]
+            macros[:, i+1] = log.(macros[:, i+1]) |> x -> 100 * x
+            ρ[i] = 1.0
+            idx_diff[i] = 0
         else
             macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             ρ[i] = 0.0
             idx_diff[i] = 1
         end
     end
+
+    raw_macros = raw_macros[3:end, :]
     macros = macros[3:end, :]
     macros_growth = macros_growth[3:end, :]
     mean_macros = mean(macros[:, 2:end] |> Array, dims=1)
@@ -102,26 +112,15 @@ end
 # μϕ_const = [μϕ_const_PCs; zeros(size(macros, 2) - 1)]
 # @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
 
-# tuned = JLD2.load("restricted/tuned.jld2")["tuned"]
-# tmp_idx = 3
-# @show prior_const_TP(tuned[tmp_idx], 120, Array(yields[upper_lag-tuned[tmp_idx].p+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
-
 if step == 1 ## Drawing pareto frontier
 
-    par_tuned = @showprogress 1 "Tuning hyperparameter..." pmap(1:length(q41_list)) do i
-        upper_q = init_upper_q
-        upper_q[4, 1] = q41_list[i]
-
-        tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const_PC1)
-    end
-    tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
-    opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
+    tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const_PC1)
     JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
 elseif step == 2 ## Estimation
 
-    opt = JLD2.load("restricted/tuned.jld2")["opt"][select_q41]
-    tuned = JLD2.load("restricted/tuned.jld2")["tuned"][select_q41]
+    opt = JLD2.load("results/tuned.jld2")["opt"]
+    tuned = JLD2.load("results/tuned.jld2")["tuned"]
     lag = tuned.p
 
     saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
@@ -157,23 +156,22 @@ elseif step == 2 ## Estimation
     include("ex_scenario.jl")
 
 else
+    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     # from step 1
-    opt_set = JLD2.load("restricted/tuned.jld2")["opt"]
-    opt = opt_set[select_q41]
-    tuned_set = JLD2.load("restricted/tuned.jld2")["tuned"]
-    tuned = tuned_set[select_q41]
+    opt = JLD2.load("results/tuned.jld2")["opt"]
+    tuned = JLD2.load("results/tuned.jld2")["tuned"]
     lag = tuned.p
     @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
     @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
 
     # from step 2
-    saved_θ = JLD2.load("restricted/posterior.jld2")["samples"]
-    acceptPr = JLD2.load("restricted/posterior.jld2")["acceptPr"]
-    accept_rate = JLD2.load("restricted/posterior.jld2")["accept_rate"]
+    saved_θ = JLD2.load("results/posterior.jld2")["samples"]
+    acceptPr = JLD2.load("results/posterior.jld2")["acceptPr"]
+    accept_rate = JLD2.load("results/posterior.jld2")["accept_rate"]
     iteration = length(saved_θ)
-    saved_TP = JLD2.load("restricted/TP.jld2")["TP"]
-    ineff = JLD2.load("restricted/ineff.jld2")["ineff"]
+    saved_TP = JLD2.load("results/TP.jld2")["TP"]
+    ineff = JLD2.load("results/ineff.jld2")["ineff"]
 
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
@@ -184,5 +182,20 @@ else
     reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
-    saved_prediction = JLD2.load("restricted/scenario.jld2")["forecasts"]
+    raw_prediction = JLD2.load("results/scenario.jld2")["forecasts"]
+    saved_prediction = Vector{Forecast}(undef, length(raw_prediction))
+    for i in eachindex(saved_prediction)
+        predicted_factors = deepcopy(raw_prediction[i][:factors])
+        for j in 1:dP-dQ
+            if idx_diff[j] == 2
+                predicted_factors[1, dQ+j] = macros_growth[sdate(2020, 3), j]
+                predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] |> cumsum
+            elseif (idx_diff[j] == 1) && is_percent
+                predicted_factors[:, dQ+j] = [raw_macros[sdate(2020, 2), 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+            elseif (idx_diff[j] == 0) && !is_percent
+                predicted_factors[:, dQ+j] = 12 * [macros[sdate(2020, 2), 1+j]; predicted_factors[:, dQ+j]] |> diff
+            end
+        end
+        saved_prediction[i] = Forecast(yields=raw_prediction[i][:yields], factors=predicted_factors, TP=raw_prediction[i][:TP])
+    end
 end

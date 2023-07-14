@@ -8,10 +8,10 @@ using Distributed
     # Pkg.precompile()
 end
 @everywhere begin
-    using GDTSM, ProgressMeter, StatsBase
+    using GDTSM, ProgressMeter, StatsBase, Dates
 end
-using RCall, CSV, DataFrames, Dates, JLD2, LinearAlgebra, Gadfly, XLSX
-import Plots
+using RCall, CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
+import Plots, JLD2
 
 ## Setting
 upper_lag = 18
@@ -115,12 +115,12 @@ end
 if step == 1 ## Drawing pareto frontier
 
     tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const_PC1)
-    save("tuned.jld2", "tuned", tuned, "opt", opt)
+    JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
 elseif step == 2 ## Estimation
 
-    opt = load("results/tuned.jld2")["opt"]
-    tuned = load("results/tuned.jld2")["tuned"]
+    opt = JLD2.load("results/tuned.jld2")["opt"]
+    tuned = JLD2.load("results/tuned.jld2")["tuned"]
     lag = tuned.p
 
     saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
@@ -138,11 +138,11 @@ elseif step == 2 ## Estimation
     end
     accept_rate = [par_stationary_θ[i][2] / 100 for i in eachindex(par_stationary_θ)] |> sum |> x -> (100x / iteration)
     iteration = length(saved_θ)
-    save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+    JLD2.save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
 
     if is_ineff
         ineff = ineff_factor(saved_θ)
-        save("ineff.jld2", "ineff", ineff)
+        JLD2.save("ineff.jld2", "ineff", ineff)
     end
 
     if is_TP
@@ -150,28 +150,31 @@ elseif step == 2 ## Estimation
             term_premium(TPτ_interest, τₙ, [saved_θ[i]], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]))
         end
         saved_TP = [par_TP[i][1] for i in eachindex(par_TP)]
-        save("TP.jld2", "TP", saved_TP)
+        JLD2.save("TP.jld2", "TP", saved_TP)
     end
 
     include("ex_scenario.jl")
 
 else
-    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+    @everywhere begin
+        sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+    end
+
 
     # from step 1
-    opt = load("results/tuned.jld2")["opt"]
-    tuned = load("results/tuned.jld2")["tuned"]
+    opt = JLD2.load("results/tuned.jld2")["opt"]
+    tuned = JLD2.load("results/tuned.jld2")["tuned"]
     lag = tuned.p
     @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
     @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
 
     # from step 2
-    saved_θ = load("results/posterior.jld2")["samples"]
-    acceptPr = load("results/posterior.jld2")["acceptPr"]
-    accept_rate = load("results/posterior.jld2")["accept_rate"]
+    saved_θ = JLD2.load("results/posterior.jld2")["samples"]
+    acceptPr = JLD2.load("results/posterior.jld2")["acceptPr"]
+    accept_rate = JLD2.load("results/posterior.jld2")["accept_rate"]
     iteration = length(saved_θ)
-    saved_TP = load("results/TP.jld2")["TP"]
-    ineff = load("results/ineff.jld2")["ineff"]
+    saved_TP = JLD2.load("results/TP.jld2")["TP"]
+    ineff = JLD2.load("results/ineff.jld2")["ineff"]
 
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
@@ -182,7 +185,7 @@ else
     reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
-    raw_prediction = load("results/scenario.jld2")["forecasts"]
+    raw_prediction = JLD2.load("results/scenario.jld2")["forecasts"]
     saved_prediction = Vector{Forecast}(undef, length(raw_prediction))
     for i in eachindex(saved_prediction)
         predicted_factors = deepcopy(raw_prediction[i][:factors])
@@ -190,9 +193,9 @@ else
             if idx_diff[j] == 2
                 predicted_factors[1, dQ+j] = macros_growth[sdate(2020, 3), j]
                 predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] |> cumsum
-            elseif (idx_diff[j] == 1) && is_percent
+            elseif (idx_diff[j] == 1) && is_percent[j]
                 predicted_factors[:, dQ+j] = [raw_macros[sdate(2020, 2), 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif (idx_diff[j] == 0) && !is_percent
+            elseif (idx_diff[j] == 0) && !is_percent[j]
                 predicted_factors[:, dQ+j] = 12 * [macros[sdate(2020, 2), 1+j]; predicted_factors[:, dQ+j]] |> diff
             end
         end

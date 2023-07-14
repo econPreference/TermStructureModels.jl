@@ -1,4 +1,6 @@
-sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+@everywhere begin
+    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+end
 
 dQ = dimQ()
 dP = size(macros, 2) - 1 + dQ
@@ -22,4 +24,4 @@ par_prediction = @showprogress 1 "Scenario..." pmap(1:ceil(Int, maximum(ineff)):
 end
 
 saved_prediction = [par_prediction[i][1] for i in eachindex(par_prediction)]
-save("scenario.jld2", "forecasts", saved_prediction)
+JLD2.save("scenario.jld2", "forecasts", saved_prediction)
