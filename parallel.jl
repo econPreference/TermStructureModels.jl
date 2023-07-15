@@ -186,6 +186,8 @@ else
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
     raw_prediction = JLD2.load("results/scenario.jld2")["forecasts"]
+    dQ = dimQ()
+    dP = size(macros, 2) - 1 + dQ
     saved_prediction = Vector{Forecast}(undef, length(raw_prediction))
     for i in eachindex(saved_prediction)
         predicted_factors = deepcopy(raw_prediction[i][:factors])
