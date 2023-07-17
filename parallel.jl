@@ -167,6 +167,8 @@ else
     lag = tuned.p
     @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
     @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
+    opt_uninformative = JLD2.load("results/tuned_uninformative.jld2")["opt"]
+    tuned_uninformative = JLD2.load("results/tuned_uninformative.jld2")["tuned"]
 
     # from step 2
     saved_θ = JLD2.load("results/posterior.jld2")["samples"]
