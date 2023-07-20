@@ -15,8 +15,7 @@ using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions
 import Plots, JLD2
 import StatsPlots: @df
 
-## Setting
-# dates
+## Data setting
 upper_lag = 18
 date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
@@ -97,6 +96,7 @@ end
 ρ, is_percent, idx_diff, macros_growth, raw_macros, macros, mean_macros, yields = data_loading(; date_start, date_end, τₙ)
 sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
+## Setting
 # optimization
 μϕ_const_PC1 = 0.1065
 upper_q =
