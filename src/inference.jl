@@ -210,7 +210,7 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
     κQ = saved_θ[:κQ][1]
     kQ_infty = saved_θ[:kQ_infty][1]
     if fix_const_PC1
-        ϕ = saved_θ[:ϕ][1] |> x -> vec(x)[2:end]
+        ϕ = saved_θ[:ϕ][1] |> x -> vec(x)[2:end] |> x -> [randn(); x]
     else
         ϕ = saved_θ[:ϕ][1] |> x -> vec(x)
     end
@@ -220,13 +220,12 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
 
     initial_θ = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
-
     vec_saved_θ[1, :] = initial_θ
     @showprogress 1 "Vectorizing posterior samples..." for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
         if fix_const_PC1
-            ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)[2:end]
+            ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)[2:end] |> x -> [randn(); x]
         else
             ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)
         end
@@ -236,7 +235,6 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
 
         vec_saved_θ[iter, :] = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
     end
-    vec_saved_θ = vec_saved_θ[:, findall(!iszero, var(vec_saved_θ, dims=1)[1, :])]
 
     ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
@@ -247,5 +245,12 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
         ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
     end
 
-    return ineff
+    return (
+        κQ=ineff[1],
+        kQ_infty=ineff[2],
+        γ=ineff[2+1:2+length(γ)],
+        Σₒ=ineff[2+length(γ)+1:2+length(γ)+length(Σₒ)],
+        σ²FF=ineff[2+length(γ)+length(Σₒ)+1:2+length(γ)+length(Σₒ)+length(σ²FF)],
+        ϕ=ineff[2+length(γ)+length(Σₒ)+length(σ²FF)+1:end] |> x -> reshape(x, size(ϕ, 1), size(ϕ, 2))
+    )
 end
