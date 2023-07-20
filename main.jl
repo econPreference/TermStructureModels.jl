@@ -147,13 +147,13 @@ function estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ,
     tuned = JLD2.load("tuned.jld2")["tuned"]
     lag = tuned.p
 
-    saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
+    saved_θ, acceptPrMH = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
-    saved_θ, accept_rate = stationary_θ(saved_θ)
+    saved_θ, Pr_stationary = stationary_θ(saved_θ)
     iteration = length(saved_θ)
-    JLD2.save("posterior.jld2", "samples", saved_θ, "acceptPr", [acceptPr_C_σ²FF; acceptPr_ηψ], "accept_rate", accept_rate)
+    JLD2.save("posterior.jld2", "samples", saved_θ, "acceptPrMH", acceptPrMH, "Pr_stationary", Pr_stationary)
 
     ineff = ineff_factor(saved_θ)
     JLD2.save("ineff.jld2", "ineff", ineff)
@@ -184,8 +184,8 @@ function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, mac
 
     # from step 2
     saved_θ = JLD2.load("posterior.jld2")["samples"]
-    acceptPr = JLD2.load("posterior.jld2")["acceptPr"]
-    accept_rate = JLD2.load("posterior.jld2")["accept_rate"]
+    acceptPrMH = JLD2.load("posterior.jld2")["acceptPrMH"]
+    Pr_stationary = JLD2.load("posterior.jld2")["Pr_stationary"]
     iteration = length(saved_θ)
     saved_TP = JLD2.load("TP.jld2")["TP"]
     ineff = JLD2.load("ineff.jld2")["ineff"]
@@ -223,8 +223,8 @@ function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, mac
         opt_uninformative=opt_uninformative,
         tuned_uninformative=tuned_uninformative,
         saved_θ=saved_θ,
-        acceptPr=acceptPr,
-        accept_rate=accept_rate,
+        acceptPrMH=acceptPrMH,
+        Pr_stationary=Pr_stationary,
         saved_TP=saved_TP,
         ineff=ineff,
         saved_Xθ=saved_Xθ,

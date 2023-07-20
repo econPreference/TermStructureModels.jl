@@ -40,15 +40,11 @@ yields, latents, macros = generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, G�
 diag_G = diag_G[dimQ()+1:end]
 ρ = zeros(dP - dimQ())
 ρ[diag_G.>0.5] .= 1.0
-par_tuned = @showprogress 1 "Tuning..." pmap(1:4) do i
-    tuning_hyperparameter(yields, macros, τₙ, ρ; lag=i)
-end
-tuned = [par_tuned[i][1] for i in eachindex(par_tuned)]
-opt = [par_tuned[i][2] for i in eachindex(par_tuned)]
+tuned, opt = tuning_hyperparameter(yields, macros, τₙ, ρ)
 
 ## Estimating
 iteration = 10_000
-saved_θ, acceptPr_C_σ²FF, acceptPr_ηψ = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned; sparsity=true)
+saved_θ, acceptPrMH = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned; sparsity=true)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = stationary_θ(saved_θ)
 sparse_θ, trace_sparsity = sparse_prec(saved_θ, size(macros, 1) - tuned.p)

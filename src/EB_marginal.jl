@@ -9,9 +9,6 @@ log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, Wₚ; ψ=[
 function log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
 
     (; p, ν0, Ω0, q, μϕ_const, fix_const_PC1) = Hyperparameter_
-    # if (p > 1) && (max(q[1, 1] / (p^q[3, 1]), q[1, 2] / (p^q[3, 2])) < (0.001)^2)
-    #     return -Inf
-    # end
 
     prior_κQ_ = prior_κQ(medium_τ)
     dP = length(Ω0)

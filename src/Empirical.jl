@@ -173,9 +173,6 @@ function stationary_θ(saved_θ)
         kQ_infty = saved_θ[:kQ_infty][iter]
         ϕ = saved_θ[:ϕ][iter]
         σ²FF = saved_θ[:σ²FF][iter]
-        ηψ = saved_θ[:ηψ][iter]
-        ψ = saved_θ[:ψ][iter]
-        ψ0 = saved_θ[:ψ0][iter]
         Σₒ = saved_θ[:Σₒ][iter]
         γ = saved_θ[:γ][iter]
 
@@ -184,7 +181,7 @@ function stationary_θ(saved_θ)
         GₚFF = ϕ0[:, 2:end]
 
         if isstationary(GₚFF)
-            push!(stationary_saved_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ))
+            push!(stationary_saved_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, Σₒ=Σₒ, γ=γ))
         end
     end
 
@@ -294,54 +291,6 @@ function calibration_μϕ_const(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μ
 
 end
 
-function calibration_σkQ_infty(tuned, σkQ_infty, yields, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000)
-
-    (; p, q, ν0, Ω0, μkQ_infty, μϕ_const, fix_const_PC1) = tuned
-    ~, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
-    dP = length(Ω0)
-    dQ = dimQ()
-
-    prior_σ²FF_ = prior_σ²FF(; ν0, Ω0)
-    prior_C_ = prior_C(; Ω0)
-    prior_κQ_ = prior_κQ(medium_τ)
-    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0=ones(dP), ψ=ones(dP, dP * p), q, ν0, Ω0, fix_const_PC1)
-    kQ_infty_dist = Normal(μkQ_infty, σkQ_infty)
-
-    KₚP = Matrix{Float64}(undef, iteration, dQ)
-    KₚQ = Matrix{Float64}(undef, iteration, dQ)
-    for iter in 1:iteration
-
-        σ²FF = rand.(prior_σ²FF_)
-        C = rand.(prior_C_)
-        for i in 2:dP, j in 1:(i-1)
-            C[i, j] = Normal(0, sqrt(σ²FF[i] * var(prior_C_[i, j]))) |> rand
-        end
-        ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
-        ϕ0 = rand.([Normal(mean(prior_ϕ0_[i, j]), sqrt(σ²FF[i] * var(prior_ϕ0_[i, j]))) for i in 1:dP, j in 1:(dP*p+1)])
-        ϕ0 = C \ ϕ0
-
-        κQ = rand(prior_κQ_)
-        bτ_ = bτ(τₙ[end]; κQ)
-        Bₓ_ = Bₓ(bτ_, τₙ)
-        T1X_ = T1X(Bₓ_, Wₚ)
-
-        kQ_infty = rand(kQ_infty_dist)
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
-        Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-
-        KₓQ = zeros(dQ)
-        KₓQ[1] = kQ_infty
-
-        KₚP[iter, :] = ϕ0[:, 1][1:dQ]
-        KₚQ[iter, :] = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-
-    end
-
-    return KₚP, KₚQ
-
-end
-
 function prior_const_TP(tuned, τ, yields, τₙ, ρ; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=100)
 
     (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = tuned
@@ -397,64 +346,4 @@ function prior_const_TP(tuned, τ, yields, τₙ, ρ; medium_τ=12 * [2, 2.5, 3,
 
     return prior_TP
 
-end
-
-function mSR_ftn_filter(saved_θ, yields, macros, τₙ; mSR_ftn, mSR_upper, mSR_data=[])
-
-    dQ = dimQ()
-    dP = dQ + size(macros, 2)
-    p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
-    factors = [PCs macros]
-
-    iteration = length(saved_θ)
-    filtered_θ = Vector{Parameter}(undef, 0)
-    mSR = Matrix{Float64}(undef, iteration, size(factors, 1) - p)
-    @showprogress 1 "Filtering..." for iter in 1:iteration
-
-        κQ = saved_θ[:κQ][iter]
-        kQ_infty = saved_θ[:kQ_infty][iter]
-        ϕ = saved_θ[:ϕ][iter]
-        σ²FF = saved_θ[:σ²FF][iter]
-        ηψ = saved_θ[:ηψ][iter]
-        ψ = saved_θ[:ψ][iter]
-        ψ0 = saved_θ[:ψ0][iter]
-        Σₒ = saved_θ[:Σₒ][iter]
-        γ = saved_θ[:γ][iter]
-
-        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
-        CKₚF = ϕ0[:, 1]
-        CGₚFF = ϕ0[:, 2:end]
-        CQQ = C[1:dQ, 1:dQ]
-        ΩFF = (C \ diagm(σ²FF)) / C'
-
-        bτ_ = bτ(τₙ[end]; κQ)
-        Bₓ_ = Bₓ(bτ_, τₙ)
-        T1X_ = T1X(Bₓ_, Wₚ)
-
-        aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
-        Aₓ_ = Aₓ(aτ_, τₙ)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-
-        KₓQ = zeros(dQ)
-        KₓQ[1] = kQ_infty
-        KₚQ = T1X_ * (KₓQ + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-        λₚ = CKₚF[1:dQ] - CQQ * KₚQ
-
-        GQ_PP = T1X_ * GQ_XX(; κQ) / T1X_
-        Λ_PF = CGₚFF[1:dQ, :]
-        Λ_PF[1:dQ, 1:dQ] -= CQQ * GQ_PP
-
-        for t in axes(mSR, 2)
-            Ft = factors'[:, t+p:-1:t+1] |> vec |> x -> [1; x]
-            mSR[iter, t] = [λₚ Λ_PF] * Ft |> x -> x ./ (sqrt.(σ²FF[1:dQ])) |> norm
-        end
-        mSR_const = λₚ ./ sqrt.(σ²FF[1:dQ]) |> norm
-
-        if minimum(mSR_ftn((mSR[iter, :], mSR_const), mSR_data) .< mSR_upper)
-            push!(filtered_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ))
-        end
-    end
-
-    return filtered_θ, mSR
 end

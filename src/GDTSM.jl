@@ -1,8 +1,7 @@
 module GDTSM
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, CovarianceMatrices, ProgressMeter, Distributed, Metaheuristics, Random, Optim, Roots, BlackBoxOptim
-import Distributions: TDist
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, CovarianceMatrices, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
 using RCall
@@ -56,9 +55,6 @@ abstract type PosteriorSample end
     kQ_infty::Float64
     ϕ::Matrix{Float64}
     σ²FF::Vector{Float64}
-    ηψ::Float64
-    ψ::Matrix{Float64}
-    ψ0::Vector{Float64}
     Σₒ::Vector{Float64}
     γ::Vector{Float64}
 end
@@ -200,7 +196,6 @@ export
     calibration_μϕ_const,
     calibration_σkQ_infty,
     prior_const_TP,
-    mSR_ftn_filter,
 
     # GDTSM.jl
     Hyperparameter,
@@ -215,15 +210,10 @@ export
 
     # inference.jl
     tuning_hyperparameter,
-    tuning_hyperparameter_MOEA,
     AR_res_var,
-    mSR_ML_frontier,
     generative,
     ineff_factor,
     posterior_sampler,
-    sparse_prec,
-    sparse_coef,
-    sparse_prec_coef,
 
     # priors.jl
     prior_κQ,
@@ -239,8 +229,6 @@ export
     latentspace,
     PCA,
     fitted_YieldCurve,
-    maximum_SR,
-    maximum_SR_simul,
 
     # utilities.jl
     getindex,
