@@ -4,7 +4,6 @@ using Base: @kwdef
 using LinearAlgebra, Statistics, Distributions, SpecialFunctions, CovarianceMatrices, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
-using RCall
 
 """
 * @kwdef struct Hyperparameter

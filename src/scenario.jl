@@ -44,7 +44,6 @@ _scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
 """
 function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros)
 
-    R"library(MASS)"
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
     ϕ0 = C \ ϕ0 # reduced form parameters
@@ -141,7 +140,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
 
         ft = deepcopy(f_tt)
         idx = diag(P_tt) .> eps()
-        ft[idx] = rcopy(Array, rcall(:mvrnorm, mu=f_tt[idx], Sigma=P_tt[idx, idx]))
+        ft[idx] = MvNormal(f_tt[idx], P_tt[idx, idx]) |> rand
         predicted_F[dh, :] = ft[1:dP+N]
         predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:dP+N]
 
@@ -163,7 +162,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
             # beta(t|t+1) sampling
             ft = deepcopy(f_tt1)
             idx = diag(P_tt1) .> eps()
-            ft[idx] = rcopy(Array, rcall(:mvrnorm, mu=f_tt1[idx], Sigma=P_tt1[idx, idx]))
+            ft[idx] = MvNormal(f_tt1[idx], P_tt1[idx, idx]) |> rand
 
             predicted_F[t, :] = ft[1:dP+N]
             predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:dP+N]

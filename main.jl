@@ -1,7 +1,7 @@
 ## Setting
 using Distributed
 using GDTSM, ProgressMeter, StatsBase, Dates
-using RCall, CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
+using CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
 using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions
 import Plots, JLD2
 import StatsPlots: @df

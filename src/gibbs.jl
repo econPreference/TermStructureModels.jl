@@ -120,7 +120,7 @@ NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
     - posterior sample
 """
 function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
-    R"library(MASS)"
+
     T = length(y)
 
     inv_B₀ = inv(B₀)
@@ -128,39 +128,6 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
     B₁ = Symmetric(inv(inv_B₁))
     β₁ = B₁ * (inv_B₀ * β₀ + X'y)
     δ₁ = δ₀ + 0.5 * (y'y + β₀' * inv_B₀ * β₀ - β₁' * inv_B₁ * β₁)
-
-    if δ₁ < eps() || isposdef(B₁) == false
-        idx_deg = []
-        diag_B₀ = diag(B₀)
-        while δ₁ < eps() || isposdef(B₁) == false
-            push!(idx_deg, findmin(diag_B₀)[2])
-            diag_B₀[findmin(diag_B₀)[2]] = maximum(diag_B₀)
-            idx = collect(1:length(β₀))
-            for i in eachindex(idx_deg)
-                aux_idx = similar(idx)
-                aux_idx = collect(1:length(β₀)) .!= idx_deg[i]
-                idx .*= aux_idx
-            end
-            idx = findall(idx .> 0)
-            B₀_deg = B₀[idx, idx]
-            β₀_deg = β₀[idx]
-            X_deg = X[:, idx]
-            y_deg = y - X[:, idx_deg] * β₀[idx_deg]
-
-            inv_B₀ = inv(B₀_deg)
-            inv_B₁ = inv_B₀ + X_deg'X_deg
-            B₁ = Symmetric(inv(inv_B₁))
-            β₁ = B₁ * (inv_B₀ * β₀_deg + X_deg'y_deg)
-            δ₁ = δ₀ + 0.5 * (y_deg'y_deg + β₀_deg' * inv_B₀ * β₀_deg - β₁' * inv_B₁ * β₁)
-
-            if δ₁ > eps() && isposdef(B₁)
-                σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
-                β = deepcopy(β₀)
-                β[idx] = rcopy(Array, rcall(:mvrnorm, mu=β₁, Sigma=σ² * B₁))
-                return β, σ²
-            end
-        end
-    end
 
     σ² = rand(InverseGamma(α₀ + 0.5T, δ₁))
     β = rand(MvNormal(β₁, σ² * B₁))
