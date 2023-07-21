@@ -137,7 +137,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
 
     isaccept_MH = zeros(dQ)
     saved_θ = Vector{Parameter}(undef, iteration)
-    @showprogress 1 "Sampling the posterior..." for iter in 1:iteration
+    @showprogress 5 "Sampling the posterior..." for iter in 1:iteration
 
         κQ = rand(post_κQ(yields[(p+1):end, :], prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ))
 
