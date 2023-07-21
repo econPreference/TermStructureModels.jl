@@ -105,7 +105,7 @@ upper_q =
 # @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
 
 # estimation
-iteration = 35_000
+iteration = 15_000
 burnin = 5_000
 TPτ_interest = 120
 
@@ -177,6 +177,7 @@ function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, mac
     Pr_stationary = JLD2.load("posterior.jld2")["Pr_stationary"]
     saved_TP = JLD2.load("TP.jld2")["TP"]
     ineff = JLD2.load("ineff.jld2")["ineff"]
+    @show max(ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> vec |> maximum)
 
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
