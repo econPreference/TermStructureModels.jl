@@ -1,15 +1,6 @@
 ## Setting
 using Distributed
-# addprocs(2)
-@everywhere begin
-    using Pkg
-    Pkg.activate(@__DIR__)
-    # Pkg.instantiate()
-    # Pkg.precompile()
-end
-@everywhere begin
-    using GDTSM, ProgressMeter, StatsBase, Dates
-end
+using GDTSM, ProgressMeter, StatsBase, Dates
 using RCall, CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
 using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions
 import Plots, JLD2
@@ -140,9 +131,7 @@ end
 
 function estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date)
 
-    @everywhere begin
-        sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
-    end
+    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     tuned = JLD2.load("tuned.jld2")["tuned"]
     lag = tuned.p
@@ -169,9 +158,7 @@ end
 
 function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
-    @everywhere begin
-        sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
-    end
+    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     # from step 1
     opt = JLD2.load("tuned.jld2")["opt"]
@@ -238,10 +225,7 @@ end
 
 function graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros, yields, tuned, saved_θ, saved_TP, fitted, saved_prediction)
 
-    @everywhere begin
-        sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
-    end
-
+    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
     set_default_plot_size(16cm, 8cm)
 
     ## decay parameter

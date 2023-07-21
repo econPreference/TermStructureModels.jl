@@ -206,22 +206,16 @@ ineff_factor(saved_θ)
 function ineff_factor(saved_θ; fix_const_PC1=false)
 
     iteration = length(saved_θ)
-
-    κQ = saved_θ[:κQ][1]
-    kQ_infty = saved_θ[:kQ_infty][1]
     if fix_const_PC1
-        ϕ = saved_θ[:ϕ][1] |> x -> vec(x)[2:end] |> x -> [randn(); x]
+        init_ϕ = saved_θ[:ϕ][1] |> x -> vec(x)[2:end] |> x -> [randn(); x]
     else
-        ϕ = saved_θ[:ϕ][1] |> x -> vec(x)
+        init_ϕ = saved_θ[:ϕ][1] |> x -> vec(x)
     end
-    σ²FF = saved_θ[:σ²FF][1]
-    Σₒ = saved_θ[:Σₒ][1]
-    γ = saved_θ[:γ][1]
-
-    initial_θ = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
+    initial_θ = [saved_θ[:κQ][1]; saved_θ[:kQ_infty][1]; saved_θ[:γ][1]; saved_θ[:Σₒ][1]; saved_θ[:σ²FF][1]; init_ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_θ[1, :] = initial_θ
-    @showprogress 1 "Vectorizing posterior samples..." for iter in 2:iteration
+    p = Progress(iteration - 1; dt=5, desc="Vectorizing posterior samples...")
+    Threads.@threads for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
         if fix_const_PC1
@@ -234,16 +228,21 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
         γ = saved_θ[:γ][iter]
 
         vec_saved_θ[iter, :] = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
+        next!(p)
     end
+    finish!(p)
 
     ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
-    @showprogress 1 "Calculating Ineff factors..." for i in axes(vec_saved_θ, 2)
+    p = Progress(size(vec_saved_θ, 2); dt=5, desc="Calculating Ineff factors...")
+    Threads.@threads for i in axes(vec_saved_θ, 2)
         object = Matrix{Float64}(undef, iteration, 1)
         object[:] = vec_saved_θ[:, i]
         bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
         ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
+        next!(p)
     end
+    finish!(p)
 
     return (
         κQ=ineff[1],

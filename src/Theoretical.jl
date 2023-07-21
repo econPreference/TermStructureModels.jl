@@ -237,7 +237,8 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
-    @showprogress 1 "Calculating TPs..." for iter in 1:iteration
+    p = Progress(iteration; dt=5, desc="Calculating TPs...")
+    Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -260,7 +261,10 @@ function term_premium(τ, τₙ, saved_θ, yields, macros)
         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF=KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])
 
         saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
+
+        next!(p)
     end
+    finish!(p)
 
     return saved_TP
 
@@ -278,7 +282,8 @@ function latentspace(saved_θ, yields, τₙ)
 
     iteration = length(saved_θ)
     saved_θ_latent = Vector{LatentSpace}(undef, iteration)
-    @showprogress 1 "Moving to the latent space..." for iter in 1:iteration
+    p = Progress(iteration; dt=5, desc="Moving to the latent space...")
+    Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -294,7 +299,9 @@ function latentspace(saved_θ, yields, τₙ)
         latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF)
         saved_θ_latent[iter] = LatentSpace(latents=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
 
+        next!(p)
     end
+    finish!(p)
 
     return saved_θ_latent
 end
@@ -369,7 +376,8 @@ function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
     dQ = dimQ()
     iteration = length(saved_Xθ)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
-    @showprogress 1 "Generating fitted yield curve..." for iter in 1:iteration
+    p = Progress(iteration; dt=5, desc="Generating fitted yield curve...")
+    Threads.@threads for iter in 1:iteration
 
         latents = saved_Xθ[:latents][iter]
         κQ = saved_Xθ[:κQ][iter]
@@ -388,7 +396,10 @@ function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace})
             intercept=Aₓ_,
             slope=Bₓ_
         )
+
+        next!(p)
     end
+    finish!(p)
 
     return YieldCurve_
 end

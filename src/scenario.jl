@@ -15,7 +15,8 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
 function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[])
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
-    @showprogress 1 "Predicting scenarios..." for iter in 1:iteration
+    p = Progress(iteration; dt=5, desc="Predicting scenarios...")
+    Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -26,7 +27,10 @@ function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_
         spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros)
 
         scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
+
+        next!(p)
     end
+    finish!(p)
 
     return scenarios
 end

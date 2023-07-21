@@ -1,16 +1,6 @@
 ## Setting
 using Distributed
-addprocs(3)
-@everywhere begin
-    using Pkg
-    Pkg.activate(@__DIR__)
-    # Pkg.instantiate()
-    # Pkg.precompile()
-end
-@everywhere begin
-    using GDTSM, ProgressMeter
-end
-using Distributions, LinearAlgebra
+using GDTSM, ProgressMeter, Distributions, LinearAlgebra
 
 ## Simulating sample data
 T = 1000
