@@ -206,23 +206,22 @@ ineff_factor(saved_θ)
 function ineff_factor(saved_θ; fix_const_PC1=false)
 
     iteration = length(saved_θ)
-    if fix_const_PC1
-        init_ϕ = saved_θ[:ϕ][1] |> x -> vec(x)[2:end] |> x -> [randn(); x]
-    else
-        init_ϕ = saved_θ[:ϕ][1] |> x -> vec(x)
-    end
-    initial_θ = [saved_θ[:κQ][1]; saved_θ[:kQ_infty][1]; saved_θ[:γ][1]; saved_θ[:Σₒ][1]; saved_θ[:σ²FF][1]; init_ϕ]
+
+    init_κQ = saved_θ[:κQ][1]
+    init_kQ_infty = saved_θ[:kQ_infty][1]
+    init_ϕ = saved_θ[:ϕ][1] |> vec
+    init_σ²FF = saved_θ[:σ²FF][1]
+    init_Σₒ = saved_θ[:Σₒ][1]
+    init_γ = saved_θ[:γ][1]
+
+    initial_θ = [init_κQ; init_kQ_infty; init_γ; init_Σₒ; init_σ²FF; init_ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_θ[1, :] = initial_θ
     prog = Progress(iteration - 1; dt=5, desc="Vectorizing posterior samples...")
     Threads.@threads for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
-        if fix_const_PC1
-            ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)[2:end] |> x -> [randn(); x]
-        else
-            ϕ = saved_θ[:ϕ][iter] |> x -> vec(x)
-        end
+        ϕ = saved_θ[:ϕ][iter] |> vec
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
         γ = saved_θ[:γ][iter]
@@ -244,12 +243,20 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
     end
     finish!(prog)
 
-    return (
+    ϕ_ineff = ineff[2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)+1:end] |> x -> reshape(x, size(saved_θ[:ϕ][1], 1), size(saved_θ[:ϕ][1], 2))
+    if fix_const_PC1
+        ϕ_ineff[1, 1] = 0
+    end
+    dP = size(ϕ_ineff, 1)
+    for i in 1:dP, j in i:dP
+        ϕ_ineff[i, end-dP+j] = 0
+    end
+    return (;
         κQ=ineff[1],
         kQ_infty=ineff[2],
-        γ=ineff[2+1:2+length(γ)],
-        Σₒ=ineff[2+length(γ)+1:2+length(γ)+length(Σₒ)],
-        σ²FF=ineff[2+length(γ)+length(Σₒ)+1:2+length(γ)+length(Σₒ)+length(σ²FF)],
-        ϕ=ineff[2+length(γ)+length(Σₒ)+length(σ²FF)+1:end] |> x -> reshape(x, size(ϕ, 1), size(ϕ, 2))
+        γ=ineff[2+1:2+length(init_γ)],
+        Σₒ=ineff[2+length(init_γ)+1:2+length(init_γ)+length(init_Σₒ)],
+        σ²FF=ineff[2+length(init_γ)+length(init_Σₒ)+1:2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)],
+        ϕ=ϕ_ineff
     )
 end

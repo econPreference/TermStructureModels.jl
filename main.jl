@@ -1,5 +1,7 @@
-## Setting
-using Distributed
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.instantiate()
+Pkg.precompile()
 using GDTSM, ProgressMeter, StatsBase, Dates
 using CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
 using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions
@@ -173,7 +175,6 @@ function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, mac
     saved_θ = JLD2.load("posterior.jld2")["samples"]
     acceptPrMH = JLD2.load("posterior.jld2")["acceptPrMH"]
     Pr_stationary = JLD2.load("posterior.jld2")["Pr_stationary"]
-    iteration = length(saved_θ)
     saved_TP = JLD2.load("TP.jld2")["TP"]
     ineff = JLD2.load("ineff.jld2")["ineff"]
 
