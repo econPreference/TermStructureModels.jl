@@ -15,7 +15,7 @@ scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
 function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[])
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
-    p = Progress(iteration; dt=5, desc="Predicting scenarios...")
+    prog = Progress(iteration; dt=5, desc="Predicting scenarios...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -28,9 +28,9 @@ function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_
 
         scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
 
-        next!(p)
+        next!(prog)
     end
-    finish!(p)
+    finish!(prog)
 
     return scenarios
 end
@@ -121,6 +121,9 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
                 f_tt = deepcopy(f_tl)
                 P_tt = deepcopy(P_tl)
             end
+            idx = diag(P_tt) .< eps()
+            P_tt[idx, :] .= 0
+            P_tt[:, idx] .= 0
 
             f_ttm[:, :, t] = f_tt
             P_ttm[:, :, t] = P_tt
@@ -135,14 +138,17 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         predicted_yield = zeros(dh, N)
 
         # beta(T|T) sampling
-        P_tt = P_ttm[:, :, dh] |> Symmetric # k by k
-        f_tt = f_ttm[:, 1, dh] # k by 1
+        P_tt = P_ttm[1:dP+N, 1:dP+N, dh] |> Symmetric |> Array # k by k
+        f_tt = f_ttm[1:dP+N, 1, dh] # k by 1
 
         ft = deepcopy(f_tt)
         idx = diag(P_tt) .> eps()
+        while !isposdef(P_tt[idx, idx])
+            P_tt[idx, idx] += eps() * I(sum(idx))
+        end
         ft[idx] = MvNormal(f_tt[idx], P_tt[idx, idx]) |> rand
-        predicted_F[dh, :] = ft[1:dP+N]
-        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:dP+N]
+        predicted_F[dh, :] = ft
+        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:end]
 
         for t in (dh-1):-1:1
 
@@ -154,18 +160,21 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
             e_tl = predicted_F[t+1, :] - μT[1:dP+N] - G[1:dP+N, :] * f_tt
 
             PGG = P_tt * G[1:dP+N, :]' / GPG_Q
-            f_tt1 = f_tt + PGG * e_tl
+            f_tt1 = f_tt + PGG * e_tl |> x -> x[1:dP+N]
 
             PGP = PGG * G[1:dP+N, :] * P_tt
-            P_tt1 = P_tt - PGP |> Symmetric
+            P_tt1 = P_tt - PGP |> Symmetric |> x -> x[1:dP+N, 1:dP+N] |> Array
 
             # beta(t|t+1) sampling
             ft = deepcopy(f_tt1)
             idx = diag(P_tt1) .> eps()
+            while !isposdef(P_tt1[idx, idx])
+                P_tt1[idx, idx] += eps() * I(sum(idx))
+            end
             ft[idx] = MvNormal(f_tt1[idx], P_tt1[idx, idx]) |> rand
 
-            predicted_F[t, :] = ft[1:dP+N]
-            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:dP+N]
+            predicted_F[t, :] = ft
+            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:end]
         end
     end
 

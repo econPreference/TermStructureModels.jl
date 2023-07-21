@@ -214,7 +214,7 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
     initial_θ = [saved_θ[:κQ][1]; saved_θ[:kQ_infty][1]; saved_θ[:γ][1]; saved_θ[:Σₒ][1]; saved_θ[:σ²FF][1]; init_ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_θ[1, :] = initial_θ
-    p = Progress(iteration - 1; dt=5, desc="Vectorizing posterior samples...")
+    prog = Progress(iteration - 1; dt=5, desc="Vectorizing posterior samples...")
     Threads.@threads for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -228,21 +228,21 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
         γ = saved_θ[:γ][iter]
 
         vec_saved_θ[iter, :] = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
-        next!(p)
+        next!(prog)
     end
-    finish!(p)
+    finish!(prog)
 
     ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
-    p = Progress(size(vec_saved_θ, 2); dt=5, desc="Calculating Ineff factors...")
+    prog = Progress(size(vec_saved_θ, 2); dt=5, desc="Calculating Ineff factors...")
     Threads.@threads for i in axes(vec_saved_θ, 2)
         object = Matrix{Float64}(undef, iteration, 1)
         object[:] = vec_saved_θ[:, i]
         bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
         ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
-        next!(p)
+        next!(prog)
     end
-    finish!(p)
+    finish!(prog)
 
     return (
         κQ=ineff[1],

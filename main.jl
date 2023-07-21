@@ -183,7 +183,7 @@ function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, mac
     log_price = -collect(1:τₙ[end])' .* fitted_yield[lag:end, :]
     xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[lag:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
-    reduced_θ = reducedform(saved_θ[1:ceil(Int, maximum(ineff)):iteration], Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
+    reduced_θ = reducedform(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
     raw_prediction = JLD2.load("scenario.jld2")["forecasts"]
@@ -255,8 +255,8 @@ function graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros
     ind_TP = mean(saved_TP)[:timevarying_TP][:, ind_TP_order[1]]
     mesh = [yields[sdate(1987, 1):end, 1] fill(ind_TP_names[ind_TP_order[1]], size(ind_TP)) ind_TP]
     for i in 2:n_top
-        local ind_TP = mean(saved_TP)[:timevarying_TP][:, ind_TP_order[i]]
-        global mesh = [mesh; [yields[sdate(1987, 1):end, 1] fill(ind_TP_names[ind_TP_order[i]], size(ind_TP)) ind_TP]]
+        ind_TP = mean(saved_TP)[:timevarying_TP][:, ind_TP_order[i]]
+        mesh = [mesh; [yields[sdate(1987, 1):end, 1] fill(ind_TP_names[ind_TP_order[i]], size(ind_TP)) ind_TP]]
     end
     df = DataFrame(dates=Date.(string.(mesh[:, 1]), DateFormat("yyyy-mm-dd")), macros=string.(mesh[:, 2]), TP=Float64.(mesh[:, 3]))
 
@@ -280,7 +280,7 @@ function graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros
 
     p = []
     for i in [3, 7, 13, 18]
-        local ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:yields][:, i], fillrange=quantile(saved_prediction, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:yields][:, i], fillrange=quantile(saved_prediction, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:yields][:, i], fillrange=quantile(saved_prediction, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:yields][:, i], fillrange=quantile(saved_prediction, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:yields][:, i], fillrange=quantile(saved_prediction, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
@@ -309,7 +309,7 @@ function graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros
             EH_res_dist = deepcopy(EH_res_dist_120)
             ind_name = "EH(τ = 120)"
         end
-        local ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
@@ -326,7 +326,7 @@ function graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros
     for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
-        local ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2020, 03):Month(3):Date(2020, 12);], ["Mar", "Jun", "Sep", "Dec"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, Date(2020, 03):Month(1):Date(2020, 12), mean(saved_prediction)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
@@ -347,6 +347,6 @@ JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
 estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date)
 
-results = inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields)
+results = inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
-graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros, yields, results.tuned, results.saved_θ, results.saved_TP, results.fitted_yields, results.saved_prediction)
+graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction=results.saved_prediction)

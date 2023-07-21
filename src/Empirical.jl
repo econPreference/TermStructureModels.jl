@@ -167,7 +167,7 @@ function stationary_θ(saved_θ)
 
     iteration = length(saved_θ)
     stationary_saved_θ = Vector{Parameter}(undef, 0)
-    p = Progress(iteration; dt=5, desc="Filtering...")
+    prog = Progress(iteration; dt=5, desc="Filtering...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -184,9 +184,9 @@ function stationary_θ(saved_θ)
         if isstationary(GₚFF)
             push!(stationary_saved_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, Σₒ=Σₒ, γ=γ))
         end
-        next!(p)
+        next!(prog)
     end
-    finish!(p)
+    finish!(prog)
 
     return stationary_saved_θ, 100length(stationary_saved_θ) / iteration
 end
@@ -208,7 +208,7 @@ function reducedform(saved_θ, yields, macros, τₙ)
 
     iteration = length(saved_θ)
     reduced_θ = Vector{ReducedForm}(undef, iteration)
-    p = Progress(iteration; dt=5, desc="Moving to the reduced form...")
+    prog = Progress(iteration; dt=5, desc="Moving to the reduced form...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -246,9 +246,9 @@ function reducedform(saved_θ, yields, macros, τₙ)
         end
         reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF, mpr=mpr)
 
-        next!(p)
+        next!(prog)
     end
-    finish!(p)
+    finish!(prog)
 
     return reduced_θ
 end
