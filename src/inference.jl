@@ -76,11 +76,11 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
             Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
         end
 
-        tuned = Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, p], fix_const_PC1=fix_const_PC1)
+        tuned = Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μϕ_const=μϕ_const[:, p])
         if isempty(macros)
-            return -log_marginal(factors, macros, ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr)
+            return -log_marginal(factors, macros, ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr, fix_const_PC1)
         else
-            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr, fix_const_PC1)
         end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -108,7 +108,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
 
-    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, p], fix_const_PC1=fix_const_PC1, data_scale=data_scale), opt
+    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μϕ_const=μϕ_const[:, p]), opt
 
 end
 
@@ -142,9 +142,9 @@ This is a posterior distribution sampler.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[], μkQ_infty=0, σkQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
-    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1, data_scale) = tuned
+    (; p, q, ν0, Ω0, μϕ_const) = tuned
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     if isempty(macros)

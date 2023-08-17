@@ -11,22 +11,14 @@ import Statistics: mean, median, std, var, quantile
 - `q::Matrix`
 - `ν0`
 - `Ω0::Vector`
-- `μkQ_infty`
-- `σkQ_infty`
 - `μϕ_const::Vector = zeros(length(Ω0))`: It is a prior mean of a constant term in our VAR.
-- `fix_const_PC1::Bool = false`: When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
-- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 """
 @kwdef struct Hyperparameter
     p::Int
     q::Matrix
     ν0
     Ω0::Vector
-    μkQ_infty
-    σkQ_infty
     μϕ_const::Vector = zeros(length(Ω0))
-    fix_const_PC1::Bool = false
-    data_scale
 end
 
 """

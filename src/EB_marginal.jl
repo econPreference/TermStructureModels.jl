@@ -7,9 +7,9 @@ This file calculates a value of our marginal likelihood. Only the transition equ
 # Output
 - the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr)
+function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
 
-    (; p, ν0, Ω0, q, μϕ_const, fix_const_PC1) = tuned
+    (; p, ν0, Ω0, q, μϕ_const) = tuned
 
     prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
     dP = length(Ω0)
