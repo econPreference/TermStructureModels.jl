@@ -9,8 +9,8 @@ import Plots, JLD2
 import StatsPlots: @df
 
 ## Data setting
-upper_lag = 18
-date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_lag + 2)
+upper_p = 18
+date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_p + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
 medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
@@ -100,9 +100,9 @@ upper_q =
 μkQ_infty = 0
 σkQ_infty = 0.01
 # aux_lag = 7
-# μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, iteration=10_000)[2] |> x -> mean(x, dims=1)[1, :]
+# μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_p-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, iteration=10_000)[2] |> x -> mean(x, dims=1)[1, :]
 # μϕ_const_PCs = [0.1065, μϕ_const_PCs[2], μϕ_const_PCs[3]]
-# @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_lag-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
+# @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, Array(yields[upper_p-aux_lag+1:end, 2:end]), τₙ, aux_lag; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
 
 # estimation
 iteration = 15_000
@@ -131,14 +131,14 @@ for h = 2:10
 end
 ##
 
-function estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date)
+function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     tuned = JLD2.load("tuned.jld2")["tuned"]
-    lag = tuned.p
+    p = tuned.p
 
-    saved_θ, acceptPrMH = posterior_sampler(Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
+    saved_θ, acceptPrMH = posterior_sampler(Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ)
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
@@ -149,7 +149,7 @@ function estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ,
     ineff = ineff_factor(saved_θ)
     JLD2.save("ineff.jld2", "ineff", ineff)
 
-    saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]))
+    saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
     JLD2.save("TP.jld2", "TP", saved_TP)
 
     saved_prediction = scenario_sampler(scene, scenario_TP, scenario_horizon, saved_θ, Array(yields[1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
@@ -158,16 +158,16 @@ function estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ,
     return []
 end
 
-function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
+function inferences(; upper_p, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     # from step 1
     opt = JLD2.load("tuned.jld2")["opt"]
     tuned = JLD2.load("tuned.jld2")["tuned"]
-    lag = tuned.p
-    @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, lag; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
-    @show prior_const_TP(tuned, 120, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
+    p = tuned.p
+    @show calibration_μϕ_const(tuned.μkQ_infty, tuned.σkQ_infty, 120, Array(yields[upper_p-p+1:end, 2:end]), τₙ, p; medium_τ, μϕ_const_PCs=tuned.μϕ_const[1:dimQ()], iteration=10_000)[1] |> mean
+    @show prior_const_TP(tuned, 120, Array(yields[upper_p-p+1:end, 2:end]), τₙ, ρ; iteration=1_000) |> std
     opt_uninformative = JLD2.load("tuned_uninformative.jld2")["opt"]
     tuned_uninformative = JLD2.load("tuned_uninformative.jld2")["tuned"]
 
@@ -179,13 +179,13 @@ function inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, mac
     ineff = JLD2.load("ineff.jld2")["ineff"]
     @show max(ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> vec |> maximum)
 
-    saved_Xθ = latentspace(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), τₙ)
+    saved_Xθ = latentspace(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
     fitted_yield = mean(fitted)[:yields] / 1200
-    log_price = -collect(1:τₙ[end])' .* fitted_yield[lag:end, :]
-    xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[lag:end-1, 1]
+    log_price = -collect(1:τₙ[end])' .* fitted_yield[p:end, :]
+    xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- fitted_yield[p:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
-    reduced_θ = reducedform(saved_θ, Array(yields[upper_lag-lag+1:end, 2:end]), Array(macros[upper_lag-lag+1:end, 2:end]), τₙ)
+    reduced_θ = reducedform(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
     raw_prediction = JLD2.load("scenario.jld2")["forecasts"]
@@ -344,11 +344,11 @@ end
 
 ## Do
 
-tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_lag, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const_PC1)
+tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ, μϕ_const_PC1)
 JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
-estimation(; upper_lag, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date)
+estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date)
 
-results = inferences(; upper_lag, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
+results = inferences(; upper_p, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
 graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, mean_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction=results.saved_prediction)

@@ -1,10 +1,14 @@
 
 """
-post_kQ_infty(μkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
-* Input: yields should exclude initial observations. μkQ_infty is a prior variance.
-* Output: Posterior distribution itself
+    post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ, data_scale)
+# Output
+- Full conditional posterior distribution
 """
-function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ)
+function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ, data_scale)
+
+    dP = length(σ²FF)
+    p = Int(((size(ϕ, 2) - 1) / dP) - 1)
+    yields = yields[p+1:end, :]
 
     N = length(τₙ) # of maturities
     T = size(yields, 1) # length of dependent variables
@@ -19,7 +23,7 @@ function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, �
     a0 = zeros(τₙ[end])
     a1 = zeros(τₙ[end])
     for τ in 2:τₙ[end]
-        a0[τ] = a0[τ-1] - jensens_inequality(τ, bτ_, T1X_; ΩPP)
+        a0[τ] = a0[τ-1] - jensens_inequality(τ, bτ_, T1X_; ΩPP, data_scale)
         a1[τ] = a1[τ-1] + (τ - 1)
     end
     A0_kQ_infty = a0[τₙ] ./ τₙ
@@ -29,11 +33,11 @@ function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, �
     y = vec(OCs')
     y -= kron(ones(T), Wₒ * (I(N) - Bₓ_ / T1X_ * Wₚ) * A0_kQ_infty + Wₒ * Bₓ_ / T1X_ * mean_PCs)
     y -= vec(Bₚ_ * PCs')
-    y = y ./ kron(ones(T), sqrt.(1 ./ Σₒ))
+    y ./= kron(ones(T), sqrt.(Σₒ))
 
     # regressor
     X = Wₒ * (I(N) - Bₓ_ / T1X_ * Wₚ) * A1_kQ_infty
-    X = X ./ (sqrt.(1 ./ Σₒ))
+    X ./= sqrt.(Σₒ)
     X = kron(ones(T), X)
 
     kQ_infty_var = inv(X'X + (1 / (σkQ_infty^2)))
@@ -42,35 +46,41 @@ function post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, �
 end
 
 """
-post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ)
-* Input: data should exclude initial observations
-* Output: Posterior distribution itself
+    post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+# Input
+- `prior_κQ_` is a output of function `prior_κQ`.
+# Output 
+- Full conditional posterior distribution
 """
-function post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ)
+function post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+
     κQ_candidate = support(prior_κQ_)
 
     kern = Vector{Float64}(undef, length(κQ_candidate)) # Posterior kernel
 
     for i in eachindex(κQ_candidate)
         # likelihood of the measurement eq
-        kern[i] = loglik_mea(yields, τₙ; κQ=κQ_candidate[i], kQ_infty, ϕ, σ²FF, Σₒ)
+        kern[i] = loglik_mea(yields, τₙ; κQ=κQ_candidate[i], kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
     end
 
     kern .-= maximum(kern)
     Pr = exp.(kern)
-    Pr = Pr / sum(Pr)
+    Pr ./= sum(Pr)
 
     return DiscreteNonParametric(κQ_candidate, Pr)
 end
 
 """
-post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_, τₙ, Wₚ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
-* Posterior sampler for ϕ and σ²FF that are not sampled by the MH. 
-* Input: data should contain initial observations.
-* Output(2): ϕ, σ²FF
-    - It gives a posterior sample, and it is updated for the remaining elements that are not in MH block.
+    post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1, data_scale)
+Full-conditional posterior sampler for `ϕ` and `σ²FF` 
+# Input
+- `prior_κQ_` is a output of function `prior_κQ`.
+- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+# Output(3) 
+`ϕ`, `σ²FF`, `isaccept=Vector{Bool}(undef, dQ)`
+- It gives a posterior sample.
 """
-function post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1)
+function post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1, data_scale)
 
     dQ = dimQ()
     dP = size(ψ, 1)
@@ -92,8 +102,8 @@ function post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, �
             Vᵢ = var.(prior_ϕ_[i, 1:(1+p*dP+i-1)])
             prop_ϕ[i, 1:(1+p*dP+i-1)], prop_σ²FF[i] = NIG_NIG(yϕ[:, i], Xϕ[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_σ²FF_[i]), scale(prior_σ²FF_[i]))
 
-            prob = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=prop_ϕ, σ²FF=prop_σ²FF, Σₒ)
-            prob -= loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
+            prob = loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ=prop_ϕ, σ²FF=prop_σ²FF, Σₒ, data_scale)
+            prob -= loglik_mea(yields, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
 
             if rand() < min(1.0, exp(prob))
                 ϕ = deepcopy(prop_ϕ)
@@ -112,12 +122,13 @@ function post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, �
 end
 
 """
-NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
-* Normal-InverseGamma-Normal-InverseGamma update
-    - prior: β|σ² ~ MvNormal(β₀,σ²B₀), σ² ~ InverseGamma(α₀,δ₀)
-    - likelihood: y|β,σ² = Xβ + MvNormal(zeros(T,1),σ²I(T)) 
-* Output(2): β, σ²
-    - posterior sample
+    NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
+Normal-InverseGamma-Normal-InverseGamma update
+- prior: `β|σ² ~ MvNormal(β₀,σ²B₀)`, `σ² ~ InverseGamma(α₀,δ₀)`
+- likelihood: `y|β,σ² = Xβ + MvNormal(zeros(T,1),σ²I(T))`
+# Output(2)
+`β`, `σ²`
+- posterior sample
 """
 function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 
@@ -136,12 +147,13 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 end
 
 """
-post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
-* Posterior sampler for the measurement errors
-* Input: Data excludes initial observations
-* Output: Vector{Dist}(IG, N-dQ)
+    post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ, p, data_scale)
+Posterior sampler for the measurement errors
+# Output
+- `Vector{Dist}(IG, N-dQ)`
 """
-function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
+function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ, p, data_scale)
+    yields = yields[p+1:end, :]
 
     dQ = dimQ()
     N = length(τₙ)
@@ -153,7 +165,7 @@ function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
 
-    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP)
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP, data_scale)
     Aₓ_ = Aₓ(aτ_, τₙ)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
@@ -168,12 +180,11 @@ function post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP, γ)
 end
 
 """
-post_γ(; γ_bar, Σₒ)
-* Posterior sampler for the population measurement error
-* Input: γ_bar comes from function prior_γ.
-* Output: Vector{Dist}(Gamma,length(Σₒ))
+    post_γ(; γ_bar, Σₒ)
+Posterior sampler for the population measurement error
+# Output
+- `Vector{Dist}(Gamma,length(Σₒ))`
 """
-
 function post_γ(; γ_bar, Σₒ)
 
     N = length(Σₒ) # of measurement errors

@@ -6,18 +6,16 @@ import Base: getindex
 import Statistics: mean, median, std, var, quantile
 
 """
-* @kwdef struct Hyperparameter
-    - p::Int64
-    - q::Vector{Float64}
-    - ν0::Float64
-    - Ω0::Vector{Float64}
-* p: the lag of the transition equation
-* q: the degree of shrinkages of the intercept and the slope coefficient of the transition equation
-    - q[1]: shrinkages for the lagged dependent variable
-    - q[2]: shrinkages for cross variables
-    - q[3]: power of the lag shrinkage
-    - q[4]: shrinkages for the intercept
-* ν0(d.f.), Ω0(scale): hyper-parameters of the Inverse-Wishart prior distribution for the error covariance matrix in the transition equation
+    @kwdef struct Hyperparameter
+- `p::Int`
+- `q::Matrix`
+- `ν0`
+- `Ω0::Vector`
+- `μkQ_infty`
+- `σkQ_infty`
+- `μϕ_const::Vector = zeros(length(Ω0))`: It is a prior mean of a constant term in our VAR.
+- `fix_const_PC1::Bool = false`: When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 """
 @kwdef struct Hyperparameter
     p::Int
@@ -28,26 +26,24 @@ import Statistics: mean, median, std, var, quantile
     σkQ_infty
     μϕ_const::Vector = zeros(length(Ω0))
     fix_const_PC1::Bool = false
+    data_scale
 end
 
 """
-abstract type PosteriorSample
-* It contains structs, that are Parameter, LatentSpace, TermPremium, and Scenario.
+    abstract type PosteriorSample
+It is a super-set of structs `Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`.
 """
 abstract type PosteriorSample end
 
 """
-* @kwdef struct Parameter <: PosteriorSample
-    - κQ::Float64
-    - kQ_infty::Float64
-    - ϕ::Matrix{Float64}
-    - σ²FF::Vector{Float64}
-    - ηψ::Float64
-    - ψ::Matrix{Float64}
-    - ψ0::Vector{Float64}
-    - Σₒ::Vector{Float64}
-    - γ::Vector{Float64}
-* It contains statistical parameters of the model that are sampled from function "posterior_sampler".
+    @kwdef struct Parameter <: PosteriorSample
+It contains statistical parameters of the model that are sampled from function `posterior_sampler`.
+- `κQ::Float64`
+- `kQ_infty::Float64`
+- `ϕ::Matrix{Float64}`
+- `σ²FF::Vector{Float64}`
+- `Σₒ::Vector{Float64}`
+- `γ::Vector{Float64}`
 """
 @kwdef struct Parameter <: PosteriorSample
     κQ::Float64
@@ -57,125 +53,115 @@ abstract type PosteriorSample end
     Σₒ::Vector{Float64}
     γ::Vector{Float64}
 end
+
 """
-* struct ReducedForm <: PosteriorSample
-    - κQ::Float64
-    - kQ_infty::Float64
-    - KₚF::Vector{Float64}
-    - GₚFF::Matrix{Float64}
-    - ΩFF::Matrix{Float64}
-    - Σₒ::Vector{Float64}
-    - λP::Vector{Float64}
-    - ΛPF::Matrix{Float64}
-    - mpr::Matrix{Float64}
-* It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. λP and ΛPF are paramters in the market prices of risks equation, and they only contain non-zero elements. 
+    struct ReducedForm <: PosteriorSample 
+It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `λP` and `ΛPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
+- `κQ`
+- `kQ_infty`
+- `KₚF`
+- `GₚFF`
+- `ΩFF::Matrix`
+- `Σₒ::Vector`
+- `λP`
+- `ΛPF`
+- `mpr::Matrix(`market prices of risks`, T, dP)`
 """
 @kwdef struct ReducedForm <: PosteriorSample
-    κQ::Float64
-    kQ_infty::Float64
-    KₚF::Vector{Float64}
-    GₚFF::Matrix{Float64}
-    ΩFF::Matrix{Float64}
-    Σₒ::Vector{Float64}
-    λP::Vector{Float64}
-    ΛPF::Matrix{Float64}
-    mpr::Matrix{Float64}
+    κQ
+    kQ_infty
+    KₚF
+    GₚFF
+    ΩFF::Matrix
+    Σₒ::Vector
+    λP
+    ΛPF
+    mpr::Matrix
 end
 
 """
-* @kwdef struct LatentSpace <: PosteriorSample
-    - latents::Matrix{Float64}
-    - κQ::Float64
-    - kQ_infty::Float64
-    - KₚXF::Vector{Float64}
-    - GₚXFXF::Matrix{Float64}
-    - ΩXFXF::Matrix{Float64}
-* When the model goes to the JSZ latent factor space, the statistical parameters in struct Parameter are also transformed. This struct contains the transformed parameters.
-* Transformation: latent Xₜ = T0P_ + inv(T1X)*PCsₜ
-* Transition equation in the latent factor space
-    - data = [latent macros]
-    - data[t,:] = KₚXF + GₚXFXF*vec(data[t:-1:t-p+1]') + MvNormal(O,ΩXFXF)  
+    @kwdef struct LatentSpace <: PosteriorSample 
+When the model goes to the JSZ latent factor space, the statistical parameters in struct Parameter are also transformed. This struct contains the transformed parameters. Specifically, the transformation is `latents[t,:] = T0P_ + inv(T1X)*PCs[t,:]`. 
+
+In the latent factor space, the transition equation is `data[t,:] = KₚXF + GₚXFXF*vec(data[t-1:-1:t-p,:]') + MvNormal(O,ΩXFXF)`, where `data = [latent macros]`.
+- `latents::Matrix`
+- `κQ`
+- `kQ_infty`
+- `KₚXF::Vector`
+- `GₚXFXF::Matrix`
+- `ΩXFXF::Matrix`
 """
 @kwdef struct LatentSpace <: PosteriorSample
-    latents::Matrix{Float64}
-    κQ::Float64
-    kQ_infty::Float64
-    KₚXF::Vector{Float64}
-    GₚXFXF::Matrix{Float64}
-    ΩXFXF::Matrix{Float64}
+    latents::Matrix
+    κQ
+    kQ_infty
+    KₚXF::Vector
+    GₚXFXF::Matrix
+    ΩXFXF::Matrix
 end
 
 """
-* @kwdef struct YieldCurve <: PosteriorSample
-    - latents::Matrix{Float64}
-    - yields::VecOrMat{Float64}
-    - intercept::Union{Float64,Vector{Float64}}
-    - slope::Matrix{Float64}
-* It contains fitted yield curve.
-    - yields[t,:] = intercept + slope*latents[t,:]
+    @kwdef struct YieldCurve <: PosteriorSample 
+It contains a fitted yield curve. `yields[t,:] = intercept + slope*latents[t,:]` holds.
+- `latents::Matrix`: latent pricing factors in LatentSpace
+- `yields`
+- `intercept`
+- `slope`
 """
 @kwdef struct YieldCurve <: PosteriorSample
-    latents::Matrix{Float64}
-    yields::VecOrMat{Float64}
-    intercept::Union{Float64,Vector{Float64}}
-    slope::Matrix{Float64}
+    latents::Matrix
+    yields
+    intercept
+    slope
 end
 
 """
-* @kwdef struct TermPremium <: PosteriorSample
-    - TP::Vector{Float64}
-    - timevarying_TP::Matrix{Float64}
-    - const_TP::Float64
-    - jensen::Float64
-* It contains term premium estimates.
-* TP: term premium estimates of a specific maturity bond
-    - TP = timevarying_TP + const_TP + jensen
-* timevarying_TP: rows:time, cols:factors, values: contributions of factors on TP
-* const_TP: constant part in TP
-* jensen: the part due to the Jensen's inequality
+    @kwdef struct TermPremium <: PosteriorSample 
+It contains a estimated time series of a term premium for one maturity.
+- `TP::Vector`: term premium estimates of a specific maturity bond. `TP = timevarying_TP + const_TP + jensen` holds.
+- `timevarying_TP::Matrix`: rows:time, cols:factors, values: contributions of factors on TP
+- `const_TP::Float64`: constant part in TP
+- `jensen::Float64`: the part due to the Jensen's inequality
 """
 @kwdef struct TermPremium <: PosteriorSample
-    TP::Vector{Float64}
-    timevarying_TP::Matrix{Float64}
+    TP::Vector
+    timevarying_TP::Matrix
     const_TP::Float64
     jensen::Float64
 end
 
 """
-* @kwdef struct Scenario
-    - combinations::Array{Float64}
-    - values::Array{Float64}
-* It contains conditioning scenarios in the scenario analysis.
-* When y is a observed vector, combinations*y = values constitutes the scenario.
-    - Here, yₜ = [yields[t,:]; macros[t,:]]
-* Matrix combination[:,:,t] is the scenario at time t, and Vector values[:,t] is the conditioned value at time t.
-    - combinations[:,:,t]*yₜ = values[:,t] is the conditioned scenario at time t.
+    @kwdef struct Scenario
+It contains scenarios to be conditioned in the scenario analysis. When `y = [yields; macros]` is a observed vector in our measurement equation, `Scenario.combinations*y = Scenario.values` constitutes the scenario at a specific time. `Vector{Scenario}` is used to describe a time-series of scenarios.
+
+`combinations` and `values` should be `Matrix` and `Vector`. If `values` is a scalar, `combinations` would be a matrix with one raw vector and `values` should be one-dimensional vector, for example [values]. 
+- `combinations::Matrix`
+- `values::Vector`
 """
 @kwdef struct Scenario
-    combinations::Array{Float64}
-    values::Array{Float64}
+    combinations::Matrix
+    values::Vector
 end
 
 """
-* @kwdef struct Forecast <: PosteriorSample
-    - yields::Matrix{Float64}
-    - factors::Matrix{Float64}
-    - TP::Array{Float64}
-* It contains a result of the scenario analysis, the conditional prediction for yields, factors = [PCs macros], and term premiums.
-    - Prediction for the expectation hypothesis part = yields - TP
+    @kwdef struct Forecast <: PosteriorSample
+It contains a result of the scenario analysis, the conditional prediction for yields, `factors = [PCs macros]`, and term premiums.
+- `yields`
+- `factors`
+- `TP`: term premium forecasts
 """
 @kwdef struct Forecast <: PosteriorSample
-    yields::Matrix{Float64}
-    factors::Matrix{Float64}
-    TP::Matrix{Float64}
+    yields
+    factors
+    TP
 end
 
 include("utilities.jl") # utility functions
-include("theoretical.jl") # Theoretical results in GDTSM
+include("theoreticals.jl") # Theoretical results in GDTSM
 include("prior.jl") # Contains prior distributions of statistical parameters
 include("EB_marginal.jl") # Calculate the marginal likelihood of the transition VAR equation.
-include("empirical.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
-include("Gibbs.jl") # posterior sampler.
+include("empiricals.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
+include("gibbs.jl") # posterior sampler.
 include("scenario.jl") # scenario analysis
 include("inference.jl") # implementation part
 
@@ -183,7 +169,7 @@ export
     # EB_margianl.jl
     log_marginal,
 
-    # empirical.jl
+    # empiricals.jl
     loglik_mea,
     loglik_tran,
     isstationary,
@@ -193,8 +179,6 @@ export
     reducedform,
     ϕ_2_ϕ₀_C,
     calibration_μϕ_const,
-    calibration_σkQ_infty,
-    prior_const_TP,
 
     # GDTSM.jl
     Hyperparameter,
@@ -221,7 +205,7 @@ export
     # scenario.jl
     scenario_sampler,
 
-    # theoretical.jl
+    # theoreticals.jl
     GQ_XX,
     dimQ,
     term_premium,

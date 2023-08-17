@@ -1,31 +1,55 @@
 
 """
-tuning_hyperparameter(yields, macros, τₙ, ρ; gradient=false)
-* It derives the hyperparameters that maximize the marginal likelhood. First, the generating set search algorithm detemines the search range that do not make a final solution as a corner solution. Second, the evolutionary algorithm and Nelder-Mead algorithm find the global optimum. Lastly, the LBFGS algorithm calibrate the global optimum. 
-* Input: Data should contain initial observations.
-    - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables.
-    - If gradient == true, the LBFGS method is applied at the last.
-* Output: struct Hyperparameter
+    tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[])
+It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
+# Input
+- `populationsize` and `maxiter` is a option for the optimizer.
+- The lower bounds for `q` and `ν0` are `0` and `dP+2`. 
+- The upper bounds for `q`, `ν0` and VAR lag can be set by `upper_q`, `upper_ν0`, `upper_p`.
+    - Our default option for `upper_ν0` is the time-series length of the data.
+- If you use our default option for `μϕ_const`,
+    1. `μϕ_const[dQ+1:end]` is a zero vector.
+    2. `μϕ_const[1:dQ]` is calibrated to make a prior mean of `λₚ` a zero vector.
+    3. After step 2, `μϕ_const[1]` is replaced with `μϕ_const_PC1` if it is not empty.
+- `μϕ_const = Matrix(your prior, dP, upper_p)` 
+- `μϕ_const[:,i]` is a prior mean for the VAR(`i`) constant. Therefore μϕ_const is a matrix only in this function. In other functions, `μϕ_const` is a vector for the orthogonalized VAR system with your selected lag.
+- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+# Output(2)
+optimized Hyperparameter, optimization result
+- Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_lag=6, μϕ_const_PC1=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
     end
 
     dQ = dimQ()
-    dP = dQ + size(macros, 2)
+    if isempty(macros)
+        dP = dQ
+    else
+        dP = dQ + size(macros, 2)
+    end
+    if isempty(medium_τ_pr)
+        medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
+    end
+
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
-    ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1); upper_lag]
+    ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1); upper_p]
     if isempty(μϕ_const)
-        μϕ_const = Matrix{Float64}(undef, dP, upper_lag)
+        μϕ_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(μϕ_const, 2)
-            μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_lag-i+1:end, :], τₙ, i; medium_τ, iteration=10_000)[2] |> x -> mean(x, dims=1)[1, :]
+            μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr)[2] |> x -> mean(x, dims=1)[1, :]
             if !isempty(μϕ_const_PC1)
                 μϕ_const_PCs = [μϕ_const_PC1, μϕ_const_PCs[2], μϕ_const_PCs[3]]
             end
-            μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
-            @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_lag-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000)[1] |> mean
+            if isempty(macros)
+                μϕ_const[:, i] = deepcopy(μϕ_const_PCs)
+            else
+                μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
+            end
+            @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_p-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000, data_scale, medium_τ_pr)[1] |> mean
         end
     end
     starting = (lx + ux) ./ 2
@@ -39,24 +63,32 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
             input[3] input[7]
             input[4] input[8]]
         ν0 = input[9] + dP + 1
-        lag = Int(input[10])
+        p = Int(input[10])
 
-        PCs, ~, Wₚ = PCA(yields[(upper_lag-lag)+1:end, :], lag)
-        factors = [PCs macros[(upper_lag-lag)+1:end, :]]
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
+        if isempty(macros)
+            factors = PCs
+        else
+            factors = [PCs macros[(upper_p-p)+1:end, :]]
+        end
         Ω0 = Vector{Float64}(undef, dP)
         for i in eachindex(Ω0)
-            Ω0[i] = (AR_res_var(factors[:, i], lag)[1]) * input[9]
+            Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
         end
 
-        tuned = Hyperparameter(p=lag, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, lag], fix_const_PC1=fix_const_PC1)
-        return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], ρ, tuned, τₙ, Wₚ; medium_τ)
+        tuned = Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, p], fix_const_PC1=fix_const_PC1)
+        if isempty(macros)
+            return -log_marginal(factors, macros, ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr)
+        else
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr)
+        end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
     ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
-    opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q = $(best_candidate(x)[1:8]), ν0 = $(best_candidate(x)[9] + dP + 1)"))
+    opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), ν0 = $(best_candidate(x)[9] + dP + 1)"))
 
     q = [best_candidate(opt)[1] best_candidate(opt)[5]
         best_candidate(opt)[2] best_candidate(opt)[6]
@@ -65,22 +97,28 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     ν0 = best_candidate(opt)[9] + dP + 1
     p = best_candidate(opt)[10] |> Int
 
-    PCs = PCA(yields[(upper_lag-p)+1:end, :], p)[1]
-    factors = [PCs macros[(upper_lag-p)+1:end, :]]
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
+    if isempty(macros)
+        factors = PCs
+    else
+        factors = [PCs macros[(upper_p-p)+1:end, :]]
+    end
     Ω0 = Vector{Float64}(undef, dP)
     for i in eachindex(Ω0)
         Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
 
-    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, p], fix_const_PC1=fix_const_PC1), opt
+    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μkQ_infty=μkQ_infty, σkQ_infty=σkQ_infty, μϕ_const=μϕ_const[:, p], fix_const_PC1=fix_const_PC1, data_scale=data_scale), opt
 
 end
 
 """
-AR_res_var(TS::Vector, p)
-* It derives an MLE error variance estimate of an AR(p) model
-* Input: univariate time series TS and the lag p
-* output: residual variance estimate
+    AR_res_var(TS::Vector, p)
+It derives an MLE error variance estimate of an AR(`p`) model
+# Input
+- univariate time series `TS` and the lag `p`
+# output(2)
+residual variance estimate, AR(p) coefficients
 """
 function AR_res_var(TS::Vector, p)
     Y = TS[(p+1):end]
@@ -95,22 +133,33 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_; sparsity=false, medium_τ=12 * [1.5, 2, 2.5, 3, 3.5])
-* This is a posterior distribution sampler. It needs data and hyperparameters. 
-* Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
-    - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
-    - iteration: # of posterior samples
-* Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
+    posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[])
+This is a posterior distribution sampler.
+# Input
+- `iteration`: # of posterior samples
+- `tuned`: optimized hyperparameters used during estimation
+- `init_param`: starting point of the sampler. It should be a type of Parameter.
+# Output(2)
+`Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[])
 
-    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1) = Hyperparameter_
+    (; p, q, ν0, Ω0, μkQ_infty, σkQ_infty, μϕ_const, fix_const_PC1, data_scale) = tuned
     N = size(yields, 2) # of maturities
     dQ = dimQ()
-    dP = dQ + size(macros, 2)
+    if isempty(macros)
+        dP = dQ
+    else
+        dP = dQ + size(macros, 2)
+    end
+    if isempty(medium_τ_pr)
+        medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
+    end
     Wₚ = PCA(yields, p)[3]
-    prior_κQ_ = prior_κQ(medium_τ)
-    γ_bar = prior_γ(yields[(p+1):end, :])
+    prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
+    if isempty(γ_bar)
+        γ_bar = prior_γ(yields, p)
+    end
 
     if typeof(init_param) == Parameter
         (; κQ, kQ_infty, ϕ, σ²FF, Σₒ, γ) = init_param
@@ -139,14 +188,14 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
     saved_θ = Vector{Parameter}(undef, iteration)
     @showprogress 5 "Sampling the posterior..." for iter in 1:iteration
 
-        κQ = rand(post_κQ(yields[(p+1):end, :], prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ))
+        κQ = rand(post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ, data_scale))
 
-        kQ_infty = rand(post_kQ_infty(μkQ_infty, σkQ_infty, yields[(p+1):end, :], τₙ; κQ, ϕ, σ²FF, Σₒ))
+        kQ_infty = rand(post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ, data_scale))
 
-        ϕ, σ²FF, isaccept = post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1)
+        ϕ, σ²FF, isaccept = post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1, data_scale)
         isaccept_MH += isaccept
 
-        Σₒ = rand.(post_Σₒ(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ΩPP=ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF), γ))
+        Σₒ = rand.(post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP=ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF), γ, p, data_scale))
 
         γ = rand.(post_γ(; γ_bar, Σₒ))
 
@@ -158,16 +207,17 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, Hyperparameter_
 end
 
 """
-generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF)
-* This function generate a simulation data given parameters. 
-    -Note that all parameters are the things in the latent factor state space. There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in F in the VScode. And, "F" in my paper is expressed as XF.
-* Input: p is a lag of transition VAR, τₙ is a set of observed maturities
-* Output(3): yields, latents, macros
-    - yields = Matrix{Float64}(obs,T,length(τₙ))
-    - latents = Matrix{Float64}(obs,T,dimQ())
-    - macros = Matrix{Float64}(obs,T,dP - dimQ())
+    generative(T, dP, τₙ, p, noise::Float64; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF, data_scale=1200)
+This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
+# Input: 
+- noise = variance of the measurement errors
+# Output(3)
+`yields`, `latents`, `macros`
+- `yields = Matrix{Float64}(obs,T,length(τₙ))`
+- `latents = Matrix{Float64}(obs,T,dimQ())`
+- `macros = Matrix{Float64}(obs,T,dP - dimQ())`
 """
-function generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF)
+function generative(T, dP, τₙ, p, noise::Float64; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF, data_scale=1200)
     N = length(τₙ) # of observed maturities
     dQ = dimQ() # of latent factors
 
@@ -186,24 +236,27 @@ function generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF)
     Bₓ_ = Bₓ(bτ_, τₙ)
 
     ΩXX = ΩXFXF[1:dQ, 1:dQ]
-    aτ_ = aτ(τₙ[end], bτ_; kQ_infty, ΩXX)
+    aτ_ = aτ(τₙ[end], bτ_; kQ_infty, ΩXX, data_scale)
     Aₓ_ = Aₓ(aτ_, τₙ)
 
     yields = Matrix{Float64}(undef, T, N)
     for t = 1:T
-        yields[t, :] = (Aₓ_ + Bₓ_ * XF[t, 1:dQ])' + rand(Normal(0, sqrt(0.01)), N)'
+        yields[t, :] = (Aₓ_ + Bₓ_ * XF[t, 1:dQ])' + rand(Normal(0, sqrt(noise)), N)'
     end
 
     return yields, XF[:, 1:dQ], XF[:, (dQ+1):end]
 end
 
 """
-ineff_factor(saved_θ)
-* It returns inefficiency factors of each parameter
-* Input: posterior sample matrix from the Gibbs sampler
-* Output: Vector{Float64}(inefficiency factors, # of parameters)
+    ineff_factor(saved_θ)
+It returns inefficiency factors of each parameter
+# Input
+- `Vector{Parameter}` from posterior_sampler
+# Output
+- Estimated inefficiency factors are in Tuple(`κQ`, `kQ_infty`, `γ`, `Σₒ`, `σ²FF`, `ϕ`). For example, if you want to load an inefficiency factor of `ϕ`, you can use `Output.ϕ`.
+- If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.ϕ[1,1]` can be weird. So you should ignore it.
 """
-function ineff_factor(saved_θ; fix_const_PC1=false)
+function ineff_factor(saved_θ)
 
     iteration = length(saved_θ)
 
@@ -244,9 +297,6 @@ function ineff_factor(saved_θ; fix_const_PC1=false)
     finish!(prog)
 
     ϕ_ineff = ineff[2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)+1:end] |> x -> reshape(x, size(saved_θ[:ϕ][1], 1), size(saved_θ[:ϕ][1], 2))
-    if fix_const_PC1
-        ϕ_ineff[1, 1] = 0
-    end
     dP = size(ϕ_ineff, 1)
     for i in 1:dP, j in i:dP
         ϕ_ineff[i, end-dP+j] = 0

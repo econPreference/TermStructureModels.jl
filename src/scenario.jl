@@ -1,21 +1,21 @@
 """
-scenario\\_sampler(S::Scenario, τ, horizon, saved\\_θ, yields, macros, τₙ)
-* Input: scenarios, a result of the posterior sampler, and data 
-    - Data includes initial observations
-    - S = Vector{Matrix}(scenario[t], period length of the scenario) 
-    - S[t] = Matrix{Float64}([S s][row,col], # of scenarios, N + dP - dQ), where S is a linear combination coefficient matrix and s is a vector of conditional values.
-    - If we need an unconditional prediction, S = [].
-    - τ is a maturity that a term premium of interest has.
-    - horizon: maximum length of the predicted path
-* Output: Vector{Dict}(scenario, iteration)
-    - "predicted\\_yields", "predicted\\_factors", "predicted_TP" ∈ Output
-    - element = Matrix{Float64}(scenario,horizon,dP or N or 1)
-    - function "load\\_object" can be applied
+    scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale)
+# Input
+scenarios, a result of the posterior sampler, and data 
+- `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
+- If we need an unconditional prediction, `S = []`.
+- `τ` is a vector of maturities that term premiums of interest has.
+- `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
+- `saved_θ`: the first output of function `posterior_sampler`.
+- `mean_macros`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
+# Output
+- `Vector{Forecast}(, iteration)`
+- `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 """
-function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[])
+function scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="Predicting scenarios...")
+    prog = Progress(iteration; dt=5, desc="Predicting using scenarios...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -24,7 +24,7 @@ function scenario_sampler(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
 
-        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros)
+        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
         scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
 
@@ -37,12 +37,9 @@ end
 
 
 """
-_scenario_sampler(S::Scenario, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ)
-* Input: Data includes initial observations, τ is a maturity that a term premium of interest has.
-* Output(3): spanned_yield, spanned_F, predicted_TP
-    - Matrix{Float64}(scenario,horizon,dP or N or 1)
+    _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 """
-function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros)
+function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
@@ -54,54 +51,59 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     N = length(τₙ)
     dQ = dimQ()
     dP = size(ΩFF, 1)
-    k = size(GₚFF, 2) + N # of factors in the companion from
-    p = Int((k - N) / dP)
+    k = size(GₚFF, 2) + N - dQ # of factors in the companion from
+    p = Int(size(GₚFF, 2) / dP)
     if S != []
         dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
     else
         dh = 0
     end
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    W = [Wₒ; Wₚ]
+    W_inv = inv(W)
 
     if isempty(mean_macros)
         mean_macros = zeros(dP - dQ)
     end
 
-    data = [PCs macros]
+    if isempty(macros)
+        data = PCs
+    else
+        data = [PCs macros]
+    end
     T = size(data, 1)
 
     bτ_ = bτ(τₙ[end]; κQ)
     Bₓ_ = Bₓ(bτ_, τₙ)
-    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ])
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, τₙ)
     T1X_ = T1X(Bₓ_, Wₚ)
     T1P_ = inv(T1X_)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-    Σᵣ = [Wₚ; Wₒ] \ [diagm(minimum(Σₒ) .* rand(dQ) .+ eps()) zeros(dQ, N - dQ); zeros(N - dQ, dQ) diagm(Σₒ)] / [Wₚ' Wₒ'] |> Symmetric
 
     if dh > 0
         ## Construct the Kalman filter parameters
         # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
         μT = [KₚF
-            zeros(N + dP * (p - 1))]
-        G = [GₚFF[:, 1:dP] zeros(dP, N) GₚFF[:, dP+1:end]
-            zeros(N, dP * p + N)
-            I(dP) zeros(dP, dP * p - dP + N)
-            zeros(dP * p - 2dP, dP + N) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
-        Ω = zeros(dP * p + N, dP * p + N)
+            zeros(N - dQ + dP * (p - 1))]
+        G = [GₚFF[:, 1:dP] zeros(dP, N - dQ) GₚFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+        Ω = zeros(dP * p + N - dQ, dP * p + N - dQ)
         Ω[1:dP, 1:dP] = ΩFF
-        Ω[dP+1:dP+N, dP+1:dP+N] = Σᵣ
+        Ω[dP+1:dP+N-dQ, dP+1:dP+N-dQ] = Σₒ
         # Measurement equation: Y(t) = μM + H*F(t), where Y(t): N + (dP-dQ) vector
         μM = [Aₓ_ + Bₓ_ * T0P_
             zeros(dP - dQ, 1)]
-        H = [Bₓ_*T1P_ zeros(N, dP - dQ) I(N) zeros(N, dP * p - dP)
-            zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p - dP + N)]
+        H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p - dP)
+            zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p - dP + N - dQ)]
 
         ## Kalman filtering step
         f_ttm = zeros(k, 1, dh)
         P_ttm = zeros(k, k, dh)
-        mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ]
-        f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; mea_error; x[dP+1:end]]
+        W_mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
+        f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dQ]; x[dP+1:end]]
         P_ll = zeros(k, k)
         for t = 1:dh
 
@@ -134,47 +136,41 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
         end
 
         ## Backward recursion
-        predicted_F = zeros(dh, dP + N)  # T by k
+        predicted_F = zeros(dh, dP + N - dQ)  # T by k
         predicted_yield = zeros(dh, N)
 
         # beta(T|T) sampling
-        P_tt = P_ttm[1:dP+N, 1:dP+N, dh] |> Symmetric |> Array # k by k
-        f_tt = f_ttm[1:dP+N, 1, dh] # k by 1
+        P_tt = P_ttm[1:dP+N-dQ, 1:dP+N-dQ, dh] |> Symmetric |> Array # k by k
+        f_tt = f_ttm[1:dP+N-dQ, 1, dh] # k by 1
 
         ft = deepcopy(f_tt)
         idx = diag(P_tt) .> eps()
-        while !isposdef(P_tt[idx, idx])
-            P_tt[idx, idx] += eps() * I(sum(idx))
-        end
         ft[idx] = MvNormal(f_tt[idx], P_tt[idx, idx]) |> rand
         predicted_F[dh, :] = ft
-        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:end]
+        predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + W_inv * [ft[dP+1:end]; zeros(dQ)]
 
         for t in (dh-1):-1:1
 
             f_tt = f_ttm[:, 1, t]
             P_tt = P_ttm[:, :, t]
 
-            GPG_Q = G[1:dP+N, :] * P_tt * G[1:dP+N, :]' + Ω[1:dP+N, 1:dP+N] |> Symmetric # P[t+1|t], k by k
+            GPG_Q = G[1:dP+N-dQ, :] * P_tt * G[1:dP+N-dQ, :]' + Ω[1:dP+N-dQ, 1:dP+N-dQ] |> Symmetric # P[t+1|t], k by k
 
-            e_tl = predicted_F[t+1, :] - μT[1:dP+N] - G[1:dP+N, :] * f_tt
+            e_tl = predicted_F[t+1, :] - μT[1:dP+N-dQ] - G[1:dP+N-dQ, :] * f_tt
 
-            PGG = P_tt * G[1:dP+N, :]' / GPG_Q
-            f_tt1 = f_tt + PGG * e_tl |> x -> x[1:dP+N]
+            PGG = P_tt * G[1:dP+N-dQ, :]' / GPG_Q
+            f_tt1 = f_tt + PGG * e_tl |> x -> x[1:dP+N-dQ]
 
-            PGP = PGG * G[1:dP+N, :] * P_tt
-            P_tt1 = P_tt - PGP |> Symmetric |> x -> x[1:dP+N, 1:dP+N] |> Array
+            PGP = PGG * G[1:dP+N-dQ, :] * P_tt
+            P_tt1 = P_tt - PGP |> Symmetric |> x -> x[1:dP+N-dQ, 1:dP+N-dQ] |> Array
 
             # beta(t|t+1) sampling
             ft = deepcopy(f_tt1)
             idx = diag(P_tt1) .> eps()
-            while !isposdef(P_tt1[idx, idx])
-                P_tt1[idx, idx] += eps() * I(sum(idx))
-            end
             ft[idx] = MvNormal(f_tt1[idx], P_tt1[idx, idx]) |> rand
 
             predicted_F[t, :] = ft
-            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + ft[dP+1:end]
+            predicted_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + W_inv * [ft[dP+1:end]; zeros(dQ)]
         end
     end
 
@@ -189,7 +185,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     for t in (T+dh+1):(T+horizon) # predicted period
         X = spanned_factors[t-1:-1:t-p, :] |> (X -> vec(X'))
         spanned_factors[t, :] = KₚF + GₚFF * X + rand(MvNormal(zeros(dP), ΩFF))
-        mea_error = [Wₚ; Wₒ] \ [zeros(dQ); rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ))))]
+        mea_error = W_inv * [rand(MvNormal(zeros(N - dQ), Matrix(diagm(Σₒ)))); zeros(dQ)]
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
@@ -197,7 +193,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     else
         predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
-            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ])[1]
+            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)[1]
         end
     end
 

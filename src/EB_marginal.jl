@@ -1,19 +1,23 @@
 """
-log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
-* This file derives hyper-parameters for priors. The marginal likelihood for the transition equation is maximized at the selected hyperparameters. 
-* Input: Data should contain initial observations. 
-    * ρ only indicates macro variables' persistencies.
-    * medium_τ is a vector of representative medium maturities that are used for constructing prior for κQ.
-*Output: the log marginal likelihood of the VAR system.
+    log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr)
+This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
+# Input
+- tuned is a point where the marginal likelihood is evaluated. 	
+- `ψ0` and `ψ` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[ψ0 ψ][i,j]` is corresponds to `ϕ[i,j]`. 
+# Output
+- the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ)
+function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr)
 
-    (; p, ν0, Ω0, q, μϕ_const, fix_const_PC1) = Hyperparameter_
+    (; p, ν0, Ω0, q, μϕ_const, fix_const_PC1) = tuned
 
-    prior_κQ_ = prior_κQ(medium_τ)
+    prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
     dP = length(Ω0)
-    if isempty(ψ) || isempty(ψ0)
+
+    if isempty(ψ)
         ψ = ones(dP, dP * p)
+    end
+    if isempty(ψ0)
         ψ0 = ones(dP)
     end
 
@@ -53,21 +57,21 @@ function log_marginal(PCs, macros, ρ, Hyperparameter_::Hyperparameter, τₙ, W
 end
 
 """
-ν(i, dP; ν0)
+    ν(i, dP; ν0)
 """
 function ν(i, dP; ν0)
     return (ν0 + i - dP) / 2
 end
 
 """
-S(i; Ω0)
+    S(i; Ω0)
 """
 function S(i; Ω0)
     return Ω0[i] / 2
 end
 
 """
-Kϕ(i, V, Xϕ, dP)
+    Kϕ(i, V, Xϕ, dP)
 """
 function Kϕ(i, V, Xϕ, dP)
     Xϕᵢ = Xϕ[:, 1:(end-dP+i-1)]
@@ -76,7 +80,7 @@ function Kϕ(i, V, Xϕ, dP)
 end
 
 """
-ϕ_hat(i, m, V, yϕ, Xϕ, dP)
+    ϕ_hat(i, m, V, yϕ, Xϕ, dP)
 """
 function ϕ_hat(i, m, V, yϕ, Xϕ, dP)
     Kϕᵢ = Kϕ(i, V, Xϕ, dP)
@@ -89,7 +93,7 @@ function ϕ_hat(i, m, V, yϕ, Xϕ, dP)
 end
 
 """
-S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
+    S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
 """
 function S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
 
