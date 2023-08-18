@@ -58,7 +58,6 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     starting = (lx + ux) ./ 2
     starting[end] = 1
 
-    PCs, ~, Wₚ = PCA(yields[(upper_p-1)+1:end, :], 1)
     function negative_log_marginal(input)
 
         # parameters
@@ -69,6 +68,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         ν0 = input[9] + dP + 1
         p = Int(input[10])
 
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
         if isempty(macros)
             factors = deepcopy(PCs)
         else
