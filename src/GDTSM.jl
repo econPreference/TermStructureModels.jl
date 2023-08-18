@@ -47,7 +47,7 @@ It contains statistical parameters of the model that are sampled from function `
 end
 
 """
-    struct ReducedForm <: PosteriorSample 
+    @kwdef struct ReducedForm <: PosteriorSample
 It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `λP` and `ΛPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
 - `κQ`
 - `kQ_infty`

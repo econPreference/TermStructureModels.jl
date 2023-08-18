@@ -1,5 +1,5 @@
 """
-    log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr)
+    log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
 This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
 # Input
 - tuned is a point where the marginal likelihood is evaluated. 	

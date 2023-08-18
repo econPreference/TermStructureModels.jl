@@ -67,7 +67,7 @@ This function generate the dependent variable and the corresponding regressors i
 function yϕ_Xϕ(PCs, macros, p)
 
     if isempty(macros)
-        data = PCs
+        data = deepcopy(PCs)
     else
         data = [PCs macros]
     end
@@ -197,7 +197,7 @@ function stationary_θ(saved_θ)
         GₚFF = ϕ0[:, 2:end]
 
         if isstationary(GₚFF)
-            push!(stationary_saved_θ, Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, Σₒ=Σₒ, γ=γ))
+            push!(stationary_saved_θ, Parameter(κQ=deepcopy(κQ), kQ_infty=deepcopy(kQ_infty), ϕ=deepcopy(ϕ), σ²FF=deepcopy(σ²FF), Σₒ=deepcopy(Σₒ), γ=deepcopy(γ)))
         end
         next!(prog)
     end
@@ -221,7 +221,7 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     if isempty(macros)
-        factors = PCs
+        factors = deepcopy(PCs)
     else
         factors = [PCs macros]
     end
@@ -263,7 +263,7 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
             Ft = factors'[:, t:-1:t-p+1] |> vec
             mpr[t-p, :] = cholesky(ΩFF).L \ [λP + ΛPF * Ft; zeros(dP - dQ)]
         end
-        reduced_θ[iter] = ReducedForm(κQ=κQ, kQ_infty=kQ_infty, KₚF=KₚF, GₚFF=GₚFF, ΩFF=ΩFF, Σₒ=Σₒ, λP=λP, ΛPF=ΛPF, mpr=mpr)
+        reduced_θ[iter] = ReducedForm(κQ=deepcopy(κQ), kQ_infty=deepcopy(kQ_infty), KₚF=deepcopy(KₚF), GₚFF=deepcopy(GₚFF), ΩFF=deepcopy(ΩFF), Σₒ=deepcopy(Σₒ), λP=deepcopy(λP), ΛPF=deepcopy(ΛPF), mpr=deepcopy(mpr))
 
         next!(prog)
     end

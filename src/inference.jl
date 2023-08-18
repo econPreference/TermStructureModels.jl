@@ -27,7 +27,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
 
     dQ = dimQ()
     if isempty(macros)
-        dP = dQ
+        dP = deepcopy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
@@ -67,7 +67,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
 
         PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
         if isempty(macros)
-            factors = PCs
+            factors = deepcopy(PCs)
         else
             factors = [PCs macros[(upper_p-p)+1:end, :]]
         end
@@ -76,7 +76,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
             Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
         end
 
-        tuned = Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μϕ_const=μϕ_const[:, p])
+        tuned = Hyperparameter(p=deepcopy(p), q=deepcopy(q), ν0=deepcopy(ν0), Ω0=deepcopy(Ω0), μϕ_const=deepcopy(μϕ_const[:, p]))
         if isempty(macros)
             return -log_marginal(factors, macros, ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr, fix_const_PC1)
         else
@@ -99,7 +99,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
 
     PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
     if isempty(macros)
-        factors = PCs
+        factors = deepcopy(PCs)
     else
         factors = [PCs macros[(upper_p-p)+1:end, :]]
     end
@@ -108,7 +108,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
 
-    return Hyperparameter(p=p, q=q, ν0=ν0, Ω0=Ω0, μϕ_const=μϕ_const[:, p]), opt
+    return Hyperparameter(p=deepcopy(p), q=deepcopy(q), ν0=deepcopy(ν0), Ω0=deepcopy(Ω0), μϕ_const=deepcopy(μϕ_const[:, p])), opt
 
 end
 
@@ -133,7 +133,7 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[])
+    posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[], μkQ_infty=0, σkQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 This is a posterior distribution sampler.
 # Input
 - `iteration`: # of posterior samples
@@ -148,7 +148,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperpar
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     if isempty(macros)
-        dP = dQ
+        dP = deepcopy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
@@ -199,7 +199,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperpar
 
         γ = rand.(post_γ(; γ_bar, Σₒ))
 
-        saved_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, Σₒ=Σₒ, γ=γ)
+        saved_θ[iter] = Parameter(κQ=deepcopy(κQ), kQ_infty=deepcopy(kQ_infty), ϕ=deepcopy(ϕ), σ²FF=deepcopy(σ²FF), Σₒ=deepcopy(Σₒ), γ=deepcopy(γ))
 
     end
 
@@ -307,6 +307,6 @@ function ineff_factor(saved_θ)
         γ=ineff[2+1:2+length(init_γ)],
         Σₒ=ineff[2+length(init_γ)+1:2+length(init_γ)+length(init_Σₒ)],
         σ²FF=ineff[2+length(init_γ)+length(init_Σₒ)+1:2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)],
-        ϕ=ϕ_ineff
+        ϕ=deepcopy(ϕ_ineff)
     )
 end

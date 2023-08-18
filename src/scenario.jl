@@ -1,9 +1,9 @@
 """
-    scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale)
+    scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale=1200)
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
-- If we need an unconditional prediction, `S = []`.
+    - If we need an unconditional prediction, `S = []`.
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_θ`: the first output of function `posterior_sampler`.
@@ -12,7 +12,7 @@ scenarios, a result of the posterior sampler, and data
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 """
-function scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale)
+function scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="Predicting using scenarios...")
@@ -26,7 +26,7 @@ function scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, ma
 
         spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
-        scenarios[iter] = Forecast(yields=spanned_yield, factors=spanned_F, TP=predicted_TP)
+        scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
 
         next!(prog)
     end
@@ -67,7 +67,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
     end
 
     if isempty(macros)
-        data = PCs
+        data = deepcopy(PCs)
     else
         data = [PCs macros]
     end
@@ -92,7 +92,7 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
             zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
         Ω = zeros(dP * p + N - dQ, dP * p + N - dQ)
         Ω[1:dP, 1:dP] = ΩFF
-        Ω[dP+1:dP+N-dQ, dP+1:dP+N-dQ] = Σₒ
+        Ω[dP+1:dP+N-dQ, dP+1:dP+N-dQ] = diagm(Σₒ)
         # Measurement equation: Y(t) = μM + H*F(t), where Y(t): N + (dP-dQ) vector
         μM = [Aₓ_ + Bₓ_ * T0P_
             zeros(dP - dQ, 1)]
@@ -145,6 +145,9 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
 
         ft = deepcopy(f_tt)
         idx = diag(P_tt) .> eps()
+        while !isposdef(P_tt[idx, idx])
+            P_tt[idx, idx] += eps() * I(sum(idx))
+        end
         ft[idx] = MvNormal(f_tt[idx], P_tt[idx, idx]) |> rand
         predicted_F[dh, :] = ft
         predicted_yield[dh, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * ft[1:dQ] + W_inv * [ft[dP+1:end]; zeros(dQ)]
@@ -167,6 +170,9 @@ function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty,
             # beta(t|t+1) sampling
             ft = deepcopy(f_tt1)
             idx = diag(P_tt1) .> eps()
+            while !isposdef(P_tt1[idx, idx])
+                P_tt1[idx, idx] += eps() * I(sum(idx))
+            end
             ft[idx] = MvNormal(f_tt1[idx], P_tt1[idx, idx]) |> rand
 
             predicted_F[t, :] = ft

@@ -202,7 +202,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, G
     T1P_Λ_PF = T1P_ * Λ_PF
 
     if isempty(macros)
-        factors = PCs
+        factors = deepcopy(PCs)
     else
         factors = [PCs macros]
     end
@@ -274,7 +274,7 @@ function term_premium(τ, τₙ, saved_θ, yields, macros; data_scale=1200)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)
 
-        saved_TP[iter] = TermPremium(TP=TP[:, 1], timevarying_TP=timevarying_TP, const_TP=const_TP, jensen=jensen)
+        saved_TP[iter] = TermPremium(TP=deepcopy(TP[:, 1]), timevarying_TP=deepcopy(timevarying_TP), const_TP=deepcopy(const_TP), jensen=deepcopy(jensen))
 
         next!(prog)
     end
@@ -312,7 +312,7 @@ function latentspace(saved_θ, yields, τₙ; data_scale=1200)
         ΩFF = (C \ diagm(σ²FF)) / C'
 
         latent, κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF = PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF, data_scale)
-        saved_θ_latent[iter] = LatentSpace(latents=latent, κQ=κQ, kQ_infty=kQ_infty, KₚXF=KₚXF, GₚXFXF=GₚXFXF, ΩXFXF=ΩXFXF)
+        saved_θ_latent[iter] = LatentSpace(latents=deepcopy(latent), κQ=deepcopy(κQ), kQ_infty=deepcopy(kQ_infty), KₚXF=deepcopy(KₚXF), GₚXFXF=deepcopy(GₚXFXF), ΩXFXF=deepcopy(ΩXFXF))
 
         next!(prog)
     end
@@ -410,10 +410,10 @@ function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace}; data_scale=1200)
         Aₓ_ = Aₓ(aτ_, τ0)
 
         YieldCurve_[iter] = YieldCurve(
-            latents=latents,
-            yields=(Aₓ_ .+ Bₓ_ * latents')' |> Matrix,
-            intercept=Aₓ_,
-            slope=Bₓ_
+            latents=deepcopy(latents),
+            yields=deepcopy((Aₓ_ .+ Bₓ_ * latents')' |> Matrix),
+            intercept=deepcopy(Aₓ_),
+            slope=deepcopy(Bₓ_)
         )
 
         next!(prog)
