@@ -3,6 +3,7 @@
     tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[])
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
 # Input
+- When we compare marginal_likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on upper_p. For example, if upper_p = 3, yields[4:end,:] and macros[4:end,:] are the data for our dependent variable. yields[1:3,:] and macros[1:3,:] are used for setting initial observations for all lags.
 - `populationsize` and `maxiter` is a option for the optimizer.
 - The lower bounds for `q` and `ν0` are `0` and `dP+2`. 
 - The upper bounds for `q`, `ν0` and VAR lag can be set by `upper_q`, `upper_ν0`, `upper_p`.
@@ -19,7 +20,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[], init_ν0=[])
 
     if isempty(upper_ν0) == true
         upper_ν0 = size(yields, 1)
@@ -34,13 +35,16 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     if isempty(medium_τ_pr)
         medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
     end
+    if isempty(init_ν0)
+        init_ν0 = dP + 2
+    end
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1); upper_p]
     if isempty(μϕ_const)
         μϕ_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(μϕ_const, 2)
-            μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr)[2] |> x -> mean(x, dims=1)[1, :]
+            @show μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr) |> x -> mean(x, dims=1)[1, :]
             if !isempty(μϕ_const_PC1)
                 μϕ_const_PCs = [μϕ_const_PC1, μϕ_const_PCs[2], μϕ_const_PCs[3]]
             end
@@ -49,12 +53,12 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
             else
                 μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
             end
-            @show calibration_μϕ_const(μkQ_infty, σkQ_infty, 120, yields[upper_p-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000, data_scale, medium_τ_pr)[1] |> mean
         end
     end
     starting = (lx + ux) ./ 2
     starting[end] = 1
 
+    PCs, ~, Wₚ = PCA(yields[(upper_p-1)+1:end, :], 1)
     function negative_log_marginal(input)
 
         # parameters
@@ -65,7 +69,6 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
         ν0 = input[9] + dP + 1
         p = Int(input[10])
 
-        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
         if isempty(macros)
             factors = deepcopy(PCs)
         else

@@ -33,7 +33,8 @@ yields, latents, macros = generative(T, dP, τₙ, p, 0.01; κQ, kQ_infty, KₚX
 diag_G = diag_G[dimQ()+1:end]
 ρ = zeros(dP - dimQ())
 ρ[diag_G.>0.5] .= 1.0
-tuned, opt = tuning_hyperparameter(yields, macros, τₙ, ρ; maxiter=1000, upper_p=4)
+init_ν0 = dP + 10
+tuned, opt = tuning_hyperparameter(yields, macros, τₙ, ρ; maxiter=1000, upper_p=4, init_ν0)
 
 ## Estimating
 iteration = 10_000

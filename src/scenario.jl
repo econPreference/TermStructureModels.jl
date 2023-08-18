@@ -1,5 +1,5 @@
 """
-    scenario_sampler(S::Vector{Scenario}, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale=1200)
+    scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -7,12 +7,12 @@ scenarios, a result of the posterior sampler, and data
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_θ`: the first output of function `posterior_sampler`.
-- `mean_macros`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
+- `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 """
-function scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros=[], data_scale=1200)
+function scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="Predicting using scenarios...")

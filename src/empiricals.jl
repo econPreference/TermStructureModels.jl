@@ -273,19 +273,30 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
 end
 
 """
-    calibration_μϕ_const(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
+    calibration_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
-- `μϕ_const_PCs` is your prior mean of the first `dQ` constants.
-# Output(2) 
-prior samples of a constant term in the 10-year term premium, prior samples of `λₚ` 
+- `μϕ_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
+_ iteration is the number of prior samples.
+# Output
+- samples from the prior distribution of `λₚ` 
 """
-
-function calibration_μϕ_const(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
+function calibration_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
 
     dQ = dimQ()
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
-    ΩPP = diagm([AR_res_var(PCs[:, i], p)[1] for i in 1:dQ])
+
+    if isempty(macros)
+        factors = deepcopy(PCs)
+    else
+        factors = [PCs macros]
+    end
+    dP = size(factors, 2)
+    ΩFF_mean = Vector{Float64}(undef, dP)
+    for i in eachindex(ΩFF_mean)
+        ΩFF_mean[i] = AR_res_var(factors[:, i], p)[1]
+    end
+
     if isempty(μϕ_const_PCs)
         μϕ_const_PCs = zeros(dQ)
     end
@@ -293,9 +304,9 @@ function calibration_μϕ_const(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μ
         medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
     end
 
-    prior_TP = Vector{Float64}(undef, iteration)
     prior_λₚ = Matrix{Float64}(undef, iteration, dQ)
     for iter in 1:iteration
+        ΩPP = (ν0 - dP - 1) * diagm(ΩFF_mean) |> x -> InverseWishart(ν0, x) |> rand |> x -> x[1:dQ, 1:dQ]
         κQ = prior_κQ(medium_τ, medium_τ_pr) |> rand
         kQ_infty = Normal(μkQ_infty, σkQ_infty) |> rand
 
@@ -307,23 +318,14 @@ function calibration_μϕ_const(μkQ_infty, σkQ_infty, τ, yields, τₙ, p; μ
         Aₓ_ = Aₓ(aτ_, τₙ)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        # Jensen's Ineqaulity term
-        jensen = 0
-        for i = 1:(τ-1)
-            jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP, data_scale)
-        end
-        jensen /= -τ
-
         # Constant term
         KQ_X = zeros(dQ)
         KQ_X[1] = kQ_infty
         KQ_P = T1X_ * (KQ_X + (GQ_XX(; κQ) - I(dQ)) * T0P_)
-        λₚ = μϕ_const_PCs - KQ_P
-        prior_λₚ[iter, :] = λₚ
+        prior_λₚ[iter, :] = μϕ_const_PCs - KQ_P
 
-        prior_TP[iter] = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1X_ \ λₚ) |> x -> (-x[1] / τ) + jensen
     end
 
-    return prior_TP, prior_λₚ
+    return prior_λₚ
 
 end
