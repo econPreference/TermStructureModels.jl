@@ -1,109 +1,127 @@
 
 """
-tuning_hyperparameter(yields, macros, ρ; gradient=false)
-* It derives the hyperparameters that maximize the marginal likelhood. First, the generating set search algorithm detemines the search range that do not make a final solution as a corner solution. Second, the evolutionary algorithm and Nelder-Mead algorithm find the global optimum. Lastly, the LBFGS algorithm calibrate the global optimum. 
-* Input: Data should contain initial observations.
-    - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables.
-    - If gradient == true, the LBFGS method is applied at the last.
-* Output: struct HyperParameter
+    tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[])
+It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
+# Input
+- When we compare marginal_likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on upper_p. For example, if upper_p = 3, yields[4:end,:] and macros[4:end,:] are the data for our dependent variable. yields[1:3,:] and macros[1:3,:] are used for setting initial observations for all lags.
+- `populationsize` and `maxiter` is a option for the optimizer.
+- The lower bounds for `q` and `ν0` are `0` and `dP+2`. 
+- The upper bounds for `q`, `ν0` and VAR lag can be set by `upper_q`, `upper_ν0`, `upper_p`.
+    - Our default option for `upper_ν0` is the time-series length of the data.
+- If you use our default option for `μϕ_const`,
+    1. `μϕ_const[dQ+1:end]` is a zero vector.
+    2. `μϕ_const[1:dQ]` is calibrated to make a prior mean of `λₚ` a zero vector.
+    3. After step 2, `μϕ_const[1]` is replaced with `μϕ_const_PC1` if it is not empty.
+- `μϕ_const = Matrix(your prior, dP, upper_p)` 
+- `μϕ_const[:,i]` is a prior mean for the VAR(`i`) constant. Therefore μϕ_const is a matrix only in this function. In other functions, `μϕ_const` is a vector for the orthogonalized VAR system with your selected lag.
+- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+# Output(2)
+optimized Hyperparameter, optimization result
+- Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, ρ; gradient=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, maxiter=10_000, medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], upper_q=[1 1; 1 1; 10 10; 100 100], μkQ_infty=0, σkQ_infty=0.1, upper_ν0=[], μϕ_const=[], fix_const_PC1=false, upper_p=18, μϕ_const_PC1=[], data_scale=1200, medium_τ_pr=[], init_ν0=[])
+
+    if isempty(upper_ν0) == true
+        upper_ν0 = size(yields, 1)
+    end
 
     dQ = dimQ()
-    dP = dQ + size(macros, 2)
-    p_max = 4 # initial guess for the maximum lag
-    prior_κQ_ = prior_κQ(medium_τ)
+    if isempty(macros)
+        dP = deepcopy(dQ)
+    else
+        dP = dQ + size(macros, 2)
+    end
+    if isempty(medium_τ_pr)
+        medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
+    end
+    if isempty(init_ν0)
+        init_ν0 = dP + 2
+    end
 
-    function negative_log_marginal(input, p_max_)
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
+    ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1); upper_p]
+    if isempty(μϕ_const)
+        μϕ_const = Matrix{Float64}(undef, dP, upper_p)
+        for i in axes(μϕ_const, 2)
+            @show μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr) |> x -> mean(x, dims=1)[1, :]
+            if !isempty(μϕ_const_PC1)
+                μϕ_const_PCs = [μϕ_const_PC1, μϕ_const_PCs[2], μϕ_const_PCs[3]]
+            end
+            if isempty(macros)
+                μϕ_const[:, i] = deepcopy(μϕ_const_PCs)
+            else
+                μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
+            end
+        end
+    end
+    starting = (lx + ux) ./ 2
+    starting[end] = 1
+
+    PCs, ~, Wₚ = PCA(yields[(upper_p-1)+1:end, :], 1)
+    function negative_log_marginal(input)
 
         # parameters
-        PCs = PCA(yields, p_max_)[1]
+        q = [input[1] input[5]
+            input[2] input[6]
+            input[3] input[7]
+            input[4] input[8]]
+        ν0 = input[9] + dP + 1
+        p = Int(input[10])
 
-        p = Int(input[1])
-        if p < 1
-            return Inf
+        if isempty(macros)
+            factors = deepcopy(PCs)
+        else
+            factors = [PCs macros[(upper_p-p)+1:end, :]]
         end
-        q = input[2:5]
-        ν0 = input[6] + dP + 1
-        Ω0 = input[7:end]
+        Ω0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Ω0)
+            Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
+        end
 
-        return -log_marginal(PCs[(p_max_-p)+1:end, :], macros[(p_max_-p)+1:end, :], ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+        tuned = Hyperparameter(p=deepcopy(p), q=deepcopy(q), ν0=deepcopy(ν0), Ω0=deepcopy(Ω0), μϕ_const=deepcopy(μϕ_const[:, p]))
+        if isempty(macros)
+            return -log_marginal(factors, macros, ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr, fix_const_PC1)
+        else
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], ρ, tuned, τₙ, Wₚ; medium_τ, medium_τ_pr, fix_const_PC1)
+        end
+
+        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
 
     end
 
-    PCs = PCA(yields, p_max)[1]
-    starting = [1, 0.1, 0.1, 2, 2, 1]
-    for i in 1:dP
-        push!(starting, AR_res_var([PCs macros][:, i], p_max))
-    end
-    lx = 0.0 .+ [1; zeros(4); 0; zeros(dP)]
-    ux = 0.0 .+ [p_max; [1, 1, 4, 10]; 0.5size(macros, 1); 10starting[7:end]]
+    ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
+    opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), ν0 = $(best_candidate(x)[9] + dP + 1)"))
 
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-    obj_GSS0(x) = negative_log_marginal(x, Int(ux[1]))
-    LS_opt = bboptimize(obj_GSS0, starting; SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
-    corner_idx = findall([false; best_candidate(LS_opt)[2:end] .> 0.9ux[2:end]])
-    corner_p = best_candidate(LS_opt)[1] == ux[1]
+    q = [best_candidate(opt)[1] best_candidate(opt)[5]
+        best_candidate(opt)[2] best_candidate(opt)[6]
+        best_candidate(opt)[3] best_candidate(opt)[7]
+        best_candidate(opt)[4] best_candidate(opt)[8]]
+    ν0 = best_candidate(opt)[9] + dP + 1
+    p = best_candidate(opt)[10] |> Int
 
-    while ~isempty(corner_idx) || corner_p
-        if ~isempty(corner_idx)
-            ux[corner_idx] += ux[corner_idx]
-        end
-        if corner_p
-            ux[1] += 1
-        end
-        ss = MixedPrecisionRectSearchSpace(lx, ux, [0; -1ones(Int64, 5 + dP)])
-        obj_GSS(x) = negative_log_marginal(x, Int(ux[1]))
-        LS_opt = bboptimize(obj_GSS, best_candidate(LS_opt); SearchSpace=ss, Method=:generating_set_search, MaxTime=10)
-
-        corner_idx = findall([false; best_candidate(LS_opt)[2:end] .> 0.9ux[2:end]])
-        corner_p = best_candidate(LS_opt)[1] == ux[1]
-    end
-    obj_EA(x) = negative_log_marginal(x, Int(ux[1]))
-    EA_opt = bboptimize(obj_EA, best_candidate(LS_opt); SearchSpace=ss)
-
-    obj_NM(x) = negative_log_marginal([min(abs(ceil(Int, x[1])), Int(ux[1])); abs.(x[2:end])], Int(ux[1]))
-    NM_opt = optimize(obj_NM, best_candidate(EA_opt), NelderMead(), Optim.Options(show_trace=true))
-
-    if gradient == true
-        function negative_log_marginal_p(input, p)
-
-            # parameters
-            PCs = PCA(yields, p)[1]
-
-            q = input[1:4]
-            ν0 = input[5] + dP + 1
-            Ω0 = input[6:end]
-
-            return -log_marginal(PCs, macros, ρ, HyperParameter(p=p, q=q, ν0=ν0, Ω0=Ω0); medium_τ) # the function should contains the initial observations
-
-        end
-
-        p = min(abs(ceil(Int, NM_opt.minimizer[1])), Int(ux[1]))
-        obj_NT(x) = negative_log_marginal_p(abs.(x), p)
-        NT_opt = optimize(obj_NT, NM_opt.minimizer[2:end], LBFGS(; linesearch=LineSearches.BackTracking()), Optim.Options(show_trace=true))
-        solution = abs.(NT_opt.minimizer)
-
-        q = solution[1:4]
-        ν0 = solution[5] + dP + 1
-        Ω0 = solution[6:end]
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
+    if isempty(macros)
+        factors = deepcopy(PCs)
     else
-        solution = abs.(NM_opt.minimizer)
-        p = abs(ceil(Int, NM_opt.minimizer[1]))
-        q = solution[2:5]
-        ν0 = solution[6] + dP + 1
-        Ω0 = solution[7:end]
+        factors = [PCs macros[(upper_p-p)+1:end, :]]
+    end
+    Ω0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Ω0)
+        Ω0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
 
-    return HyperParameter(p=Int(p), q=q, ν0=ν0, Ω0=Ω0)
+    return Hyperparameter(p=deepcopy(p), q=deepcopy(q), ν0=deepcopy(ν0), Ω0=deepcopy(Ω0), μϕ_const=deepcopy(μϕ_const[:, p])), opt
 
 end
 
 """
-AR_res_var(TS::Vector, p)
-* It derives an MLE error variance estimate of an AR(p) model
-* Input: univariate time series TS and the lag p
-* output: residual variance estimate
+    AR_res_var(TS::Vector, p)
+It derives an MLE error variance estimate of an AR(`p`) model
+# Input
+- univariate time series `TS` and the lag `p`
+# output(2)
+residual variance estimate, AR(p) coefficients
 """
 function AR_res_var(TS::Vector, p)
     Y = TS[(p+1):end]
@@ -112,175 +130,97 @@ function AR_res_var(TS::Vector, p)
     for i in 1:p
         X = hcat(X, TS[p+1-i:end-i])
     end
-    M = I(T) - X * ((X'X) \ X')
-    return var(M * Y)
+
+    β = (X'X) \ (X'Y)
+    return var(Y - X * β), β
 end
 
-
 """
-posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
-* This is a posterior distribution sampler. It needs data and hyperparameters. 
-* Input: Data should include initial observations. τₙ is a vector that contains observed maturities.
-    - ρ = Vector{Float64}(0 or ≈1, dP-dQ). Usually, 0 for growth macro variables and 1 (or 0.9) for level macro variables. 
-    - iteration: # of posterior samples
-* Output(3): Vector{Parameter}(posterior, iteration), acceptPr_C_σ²FF, acceptPr_ηψ 
+    posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[], μkQ_infty=0, σkQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+This is a posterior distribution sampler.
+# Input
+- `iteration`: # of posterior samples
+- `tuned`: optimized hyperparameters used during estimation
+- `init_param`: starting point of the sampler. It should be a type of Parameter.
+# Output(2)
+`Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, τₙ, ρ, iteration, HyperParameter_::HyperParameter; sparsity=false, medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[], μkQ_infty=0, σkQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
-    (; p, q, ν0, Ω0) = HyperParameter_
+    (; p, q, ν0, Ω0, μϕ_const) = tuned
     N = size(yields, 2) # of maturities
     dQ = dimQ()
-    dP = dQ + size(macros, 2)
-    PCs = PCA(yields, p)[1]
-    prior_κQ_ = prior_κQ(medium_τ)
+    if isempty(macros)
+        dP = deepcopy(dQ)
+    else
+        dP = dQ + size(macros, 2)
+    end
+    if isempty(medium_τ_pr)
+        medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
+    end
+    Wₚ = PCA(yields, p)[3]
+    prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
+    if isempty(γ_bar)
+        γ_bar = prior_γ(yields, p)
+    end
 
-    ## additinoal hyperparameters ##
-    γ_bar = prior_γ(yields[(p+1):end, :])
-    σ²kQ_infty = 100 # prior variance of kQ_infty
-    ################################
+    if typeof(init_param) == Parameter
+        (; κQ, kQ_infty, ϕ, σ²FF, Σₒ, γ) = init_param
+    else
+        ## initial parameters ##
+        κQ = 0.0609
+        kQ_infty = 0.0
+        ϕ = [zeros(dP) diagm([0.9ones(dQ); ρ]) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
+        bτ_ = bτ(τₙ[end]; κQ)
+        Bₓ_ = Bₓ(bτ_, τₙ)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        ϕ[1:dQ, 2:(dQ+1)] = T1X_ * GQ_XX(; κQ) / T1X_
+        σ²FF = [Ω0[i] / (ν0 + i - dP) for i in eachindex(Ω0)]
+        Σₒ = 1 ./ fill(γ_bar, N - dQ)
+        γ = 1 ./ fill(γ_bar, N - dQ)
+        ########################
+    end
+    if isempty(ψ)
+        ψ = ones(dP, dP * p)
+    end
+    if isempty(ψ0)
+        ψ0 = ones(dP)
+    end
 
-    ## initial parameters ##
-    κQ = 0.0609
-    kQ_infty = 0.0
-    ϕ = [zeros(dP) diagm([0.9ones(dQ); ρ]) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
-    ϕ[1:dQ, 2:(dQ+1)] = GQ_XX(; κQ)
-    σ²FF = [Ω0[i] / (ν0 + i - dP) for i in eachindex(Ω0)]
-    ηψ = 1
-    ψ = ones(dP, dP * p)
-    ψ0 = ones(dP)
-    Σₒ = 1 ./ fill(γ_bar, N - dQ)
-    γ = 1 ./ fill(γ_bar, N - dQ)
-    ########################
-
-    isaccept_C_σ²FF = zeros(dQ)
-    isaccept_ηψ = 0
+    isaccept_MH = zeros(dQ)
     saved_θ = Vector{Parameter}(undef, iteration)
-    @showprogress 1 "Sampling the posterior..." for iter in 1:iteration
-        κQ = rand(post_κQ(yields[(p+1):end, :], prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ))
+    @showprogress 5 "Sampling the posterior..." for iter in 1:iteration
 
-        kQ_infty = rand(post_kQ_infty(σ²kQ_infty, yields[(p+1):end, :], τₙ; κQ, ϕ, σ²FF, Σₒ))
+        κQ = rand(post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ, data_scale))
 
-        σ²FF, isaccept = post_σ²FF₁(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-        isaccept_C_σ²FF[1] += isaccept
+        kQ_infty = rand(post_kQ_infty(μkQ_infty, σkQ_infty, yields, τₙ; κQ, ϕ, σ²FF, Σₒ, data_scale))
 
-        ϕ, σ²FF, isaccept = post_C_σ²FF_dQ(yields, macros, τₙ, p; κQ, kQ_infty, ϕ, σ²FF, Σₒ, ν0, Ω0)
-        isaccept_C_σ²FF[2:end] += isaccept
+        ϕ, σ²FF, isaccept = post_ϕ_σ²FF(yields, macros, μϕ_const, ρ, prior_κQ_, τₙ; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0, κQ, kQ_infty, Σₒ, fix_const_PC1, data_scale)
+        isaccept_MH += isaccept
 
-        if sparsity == true
-            ηψ, isaccept = post_ηψ(; ηψ, ψ, ψ0)
-            isaccept_ηψ += isaccept
-        end
-
-        ϕ, σ²FF = post_ϕ_σ²FF_remaining(PCs, macros, ρ, prior_κQ_; ϕ, ψ, ψ0, σ²FF, q, ν0, Ω0)
-
-        if sparsity == true
-            ψ0, ψ = post_ψ_ψ0(ρ, prior_κQ_; ϕ, ψ0, ψ, ηψ, q, σ²FF, ν0, Ω0)
-        end
-
-        Σₒ = rand.(post_Σₒ(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ΩPP=ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF), γ))
+        Σₒ = rand.(post_Σₒ(yields, τₙ; κQ, kQ_infty, ΩPP=ϕ_σ²FF_2_ΩPP(; ϕ, σ²FF), γ, p, data_scale))
 
         γ = rand.(post_γ(; γ_bar, Σₒ))
 
-
-        saved_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
+        saved_θ[iter] = Parameter(κQ=deepcopy(κQ), kQ_infty=deepcopy(kQ_infty), ϕ=deepcopy(ϕ), σ²FF=deepcopy(σ²FF), Σₒ=deepcopy(Σₒ), γ=deepcopy(γ))
 
     end
 
-    return saved_θ, 100isaccept_C_σ²FF / iteration, 100isaccept_ηψ / iteration
+    return saved_θ, 100isaccept_MH / iteration
 end
 
 """
-sparse_precision(saved_θ, yields, macros, τₙ)
-* It conduct the glasso of Friedman, Hastie, and Tibshirani (2022) using the method of Hauzenberger, Huber and Onorante. 
-* That is, the posterior samples of ΩFF is penalized with L1 norm to impose a sparsity on the precision.
-* Input: "saved\\_θ" from function posterior_sampler, and the data should contain initial observations.
-* Output(3): sparse_θ, trace_λ, trace_sparsity
-    - sparse_θ: sparsified posterior samples
-    - trace_λ: a vector that contains an optimal lasso parameters in iterations
-    - trace_sparsity: a vector that contains degree of freedoms of inv(ΩFF) in iterations
+    generative(T, dP, τₙ, p, noise::Float64; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF, data_scale=1200)
+This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
+# Input: 
+- noise = variance of the measurement errors
+# Output(3)
+`yields`, `latents`, `macros`
+- `yields = Matrix{Float64}(obs,T,length(τₙ))`
+- `latents = Matrix{Float64}(obs,T,dimQ())`
+- `macros = Matrix{Float64}(obs,T,dP - dimQ())`
 """
-function sparse_precision(saved_θ, yields, macros, τₙ)
-
-    R"library(glasso)"
-    ϕ = saved_θ[:ϕ][1]
-    dP = size(ϕ, 1)
-    p = (size(ϕ, 2) - 1) / dP - 1 |> Int
-    T = size(yields, 1) - p
-    PCs = PCA(yields, p)[1]
-
-    iteration = length(saved_θ)
-    sparse_θ = Vector{Parameter}(undef, iteration)
-    trace_λ = Vector{Float64}(undef, iteration)
-    trace_sparsity = Vector{Float64}(undef, iteration)
-    for iter in 1:iteration
-        if (iter % 20) == 0
-            println("$(round(100iter/iteration;digits = 2)) (%) done...")
-        end
-
-        κQ = saved_θ[:κQ][iter]
-        kQ_infty = saved_θ[:kQ_infty][iter]
-        ϕ = saved_θ[:ϕ][iter]
-        σ²FF = saved_θ[:σ²FF][iter]
-        ηψ = saved_θ[:ηψ][iter]
-        ψ = saved_θ[:ψ][iter]
-        ψ0 = saved_θ[:ψ0][iter]
-        Σₒ = saved_θ[:Σₒ][iter]
-        γ = saved_θ[:γ][iter]
-        ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
-
-        ΩFF_ = (C \ diagm(σ²FF)) / C'
-        ΩFF_ = 0.5(ΩFF_ + ΩFF_')
-        function glasso(λ)
-
-            glasso_results = rcopy(rcall(:glasso, s=ΩFF_, rho=abs.(λ ./ inv(ΩFF_))))
-            sparse_cov = glasso_results[:w]
-            sparse_prec = glasso_results[:wi]
-
-            inv_sparse_C, sparse_σ²FF = LDL(sparse_cov)
-            sparse_ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
-
-            BIC_ = loglik_mea(yields[(p+1):end, :], τₙ; κQ, kQ_infty, ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF), Σₒ)
-            BIC_ += loglik_tran(PCs, macros; ϕ=sparse_ϕ, σ²FF=diag(sparse_σ²FF))
-            BIC_ *= -2
-            sparsity = sum(abs.(sparse_prec) .> eps())
-            BIC_ += sparsity * log(T)
-
-            return sparse_cov, BIC_, sparsity
-        end
-
-        obj(x) = glasso(abs(x[1]))[2]
-        if iter > 1
-            optim = optimize(obj, [trace_λ[iter-1]], NelderMead())
-            λ_best = abs(optim.minimizer[1])
-        else
-            optim = bboptimize(obj; SearchRange=(-10.0, 10.0), NumDimensions=1)
-            λ_best = abs(best_candidate(optim)[1])
-        end
-        trace_λ[iter] = λ_best
-
-        sparse_cov, ~, sparsity = glasso(λ_best)
-        trace_sparsity[iter] = sparsity
-        inv_sparse_C, diagm_σ²FF = LDL(sparse_cov)
-        ϕ = [ϕ0 (inv(inv_sparse_C) - I(dP))]
-        σ²FF = diag(diagm_σ²FF)
-
-        sparse_θ[iter] = Parameter(κQ=κQ, kQ_infty=kQ_infty, ϕ=ϕ, σ²FF=σ²FF, ηψ=ηψ, ψ=ψ, ψ0=ψ0, Σₒ=Σₒ, γ=γ)
-    end
-
-    return sparse_θ, trace_λ, trace_sparsity
-end
-
-"""
-generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF)
-* This function generate a simulation data given parameters. 
-    -Note that all parameters are the things in the latent factor state space. There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in F in the VScode. And, "F" in my paper is expressed as XF.
-* Input: p is a lag of transition VAR, τₙ is a set of observed maturities
-* Output(3): yields, latents, macros
-    - yields = Matrix{Float64}(obs,T,length(τₙ))
-    - latents = Matrix{Float64}(obs,T,dimQ())
-    - macros = Matrix{Float64}(obs,T,dP - dimQ())
-"""
-function generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF)
+function generative(T, dP, τₙ, p, noise::Float64; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF, data_scale=1200)
     N = length(τₙ) # of observed maturities
     dQ = dimQ() # of latent factors
 
@@ -299,73 +239,77 @@ function generative(T, dP, τₙ, p; κQ, kQ_infty, KₚXF, GₚXFXF, ΩXFXF)
     Bₓ_ = Bₓ(bτ_, τₙ)
 
     ΩXX = ΩXFXF[1:dQ, 1:dQ]
-    aτ_ = aτ(τₙ[end], bτ_; kQ_infty, ΩXX)
+    aτ_ = aτ(τₙ[end], bτ_; kQ_infty, ΩXX, data_scale)
     Aₓ_ = Aₓ(aτ_, τₙ)
 
     yields = Matrix{Float64}(undef, T, N)
     for t = 1:T
-        yields[t, :] = (Aₓ_ + Bₓ_ * XF[t, 1:dQ])' + rand(Normal(0, sqrt(0.01)), N)'
+        yields[t, :] = (Aₓ_ + Bₓ_ * XF[t, 1:dQ])' + rand(Normal(0, sqrt(noise)), N)'
     end
 
     return yields, XF[:, 1:dQ], XF[:, (dQ+1):end]
 end
 
 """
-ineff_factor(saved_θ)
-* It returns inefficiency factors of each parameter
-* Input: posterior sample matrix from the Gibbs sampler
-* Output: Vector{Float64}(inefficiency factors, # of parameters)
+    ineff_factor(saved_θ)
+It returns inefficiency factors of each parameter
+# Input
+- `Vector{Parameter}` from posterior_sampler
+# Output
+- Estimated inefficiency factors are in Tuple(`κQ`, `kQ_infty`, `γ`, `Σₒ`, `σ²FF`, `ϕ`). For example, if you want to load an inefficiency factor of `ϕ`, you can use `Output.ϕ`.
+- If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.ϕ[1,1]` can be weird. So you should ignore it.
 """
 function ineff_factor(saved_θ)
 
     iteration = length(saved_θ)
 
-    κQ = saved_θ[:κQ][1]
-    kQ_infty = saved_θ[:kQ_infty][1]
-    ϕ = saved_θ[:ϕ][1]
-    σ²FF = saved_θ[:σ²FF][1]
-    ηψ = saved_θ[:ηψ][1]
-    ψ = saved_θ[:ψ][1]
-    ψ0 = saved_θ[:ψ0][1]
-    Σₒ = saved_θ[:Σₒ][1]
-    γ = saved_θ[:γ][1]
+    init_κQ = saved_θ[:κQ][1]
+    init_kQ_infty = saved_θ[:kQ_infty][1]
+    init_ϕ = saved_θ[:ϕ][1] |> vec
+    init_σ²FF = saved_θ[:σ²FF][1]
+    init_Σₒ = saved_θ[:Σₒ][1]
+    init_γ = saved_θ[:γ][1]
 
-    initial_θ = [κQ; kQ_infty; vec(ϕ); σ²FF; ηψ; vec(ψ); ψ0; Σₒ; γ]
+    initial_θ = [init_κQ; init_kQ_infty; init_γ; init_Σₒ; init_σ²FF; init_ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
-
     vec_saved_θ[1, :] = initial_θ
-    for iter in 2:iteration
+    prog = Progress(iteration - 1; dt=5, desc="Vectorizing posterior samples...")
+    Threads.@threads for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
-        ϕ = saved_θ[:ϕ][iter]
+        ϕ = saved_θ[:ϕ][iter] |> vec
         σ²FF = saved_θ[:σ²FF][iter]
-        ηψ = saved_θ[:ηψ][iter]
-        ψ = saved_θ[:ψ][iter]
-        ψ0 = saved_θ[:ψ0][iter]
         Σₒ = saved_θ[:Σₒ][iter]
         γ = saved_θ[:γ][iter]
 
-        vec_saved_θ[iter, :] = [κQ; kQ_infty; vec(ϕ); σ²FF; ηψ; vec(ψ); ψ0; Σₒ; γ]
+        vec_saved_θ[iter, :] = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
+        next!(prog)
     end
+    finish!(prog)
 
-    ineff = Vector{Float64}(undef, length(initial_θ))
+    ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
-    for i in axes(vec_saved_θ, 2)
+    prog = Progress(size(vec_saved_θ, 2); dt=5, desc="Calculating Ineff factors...")
+    Threads.@threads for i in axes(vec_saved_θ, 2)
         object = Matrix{Float64}(undef, iteration, 1)
         object[:] = vec_saved_θ[:, i]
         bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
         ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
+        next!(prog)
     end
+    finish!(prog)
 
-    return ineff
+    ϕ_ineff = ineff[2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)+1:end] |> x -> reshape(x, size(saved_θ[:ϕ][1], 1), size(saved_θ[:ϕ][1], 2))
+    dP = size(ϕ_ineff, 1)
+    for i in 1:dP, j in i:dP
+        ϕ_ineff[i, end-dP+j] = 0
+    end
+    return (;
+        κQ=ineff[1],
+        kQ_infty=ineff[2],
+        γ=ineff[2+1:2+length(init_γ)],
+        Σₒ=ineff[2+length(init_γ)+1:2+length(init_γ)+length(init_Σₒ)],
+        σ²FF=ineff[2+length(init_γ)+length(init_Σₒ)+1:2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)],
+        ϕ=deepcopy(ϕ_ineff)
+    )
 end
-
-# """
-# load\\_object(saved\\_θ, object::String)
-# * It derives an object in Vector "saved\\_θ" = Vector{Dict}(name => value, length(saved_θ))
-# * Input: "object" is the name of the object of interest
-# * Output: return[i] shows i'th iteration sample of "object" in saved_θ
-# """
-# function load_object(saved_θ, object::String)
-#     return [saved_θ[i][object] for i in eachindex(saved_θ)]
-# end

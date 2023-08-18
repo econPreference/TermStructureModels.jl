@@ -1,24 +1,29 @@
 """
-log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], ψ0=[], medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
-* This file derives hyper-parameters for priors. The marginal likelihood for the transition equation is maximized at the selected hyperparameters. 
-* Input: Data should contain initial observations. 
-    * ρ only indicates macro variables' persistencies.
-    * medium_τ is a vector of representative medium maturities that are used for constructing prior for κQ.
-*Output: the log marginal likelihood of the VAR system.
+    log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
+This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
+# Input
+- tuned is a point where the marginal likelihood is evaluated. 	
+- `ψ0` and `ψ` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[ψ0 ψ][i,j]` is corresponds to `ϕ[i,j]`. 
+# Output
+- the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], ψ0=[], medium_τ=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
 
-    (; p, ν0, Ω0, q) = HyperParameter_
-    prior_κQ_ = prior_κQ(medium_τ)
+    (; p, ν0, Ω0, q, μϕ_const) = tuned
+
+    prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
     dP = length(Ω0)
-    if isempty(ψ) || isempty(ψ0)
+
+    if isempty(ψ)
         ψ = ones(dP, dP * p)
+    end
+    if isempty(ψ0)
         ψ0 = ones(dP)
     end
 
     yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
     T = size(yϕ, 1)
-    prior_ϕ0_ = prior_ϕ0(ρ, prior_κQ_; ψ0, ψ, q, ν0, Ω0)
+    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0, fix_const_PC1)
     prior_C_ = prior_C(; Ω0)
     prior_ϕ = hcat(prior_ϕ0_, prior_C_)
     m = mean.(prior_ϕ)
@@ -32,13 +37,13 @@ function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], �
         Vᵢ = V[i, 1:(end-dP+i-1)]
         Kϕᵢ = Kϕ(i, V, Xϕ, dP)
         Sᵢ_hat = S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
-        det_Kϕᵢ = det(Kϕᵢ)
-        if min(det_Kϕᵢ, Sᵢ_hat) < 0 || isinf(det_Kϕᵢ)
+        logdet_Kϕᵢ = logdet(Kϕᵢ)
+        if Sᵢ_hat < 0 || isinf(logdet_Kϕᵢ)
             return -Inf
         end
 
         log_marginalᵢ = sum(log.(Vᵢ))
-        log_marginalᵢ += log(det_Kϕᵢ)
+        log_marginalᵢ += logdet_Kϕᵢ
         log_marginalᵢ /= -2
         log_marginalᵢ += loggamma(νᵢ + 0.5T)
         log_marginalᵢ += νᵢ * log(Sᵢ)
@@ -52,21 +57,21 @@ function log_marginal(PCs, macros, ρ, HyperParameter_::HyperParameter; ψ=[], �
 end
 
 """
-ν(i, dP; ν0)
+    ν(i, dP; ν0)
 """
 function ν(i, dP; ν0)
     return (ν0 + i - dP) / 2
 end
 
 """
-S(i; Ω0)
+    S(i; Ω0)
 """
 function S(i; Ω0)
     return Ω0[i] / 2
 end
 
 """
-Kϕ(i, V, Xϕ, dP)
+    Kϕ(i, V, Xϕ, dP)
 """
 function Kϕ(i, V, Xϕ, dP)
     Xϕᵢ = Xϕ[:, 1:(end-dP+i-1)]
@@ -75,7 +80,7 @@ function Kϕ(i, V, Xϕ, dP)
 end
 
 """
-ϕ_hat(i, m, V, yϕ, Xϕ, dP)
+    ϕ_hat(i, m, V, yϕ, Xϕ, dP)
 """
 function ϕ_hat(i, m, V, yϕ, Xϕ, dP)
     Kϕᵢ = Kϕ(i, V, Xϕ, dP)
@@ -88,7 +93,7 @@ function ϕ_hat(i, m, V, yϕ, Xϕ, dP)
 end
 
 """
-S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
+    S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
 """
 function S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
 
