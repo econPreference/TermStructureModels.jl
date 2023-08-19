@@ -157,7 +157,7 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, m
     return []
 end
 
-function inferences(; upper_p, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
+function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
@@ -220,7 +220,7 @@ function inferences(; upper_p, τₙ, medium_τ, ρ, is_percent, idx_diff, macro
     )
 end
 
-function graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, raw_macros, yields, tuned, saved_θ, saved_TP, fitted, saved_prediction)
+function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned, saved_θ, saved_TP, fitted, saved_prediction)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
     set_default_plot_size(16cm, 8cm)
@@ -344,6 +344,6 @@ JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
 estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date, μkQ_infty, σkQ_infty)
 
-results = inferences(; upper_p, τₙ, medium_τ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
+results = inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
-graphs(; τₙ, medium_τ, idx_diff, macros, macros_growth, raw_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction=results.saved_prediction)
+graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction=results.saved_prediction)
