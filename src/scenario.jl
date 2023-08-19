@@ -1,5 +1,5 @@
 """
-    scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
+    conditional_forecasts(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -12,7 +12,7 @@ scenarios, a result of the posterior sampler, and data
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 """
-function scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
+function conditional_forecasts(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="Predicting using scenarios...")
@@ -24,7 +24,7 @@ function scenario_sampler(S::Vector, τ, horizon, saved_θ, yields, macros, τ�
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
 
-        spanned_yield, spanned_F, predicted_TP = _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
+        spanned_yield, spanned_F, predicted_TP = _conditional_forecasts(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
         scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
 
@@ -37,9 +37,9 @@ end
 
 
 """
-    _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
+    _conditional_forecasts(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 """
-function _scenario_sampler(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
+function _conditional_forecasts(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)

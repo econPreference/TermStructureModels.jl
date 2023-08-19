@@ -170,7 +170,7 @@ function isstationary(GₚFF)
 end
 
 """ 
-    stationary_θ(saved_θ)
+    erase_nonstationary_param(saved_θ)
 It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
 # Input
 - `saved_θ` is the first output of function `posterior_sampler`.
@@ -178,7 +178,7 @@ It filters out posterior samples that implies an unit root VAR system. Only stat
 stationary samples, acceptance rate(%)
 - The second output indicates how many posterior samples remain.
 """
-function stationary_θ(saved_θ)
+function erase_nonstationary_param(saved_θ)
 
     iteration = length(saved_θ)
     stationary_saved_θ = Vector{Parameter}(undef, 0)
@@ -274,7 +274,7 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
 end
 
 """
-    calibration_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
+    calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `μϕ_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
@@ -282,7 +282,7 @@ _ iteration is the number of prior samples.
 # Output
 - samples from the prior distribution of `λₚ` 
 """
-function calibration_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
+function calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=12 * [2, 2.5, 3, 3.5, 4, 4.5, 5], iteration=1000, data_scale=1200, medium_τ_pr=[])
 
     dQ = dimQ()
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)

@@ -165,12 +165,12 @@ export
     loglik_mea,
     loglik_tran,
     isstationary,
-    stationary_θ,
+    erase_nonstationary_param,
     LDL,
     ϕ_σ²FF_2_ΩFF,
     reducedform,
     ϕ_2_ϕ₀_C,
-    calibration_μϕ_const,
+    calibrate_μϕ_const,
 
     # GDTSM.jl
     Hyperparameter,
@@ -195,7 +195,7 @@ export
     dcurvature_dτ,
 
     # scenario.jl
-    scenario_sampler,
+    conditional_forecasts,
 
     # theoreticals.jl
     GQ_XX,

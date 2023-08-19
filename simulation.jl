@@ -40,7 +40,7 @@ tuned, opt = tuning_hyperparameter(yields, macros, τₙ, ρ; maxiter=1000, uppe
 iteration = 10_000
 saved_θ, acceptPrMH = posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
-saved_θ, accept_rate = stationary_θ(saved_θ)
+saved_θ, accept_rate = erase_nonstationary_param(saved_θ)
 ineff = ineff_factor(saved_θ)
 saved_Xθ = latentspace(saved_θ, yields, τₙ)
 saved_TP = term_premium(120, τₙ, saved_θ[1:50:end], yields, macros)
@@ -55,7 +55,7 @@ factors = [PCA(yields, p)[1] macros]
 predicted_yields = zeros(size(yields, 1), length(τₙ))
 predicted_factors = zeros(size(yields, 1), dP)
 for t = (size(yields, 1)-10):(size(yields, 1)-1)
-    prediction = scenario_sampler([], 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
+    prediction = conditional_forecasts([], 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
     predicted_yields[t+1, :] = mean(prediction)[:yields][end, :]
     predicted_factors[t+1, :] = mean(prediction)[:factors][end, :]
 end
@@ -75,7 +75,7 @@ for t = (size(yields, 1)-10):(size(yields, 1)-1)
     s = [data[t+1, 20]]
     scene = Scenario(combinations=deepcopy(S), values=deepcopy(s))
 
-    prediction = scenario_sampler([scene], 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
+    prediction = conditional_forecasts([scene], 120, 1, saved_θ, yields[1:t, :], macros[1:t, :], τₙ)
     predicted_yields[t+1, :] = mean(prediction)[:yields][end, :]
     predicted_factors[t+1, :] = mean(prediction)[:factors][end, :]
 end
@@ -96,7 +96,7 @@ for h = 1:4
     s[2] = data[size(data, 1)-4+h, 20]
     scene[h] = Scenario(combinations=deepcopy(S), values=deepcopy(s))
 end
-prediction = scenario_sampler(scene, 120, 8, saved_θ, yields[1:size(data, 1)-4, :], macros[1:size(data, 1)-4, :], τₙ)
+prediction = conditional_forecasts(scene, 120, 8, saved_θ, yields[1:size(data, 1)-4, :], macros[1:size(data, 1)-4, :], τₙ)
 plot(mean(prediction)[:TP])
 idx = 20
 plot(factors[(end-3):end, idx])

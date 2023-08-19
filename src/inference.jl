@@ -44,7 +44,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     if isempty(μϕ_const)
         μϕ_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(μϕ_const, 2)
-            @show μϕ_const_PCs = -calibration_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr) |> x -> mean(x, dims=1)[1, :]
+            @show μϕ_const_PCs = -calibrate_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr) |> x -> mean(x, dims=1)[1, :]
             if !isempty(μϕ_const_PC1)
                 μϕ_const_PCs = [μϕ_const_PC1, μϕ_const_PCs[2], μϕ_const_PCs[3]]
             end

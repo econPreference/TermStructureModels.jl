@@ -141,7 +141,7 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, m
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
-    saved_θ, Pr_stationary = stationary_θ(saved_θ)
+    saved_θ, Pr_stationary = erase_nonstationary_param(saved_θ)
     iteration = length(saved_θ)
     JLD2.save("posterior.jld2", "samples", saved_θ, "acceptPrMH", acceptPrMH, "Pr_stationary", Pr_stationary)
 
@@ -151,7 +151,7 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, m
     saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
     JLD2.save("TP.jld2", "TP", saved_TP)
 
-    saved_prediction = scenario_sampler(scene, scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
+    saved_prediction = conditional_forecasts(scene, scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
     JLD2.save("scenario.jld2", "forecasts", saved_prediction)
 
     return []
