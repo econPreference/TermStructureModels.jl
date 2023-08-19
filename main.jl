@@ -224,7 +224,8 @@ function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, t
     set_default_plot_size(16cm, 8cm)
 
     ## decay parameter
-    κQ_support = [reverse(medium_τ) support(prior_κQ(medium_τ))]
+    medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
+    κQ_support = [reverse(medium_τ) support(prior_κQ(medium_τ, medium_τ_pr))]
     Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], ["$(round(κQ_support[i,2],digits=4))\n(τ = $(round(Int,κQ_support[i,1])))" for i in axes(κQ_support, 1)]), bins=40, xlabel=L"\kappa_{Q} ( maturity \, \tau )", labels="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/decay.pdf")
 
     ## TP components
