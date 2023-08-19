@@ -44,7 +44,7 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     if isempty(μϕ_const)
         μϕ_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(μϕ_const, 2)
-            @show μϕ_const_PCs = -calibrate_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr) |> x -> mean(x, dims=1)[1, :]
+            μϕ_const_PCs = -calibrate_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, iteration=10_000, data_scale, medium_τ_pr)[1] |> x -> mean(x, dims=1)[1, :]
             if !isempty(μϕ_const_PC1)
                 μϕ_const_PCs = [μϕ_const_PC1, μϕ_const_PCs[2], μϕ_const_PCs[3]]
             end
@@ -53,6 +53,9 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
             else
                 μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
             end
+            prior_const_TP = calibrate_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000, data_scale, medium_τ_pr, τ=120)[2] |> mean
+            println("For lag $i, μϕ_const[1:dQ] is $μϕ_const_PCs")
+            println("and prior mean of the constant part in the term premium is $prior_const_TP")
         end
     end
     starting = (lx + ux) ./ 2
