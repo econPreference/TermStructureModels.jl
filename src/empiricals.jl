@@ -183,7 +183,8 @@ function stationary_θ(saved_θ)
     iteration = length(saved_θ)
     stationary_saved_θ = Vector{Parameter}(undef, 0)
     prog = Progress(iteration; dt=5, desc="Erase explosive systems...")
-    Threads.@threads for iter in 1:iteration
+    #Threads.@threads 
+    for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
