@@ -204,8 +204,6 @@ function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_g
     return (;
         opt=deepcopy(opt),
         tuned=deepcopy(tuned),
-        opt_uninformative=deepcopy(opt_uninformative),
-        tuned_uninformative=deepcopy(tuned_uninformative),
         saved_θ=deepcopy(saved_θ),
         acceptPrMH=deepcopy(acceptPrMH),
         Pr_stationary=deepcopy(Pr_stationary),
@@ -220,7 +218,7 @@ function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_g
     )
 end
 
-function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned, saved_θ, saved_TP, fitted, saved_prediction)
+function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned, saved_θ, saved_TP, fitted, saved_prediction, is_percent)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
     set_default_plot_size(16cm, 8cm)
@@ -346,4 +344,4 @@ estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, me
 
 results = inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
-graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction=results.saved_prediction)
+graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction=results.saved_prediction, is_percent)
