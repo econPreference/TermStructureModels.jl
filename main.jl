@@ -13,7 +13,7 @@ upper_p = 18
 date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_p + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 τₙ = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
-medium_τ = 12 * [2, 2.5, 3, 3.5, 4, 4.5, 5]
+medium_τ = collect(36:42)
 
 function data_loading(; date_start, date_end, τₙ)
 
