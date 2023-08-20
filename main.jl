@@ -94,7 +94,6 @@ sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
 ## Setting
 # optimization
-μϕ_const_PC1 = 0.1065
 upper_q =
     [1 1
         1 1
@@ -102,7 +101,7 @@ upper_q =
         100 100] .+ 0.0
 μkQ_infty = 0
 σkQ_infty = 0.04
-init_ν0 = 40
+init_ν0 = 39
 
 # estimation
 iteration = 15_000
@@ -339,7 +338,7 @@ end
 
 ## Do
 
-tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ, init_ν0, μϕ_const_PC1)
+tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ, init_ν0)
 JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
 estimation(; upper_p, τₙ, medium_τ, iteration, burnin, scene, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date, μkQ_infty, σkQ_infty)
