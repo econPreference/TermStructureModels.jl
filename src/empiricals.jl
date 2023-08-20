@@ -274,7 +274,7 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
 end
 
 """
-    calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=collect(30:48), iteration=1000, data_scale=1200, medium_τ_pr=[], τ=[])
+    calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=collect(30:2:48), iteration=1000, data_scale=1200, medium_τ_pr=[], τ=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `μϕ_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
@@ -286,7 +286,7 @@ prior_λₚ, prior_TP
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
-function calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=collect(30:48), iteration=1000, data_scale=1200, medium_τ_pr=[], τ=[])
+function calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ, p; μϕ_const_PCs=[], medium_τ=collect(30:2:48), iteration=1000, data_scale=1200, medium_τ_pr=[], τ=[])
 
     dQ = dimQ()
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
