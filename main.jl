@@ -100,7 +100,7 @@ upper_q =
         10 10
         100 100] .+ 0.0
 μkQ_infty = 0
-σkQ_infty = 0.03
+σkQ_infty = 0.02
 init_ν0 = 39
 
 # estimation
