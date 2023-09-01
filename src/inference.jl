@@ -174,7 +174,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperpar
         ## initial parameters ##
         κQ = 0.0609
         kQ_infty = 0.0
-        ϕ = [zeros(dP) diagm([0.9ones(dQ); ρ]) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
+        ϕ = [zeros(dP) diagm(Float64.([0.9ones(dQ); ρ])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in ϕ should always be a lower triangular matrix whose diagonals are also always zero.
         bτ_ = bτ(τₙ[end]; κQ)
         Bₓ_ = Bₓ(bτ_, τₙ)
         T1X_ = T1X(Bₓ_, Wₚ)

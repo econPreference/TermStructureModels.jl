@@ -137,7 +137,7 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
-    tuned = JLD2.load("tuned.jld2")["tuned"]
+    tuned = JLD2.load("standard/tuned.jld2")["tuned"]
     p = tuned.p
 
     saved_θ, acceptPrMH = posterior_sampler(Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ, ρ, iteration, tuned; medium_τ, μkQ_infty, σkQ_infty)
@@ -146,39 +146,39 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
 
     saved_θ, Pr_stationary = erase_nonstationary_param(saved_θ)
     iteration = length(saved_θ)
-    JLD2.save("posterior.jld2", "samples", saved_θ, "acceptPrMH", acceptPrMH, "Pr_stationary", Pr_stationary)
+    JLD2.save("standard/posterior.jld2", "samples", saved_θ, "acceptPrMH", acceptPrMH, "Pr_stationary", Pr_stationary)
 
     ineff = ineff_factor(saved_θ)
-    JLD2.save("ineff.jld2", "ineff", ineff)
+    JLD2.save("standard/ineff.jld2", "ineff", ineff)
 
     saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
-    JLD2.save("TP.jld2", "TP", saved_TP)
+    JLD2.save("standard/TP.jld2", "TP", saved_TP)
 
     saved_prediction_50 = conditional_forecasts(gen_scene(0.5), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
 
     saved_prediction_100 = conditional_forecasts(gen_scene(1), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
 
     saved_prediction_150 = conditional_forecasts(gen_scene(1.5), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
-    JLD2.save("scenario.jld2", "forecasts_50", saved_prediction_50, "forecasts_100", saved_prediction_100, "forecasts_150", saved_prediction_150)
+    JLD2.save("standard/scenario.jld2", "forecasts_50", saved_prediction_50, "forecasts_100", saved_prediction_100, "forecasts_150", saved_prediction_150)
 
     return []
 end
 
-function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
+function inferences(; upper_p, τₙ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     # from step 1
-    opt = JLD2.load("tuned.jld2")["opt"]
-    tuned = JLD2.load("tuned.jld2")["tuned"]
+    opt = JLD2.load("standard/tuned.jld2")["opt"]
+    tuned = JLD2.load("standard/tuned.jld2")["tuned"]
     p = tuned.p
 
     # from step 2
-    saved_θ = JLD2.load("posterior.jld2")["samples"]
-    acceptPrMH = JLD2.load("posterior.jld2")["acceptPrMH"]
-    Pr_stationary = JLD2.load("posterior.jld2")["Pr_stationary"]
-    saved_TP = JLD2.load("TP.jld2")["TP"]
-    ineff = JLD2.load("ineff.jld2")["ineff"]
+    saved_θ = JLD2.load("standard/posterior.jld2")["samples"]
+    acceptPrMH = JLD2.load("standard/posterior.jld2")["acceptPrMH"]
+    Pr_stationary = JLD2.load("standard/posterior.jld2")["Pr_stationary"]
+    saved_TP = JLD2.load("standard/TP.jld2")["TP"]
+    ineff = JLD2.load("standard/ineff.jld2")["ineff"]
     @show (ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum)
 
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), τₙ)
@@ -190,7 +190,7 @@ function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_g
     reduced_θ = reducedform(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
-    raw_prediction = JLD2.load("scenario.jld2")["forecasts_50"]
+    raw_prediction = JLD2.load("standard/scenario.jld2")["forecasts_50"]
     saved_prediction_50 = Vector{Forecast}(undef, length(raw_prediction))
     for i in eachindex(saved_prediction_50)
         predicted_factors = deepcopy(raw_prediction[i][:factors])
@@ -206,7 +206,7 @@ function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_g
         saved_prediction_50[i] = Forecast(yields=deepcopy(raw_prediction[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_prediction[i][:TP]))
     end
 
-    raw_prediction = JLD2.load("scenario.jld2")["forecasts_100"]
+    raw_prediction = JLD2.load("standard/scenario.jld2")["forecasts_100"]
     saved_prediction_100 = Vector{Forecast}(undef, length(raw_prediction))
     for i in eachindex(saved_prediction_100)
         predicted_factors = deepcopy(raw_prediction[i][:factors])
@@ -222,7 +222,7 @@ function inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_g
         saved_prediction_100[i] = Forecast(yields=deepcopy(raw_prediction[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_prediction[i][:TP]))
     end
 
-    raw_prediction = JLD2.load("scenario.jld2")["forecasts_150"]
+    raw_prediction = JLD2.load("standard/scenario.jld2")["forecasts_150"]
     saved_prediction_150 = Vector{Forecast}(undef, length(raw_prediction))
     for i in eachindex(saved_prediction_150)
         predicted_factors = deepcopy(raw_prediction[i][:factors])
@@ -259,6 +259,9 @@ end
 function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned, saved_θ, saved_TP, fitted, saved_prediction_50, is_percent, saved_prediction_100, saved_prediction_150)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+    TP_nolag = JLD2.load("nolag/TP.jld2")["TP"]
+    TP_nomacro = JLD2.load("nomacro/TP.jld2")["TP"]
+
     set_default_plot_size(16cm, 8cm)
 
     ## decay parameter
@@ -279,6 +282,14 @@ function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, t
         layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
         Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=-4:2:4)
     ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/TP10.pdf")
+
+    plot(
+        layer(x=yields[sdate(1987, 1):end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"#000000"], Theme(line_width=2pt)),
+        layer(x=yields[sdate(1987, 1):end, 1], y=mean(TP_nomacro)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt, line_style=[:dash])),
+        layer(x=yields[sdate(1987, 1):end, 1], y=mean(TP_nolag)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt, line_style=[:dot])),
+        layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
+        Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=-2:2:4)
+    ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/TPs.pdf")
 
     ## individual TP components
     ind_TP_ratio = mean(saved_TP)[:timevarying_TP] |> x -> var(x, dims=1) ./ var(mean(saved_TP)[:TP]) |> x -> x[1, :]
@@ -308,7 +319,7 @@ function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, t
         Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[0; collect(1:7)])
     ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/EH10.pdf")
 
-    ## Scenario analysis(yields)
+    ## Scenario analysis(yields) - benchmark
     yield_res = mean(saved_prediction_100)[:yields]
     Plots.surface(τₙ, DateTime("2022-01-01"):Month(1):DateTime("2022-12-01"), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield.pdf")
 
@@ -323,7 +334,7 @@ function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, t
     end
     Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2.pdf")
 
-    ## Scenario analysis(EH)
+    ## Scenario analysis(EH) - benchmark
     EH_res = mean(saved_prediction_100)[:yields][:, [7, 18]] - mean(saved_prediction_100)[:TP]
     EH_res_dist_24 = Matrix{Float64}(undef, length(saved_prediction_100), size(EH_res, 1))
     for i in axes(EH_res_dist_24, 1)
@@ -349,9 +360,9 @@ function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, t
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="", ylims=(-1, 5)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH.pdf")
+    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH.pdf")
 
-    ## Scenario analysis(macros)
+    ## Scenario analysis(macros) - benchmark
     p = []
     for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
@@ -368,15 +379,137 @@ function graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, t
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro.pdf")
+
+    ## Scenario analysis(yields) - 50% lower
+    yield_res = mean(saved_prediction_50)[:yields] - Array(yields[sdate(2022, 1):sdate(2022, 12), 2:end])
+    Plots.surface(DateTime("2022-01-01"):Month(1):DateTime("2022-12-01"), τₙ, yield_res', ylabel="maturity (months)", zlabel="yield", camera=(70, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield_50.pdf")
+
+    p = []
+    for i in [3, 7, 13, 18]
+        ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:yields][:, i], fillrange=quantile(saved_prediction_50, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:yields][:, i], fillrange=quantile(saved_prediction_50, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:yields][:, i], fillrange=quantile(saved_prediction_50, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:yields][:, i], fillrange=quantile(saved_prediction_50, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), yields[sdate(2022, 1):sdate(2022, 12), 1+i], c=colorant"#DC143C", label="")
+        push!(p, ind_p)
+    end
+    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2_50.pdf")
+
+    ## Scenario analysis(EH) - 50% lower
+    EH_res = mean(saved_prediction_50)[:yields][:, [7, 18]] - mean(saved_prediction_50)[:TP]
+    EH_res_dist_24 = Matrix{Float64}(undef, length(saved_prediction_50), size(EH_res, 1))
+    for i in axes(EH_res_dist_24, 1)
+        EH_res_dist_24[i, :] = saved_prediction_50[:yields][i][:, 7] - saved_prediction_50[:TP][i][:, 1]
+    end
+    EH_res_dist_120 = Matrix{Float64}(undef, length(saved_prediction_50), size(EH_res, 1))
+    for i in axes(EH_res_dist_120, 1)
+        EH_res_dist_120[i, :] = saved_prediction_50[:yields][i][:, 18] - saved_prediction_50[:TP][i][:, 2]
+    end
+
+    p = []
+    for i in 1:2
+        if i == 1
+            EH_res_dist = deepcopy(EH_res_dist_24)
+            ind_name = "EH(τ = 24)"
+        else
+            EH_res_dist = deepcopy(EH_res_dist_120)
+            ind_name = "EH(τ = 120)"
+        end
+        ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        push!(p, ind_p)
+    end
+    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH_50.pdf")
+
+    ## Scenario analysis(macros) - 50% lower
+    p = []
+    for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
+        ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
+
+        ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_50, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_50, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_50, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_50)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_50, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        if is_percent[ind_macro]
+            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
+        else
+            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), macros_growth[sdate(2022, 1):sdate(2022, 12), ind_macro], c=colorant"#DC143C", label="")
+        end
+        push!(p, ind_p)
+    end
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro_50.pdf")
+
+    ## Scenario analysis(yields) - 50% higher
+    yield_res = mean(saved_prediction_150)[:yields] - Array(yields[sdate(2022, 1):sdate(2022, 12), 2:end])
+    Plots.surface(τₙ, DateTime("2022-01-01"):Month(1):DateTime("2022-12-01"), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(30, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield_150.pdf")
+
+    p = []
+    for i in [3, 7, 13, 18]
+        ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:yields][:, i], fillrange=quantile(saved_prediction_150, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:yields][:, i], fillrange=quantile(saved_prediction_150, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:yields][:, i], fillrange=quantile(saved_prediction_150, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:yields][:, i], fillrange=quantile(saved_prediction_150, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), yields[sdate(2022, 1):sdate(2022, 12), 1+i], c=colorant"#DC143C", label="")
+        push!(p, ind_p)
+    end
+    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2_150.pdf")
+
+    ## Scenario analysis(EH) - 50% higher
+    EH_res = mean(saved_prediction_150)[:yields][:, [7, 18]] - mean(saved_prediction_150)[:TP]
+    EH_res_dist_24 = Matrix{Float64}(undef, length(saved_prediction_150), size(EH_res, 1))
+    for i in axes(EH_res_dist_24, 1)
+        EH_res_dist_24[i, :] = saved_prediction_150[:yields][i][:, 7] - saved_prediction_150[:TP][i][:, 1]
+    end
+    EH_res_dist_120 = Matrix{Float64}(undef, length(saved_prediction_150), size(EH_res, 1))
+    for i in axes(EH_res_dist_120, 1)
+        EH_res_dist_120[i, :] = saved_prediction_150[:yields][i][:, 18] - saved_prediction_150[:TP][i][:, 2]
+    end
+
+    p = []
+    for i in 1:2
+        if i == 1
+            EH_res_dist = deepcopy(EH_res_dist_24)
+            ind_name = "EH(τ = 24)"
+        else
+            EH_res_dist = deepcopy(EH_res_dist_120)
+            ind_name = "EH(τ = 120)"
+        end
+        ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        push!(p, ind_p)
+    end
+    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH_150.pdf")
+
+    ## Scenario analysis(macros) - 50% higher
+    p = []
+    for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
+        ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
+
+        ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_150, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_150, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_150, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(saved_prediction_150)[:factors][:, dimQ()+ind_macro], fillrange=quantile(saved_prediction_150, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        if is_percent[ind_macro]
+            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
+        else
+            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), macros_growth[sdate(2022, 1):sdate(2022, 12), ind_macro], c=colorant"#DC143C", label="")
+        end
+        push!(p, ind_p)
+    end
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro_150.pdf")
 end
 
 ## Do
 
 tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ, init_ν0)
-JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
+JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
 estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, mean_macros, yields, scenario_TP, scenario_horizon, scenario_start_date, μkQ_infty, σkQ_infty)
 
-results = inferences(; upper_p, τₙ, ρ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
+results = inferences(; upper_p, τₙ, is_percent, idx_diff, macros, macros_growth, yields, scenario_start_date)
 
 graphs(; τₙ, medium_τ, macros, macros_growth, raw_macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields, saved_prediction_50=results.saved_prediction_50, is_percent, saved_prediction_100=results.saved_prediction_100, saved_prediction_150=results.saved_prediction_150)
