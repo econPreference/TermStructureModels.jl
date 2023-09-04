@@ -101,7 +101,6 @@ upper_q =
         100 100] .+ 0.0
 μkQ_infty = 0
 σkQ_infty = 0.02
-init_ν0 = 40
 
 # estimation
 iteration = 15_000
@@ -535,7 +534,7 @@ end
 
 ## Do
 
-tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ, init_ν0)
+tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ)
 JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
 estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)

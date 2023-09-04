@@ -35,9 +35,6 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
     if isempty(medium_τ_pr)
         medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
     end
-    if isempty(init_ν0)
-        init_ν0 = dP + 2
-    end
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_ν0 - (dP + 1); upper_p]
