@@ -196,6 +196,7 @@ export
 
     # scenario.jl
     conditional_forecasts,
+    scenario_analysis,
 
     # theoreticals.jl
     GQ_XX,
