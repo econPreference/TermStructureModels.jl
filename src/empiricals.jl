@@ -313,7 +313,7 @@ function calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ
     prior_λₚ = Matrix{Float64}(undef, iteration, dQ)
     for iter in 1:iteration
         if isempty(ν0)
-            ΩPP = ΩFF_mean[1:dQ, 1:dQ]
+            ΩPP = diagm(ΩFF_mean[1:dQ])
         else
             ΩPP = (ν0 - dP - 1) * diagm(ΩFF_mean) |> x -> InverseWishart(ν0, x) |> rand |> x -> x[1:dQ, 1:dQ]
         end
