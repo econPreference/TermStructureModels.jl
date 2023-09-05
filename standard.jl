@@ -41,8 +41,10 @@ function data_loading(; date_start, date_end, τₙ)
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     is_percent = fill(false, size(macros[:, 2:end], 2))
     idx_diff = Vector{Float64}(undef, size(macros[:, 2:end], 2))
-    macros_growth = similar(macros[:, 2:end] |> Array)
+    logmacros = similar(macros[:, 2:end] |> Array)
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
+        logmacros[:, i] = 100log.(macros[:, i+1])
+
         if names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
             is_percent[i] = true
         end
@@ -54,20 +56,12 @@ function data_loading(; date_start, date_end, τₙ)
         elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE"]
             ρ[i] = 1.0
             idx_diff[i] = 0
-        elseif names(macros[:, 2:end])[i] ∈ []
-            macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
-            macros[2:end, i+1] = macros_growth[2:end, i]
-            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
-            ρ[i] = 0.0
-            idx_diff[i] = 2
-        elseif names(macros[:, 2:end])[i] ∈ ["CES0600000007", "VIXCLSx", "HOUST", "PERMIT", "UMCSENTx"]
-            macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
+        elseif names(macros[:, 2:end])[i] ∈ ["CES0600000007", "VIXCLSx"]
             macros[:, i+1] = log.(macros[:, i+1]) |> x -> 100 * x
             ρ[i] = 1.0
             idx_diff[i] = 0
         else
-            macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
-            macros[2:end, i+1] = macros_growth[2:end, i]
+            macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             ρ[i] = 0.0
             idx_diff[i] = 1
         end
@@ -75,7 +69,7 @@ function data_loading(; date_start, date_end, τₙ)
 
     raw_macros = raw_macros[3:end, :]
     macros = macros[3:end, :]
-    macros_growth = macros_growth[3:end, :]
+    logmacros = logmacros[3:end, :]
     mean_macros = mean(macros[:, 2:end] |> Array, dims=1)[1, :]
     macros[:, 2:end] .-= mean_macros'
 
@@ -87,9 +81,9 @@ function data_loading(; date_start, date_end, τₙ)
     yields = [Date.(string.(yields[:, 1]), DateFormat("yyyy-mm-dd")) Float64.(yields[:, 2:end])]
     rename!(yields, Dict(:x1 => "date"))
 
-    return ρ, is_percent, idx_diff, macros_growth, raw_macros, macros, mean_macros, yields
+    return ρ, is_percent, idx_diff, logmacros, raw_macros, macros, mean_macros, yields
 end
-ρ, is_percent, idx_diff, macros_growth, raw_macros, macros, mean_macros, yields = data_loading(; date_start, date_end, τₙ)
+ρ, is_percent, idx_diff, logmacros, raw_macros, macros, mean_macros, yields = data_loading(; date_start, date_end, τₙ)
 sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
 ## Setting
@@ -276,15 +270,16 @@ function scenario_graphs(; τₙ, macros, yields)
 
     raw_projections = JLD2.load("standard/scenario.jld2")["projections"]
     projections = Vector{Forecast}(undef, length(raw_projections))
+    idx_date = sdate(yearmonth(scenario_start_date)...)
     for i in eachindex(projections)
         predicted_factors = deepcopy(raw_projections[i][:factors])
         for j in 1:dP-dQ
-            if idx_diff[j] == 2
-                predicted_factors[:, dQ+j] = [macros_growth[sdate(yearmonth(scenario_start_date)...)-1, j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+            if idx_diff[j] == 1 && is_percent[j]
+                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
             elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = 12 * [macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j] + mean_macros[j]; predicted_factors[:, dQ+j]] |> diff
+                predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] - logmacros[idx_date-12:idx_date-1, j]
+            elseif idx_diff[j] == 1 && !is_percent[j]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> x[2:end] - logmacros[idx_date-12:idx_date-1, j]
             end
         end
         projections[i] = Forecast(yields=deepcopy(raw_projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_projections[i][:TP]))
@@ -342,11 +337,6 @@ function scenario_graphs(; τₙ, macros, yields)
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        if is_percent[ind_macro]
-            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
-        else
-            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), macros_growth[sdate(2022, 1):sdate(2022, 12), ind_macro], c=colorant"#DC143C", label="")
-        end
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro.pdf")
@@ -358,12 +348,12 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in eachindex(responses_u)
         predicted_factors = deepcopy(raw_responses_u[i][:factors])
         for j in 1:dP-dQ
-            if idx_diff[j] == 2
-                predicted_factors[:, dQ+j] = [macros_growth[sdate(yearmonth(scenario_start_date)...)-1, j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+            if idx_diff[j] == 1 && is_percent[j]
+                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
             elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = 12 * [macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j] + mean_macros[j]; predicted_factors[:, dQ+j]] |> diff
+                predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] - logmacros[idx_date-12:idx_date-1, j]
+            elseif idx_diff[j] == 1 && !is_percent[j]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> x[2:end] - logmacros[idx_date-12:idx_date-1, j]
             end
         end
         responses_u[i] = Forecast(yields=deepcopy(raw_responses_u[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_responses_u[i][:TP]))
@@ -374,12 +364,12 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in eachindex(responses)
         predicted_factors = deepcopy(raw_responses[i][:factors])
         for j in 1:dP-dQ
-            if idx_diff[j] == 2
-                predicted_factors[:, dQ+j] = [macros_growth[sdate(yearmonth(scenario_start_date)...)-1, j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+            if idx_diff[j] == 1 && is_percent[j]
+                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
             elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = 12 * [macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j] + mean_macros[j]; predicted_factors[:, dQ+j]] |> diff
+                predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] - logmacros[idx_date-12:idx_date-1, j]
+            elseif idx_diff[j] == 1 && !is_percent[j]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> x[2:end] - logmacros[idx_date-12:idx_date-1, j]
             end
         end
         responses[i] = Forecast(yields=raw_responses[i][:yields] - responses_u[i][:yields], factors=predicted_factors - responses_u[i][:factors], TP=raw_responses[i][:TP] - responses_u[i][:TP])
@@ -447,12 +437,12 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in eachindex(responses_u)
         predicted_factors = deepcopy(raw_responses_u[i][:factors])
         for j in 1:dP-dQ
-            if idx_diff[j] == 2
-                predicted_factors[:, dQ+j] = [macros_growth[sdate(yearmonth(scenario_start_date)...)-1, j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+            if idx_diff[j] == 1 && is_percent[j]
+                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
             elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = 12 * [macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j] + mean_macros[j]; predicted_factors[:, dQ+j]] |> diff
+                predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] - logmacros[idx_date-12:idx_date-1, j]
+            elseif idx_diff[j] == 1 && !is_percent[j]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> x[2:end] - logmacros[idx_date-12:idx_date-1, j]
             end
         end
         responses_u[i] = Forecast(yields=deepcopy(raw_responses_u[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_responses_u[i][:TP]))
@@ -463,12 +453,12 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in eachindex(responses)
         predicted_factors = deepcopy(raw_responses[i][:factors])
         for j in 1:dP-dQ
-            if idx_diff[j] == 2
-                predicted_factors[:, dQ+j] = [macros_growth[sdate(yearmonth(scenario_start_date)...)-1, j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+            if idx_diff[j] == 1 && is_percent[j]
+                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
             elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = 12 * [macros[sdate(yearmonth(scenario_start_date)...)-1, 1+j] + mean_macros[j]; predicted_factors[:, dQ+j]] |> diff
+                predicted_factors[:, dQ+j] = predicted_factors[:, dQ+j] - logmacros[idx_date-12:idx_date-1, j]
+            elseif idx_diff[j] == 1 && !is_percent[j]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> x[2:end] - logmacros[idx_date-12:idx_date-1, j]
             end
         end
         responses[i] = Forecast(yields=raw_responses[i][:yields] - responses_u[i][:yields], factors=predicted_factors - responses_u[i][:factors], TP=raw_responses[i][:TP] - responses_u[i][:TP])

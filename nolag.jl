@@ -41,8 +41,10 @@ function data_loading(; date_start, date_end, τₙ)
     ρ = Vector{Float64}(undef, size(macros[:, 2:end], 2))
     is_percent = fill(false, size(macros[:, 2:end], 2))
     idx_diff = Vector{Float64}(undef, size(macros[:, 2:end], 2))
-    macros_growth = similar(macros[:, 2:end] |> Array)
+    logmacros = similar(macros[:, 2:end] |> Array)
     for i in axes(macros[:, 2:end], 2) # i'th macro variable (excluding date)
+        logmacros[:, i] = 100log.(macros[:, i+1])
+
         if names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE", "AAA", "BAA"]
             is_percent[i] = true
         end
@@ -54,20 +56,12 @@ function data_loading(; date_start, date_end, τₙ)
         elseif names(macros[:, 2:end])[i] ∈ ["CUMFNS", "UNRATE"]
             ρ[i] = 1.0
             idx_diff[i] = 0
-        elseif names(macros[:, 2:end])[i] ∈ []
-            macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
-            macros[2:end, i+1] = macros_growth[2:end, i]
-            macros[2:end, i+1] = macros[2:end, i+1] - macros[1:end-1, i+1]
-            ρ[i] = 0.0
-            idx_diff[i] = 2
-        elseif names(macros[:, 2:end])[i] ∈ ["CES0600000007", "VIXCLSx", "HOUST", "PERMIT", "UMCSENTx"]
-            macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
+        elseif names(macros[:, 2:end])[i] ∈ ["CES0600000007", "VIXCLSx"]
             macros[:, i+1] = log.(macros[:, i+1]) |> x -> 100 * x
             ρ[i] = 1.0
             idx_diff[i] = 0
         else
-            macros_growth[2:end, i] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
-            macros[2:end, i+1] = macros_growth[2:end, i]
+            macros[2:end, i+1] = log.(macros[2:end, i+1]) - log.(macros[1:end-1, i+1]) |> x -> 1200 * x
             ρ[i] = 0.0
             idx_diff[i] = 1
         end
@@ -75,7 +69,7 @@ function data_loading(; date_start, date_end, τₙ)
 
     raw_macros = raw_macros[3:end, :]
     macros = macros[3:end, :]
-    macros_growth = macros_growth[3:end, :]
+    logmacros = logmacros[3:end, :]
     mean_macros = mean(macros[:, 2:end] |> Array, dims=1)[1, :]
     macros[:, 2:end] .-= mean_macros'
 
@@ -87,9 +81,9 @@ function data_loading(; date_start, date_end, τₙ)
     yields = [Date.(string.(yields[:, 1]), DateFormat("yyyy-mm-dd")) Float64.(yields[:, 2:end])]
     rename!(yields, Dict(:x1 => "date"))
 
-    return ρ, is_percent, idx_diff, macros_growth, raw_macros, macros, mean_macros, yields
+    return ρ, is_percent, idx_diff, logmacros, raw_macros, macros, mean_macros, yields
 end
-ρ, is_percent, idx_diff, macros_growth, raw_macros, macros, mean_macros, yields = data_loading(; date_start, date_end, τₙ)
+ρ, is_percent, idx_diff, logmacros, raw_macros, macros, mean_macros, yields = data_loading(; date_start, date_end, τₙ)
 
 ## Setting
 # optimization
