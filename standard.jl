@@ -265,6 +265,7 @@ end
 function scenario_graphs(; τₙ, macros, yields)
 
     set_default_plot_size(16cm, 8cm)
+    macros_of_interest = ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
 
     ## predictions
 
@@ -330,13 +331,18 @@ function scenario_graphs(; τₙ, macros, yields)
 
     # macros
     p = []
-    for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
+    for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
         ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        if is_percent[ind_macro]
+            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
+        else
+            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), logmacros[sdate(2022, 1):sdate(2022, 12), ind_macro] - logmacros[sdate(2021, 1):sdate(2021, 12), ind_macro], c=colorant"#DC143C", label="")
+        end
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro.pdf")
@@ -419,7 +425,7 @@ function scenario_graphs(; τₙ, macros, yields)
 
     # macros
     p = []
-    for i in ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
+    for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
         ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
@@ -508,7 +514,7 @@ function scenario_graphs(; τₙ, macros, yields)
 
     # macros
     p = []
-    for i in ["WPSFD49207", "OILPRICEx", "CPIAUCSL", "PPICMM", "CUSR0000SAD", "PCEPI"]
+    for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
         ind_p = Plots.plot(Date(2022, 01):Month(1):Date(2022, 12), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), xticks=([Date(2022, 01):Month(3):Date(2022, 12);], ["Jan", "Apr", "Jul", "Oct"]), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
@@ -520,7 +526,6 @@ function scenario_graphs(; τₙ, macros, yields)
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro_c.pdf")
 
 end
-
 
 ## Do
 
