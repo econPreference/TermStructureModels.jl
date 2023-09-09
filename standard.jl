@@ -84,7 +84,11 @@ function data_loading(; date_start, date_end, τₙ)
     return ρ, is_percent, idx_diff, logmacros, raw_macros, macros, mean_macros, yields
 end
 ρ, is_percent, idx_diff, logmacros, raw_macros, macros, mean_macros, yields = data_loading(; date_start, date_end, τₙ)
+
+## Tools
 sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+dQ = dimQ()
+dP = size(macros, 2) - 1 + dQ
 
 ## Setting
 # optimization
@@ -102,8 +106,7 @@ burnin = 5_000
 TPτ_interest = 120
 
 # scenario analysis
-dQ = dimQ()
-dP = size(macros, 2) - 1 + dQ
+
 scenario_TP = [24, 120]
 scenario_horizon = 12
 scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
