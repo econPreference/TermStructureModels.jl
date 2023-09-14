@@ -184,7 +184,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, G
     # Constant term
     dQ = dimQ()
     KQ_X = zeros(dQ)
-    KQ_X[1] = kQ_infty
+    KQ_X[1] = deepcopy(kQ_infty)
     KQ_P = T1X_ * (KQ_X + (GQ_XX(; κQ) - I(dQ)) * T0P_)
     λₚ = KₚF[1:dQ] - KQ_P
     const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1P_ * λₚ)
@@ -359,11 +359,11 @@ function PCs_2_latents(yields, τₙ; κQ, kQ_infty, KₚF, GₚFF, ΩFF, data_s
     GₚMX_sum = zeros(dM, dQ)
     for l in 1:p
         GₚXX_l = T1P_ * GₚFF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] * T1X_
-        GₚXFXF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] = GₚXX_l
+        GₚXFXF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] = deepcopy(GₚXX_l)
         GₚXX_sum += GₚXX_l
 
         GₚMX_l = GₚFF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] * T1X_
-        GₚXFXF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] = GₚMX_l
+        GₚXFXF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] = deepcopy(GₚMX_l)
         GₚMX_sum += GₚMX_l
 
         GₚXFXF[1:dQ, (dP*(l-1)+dQ+1):(dP*l)] = T1P_ * GₚFF[1:dQ, (dP*(l-1)+dQ+1):(dP*l)]

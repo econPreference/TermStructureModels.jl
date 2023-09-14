@@ -252,7 +252,7 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
         KQ_X = zeros(dQ)
-        KQ_X[1] = kQ_infty
+        KQ_X[1] = deepcopy(kQ_infty)
         KQ_P = T1X_ * (KQ_X + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         GQPF = similar(GₚFF[1:dQ, :]) |> (x -> x .= 0)
         GQPF[:, 1:dQ] = T1X_ * GQ_XX(; κQ) / T1X_
@@ -330,10 +330,10 @@ function calibrate_μϕ_const(μkQ_infty, σkQ_infty, ν0, yields, macros, τₙ
 
         # Constant term
         KQ_X = zeros(dQ)
-        KQ_X[1] = kQ_infty
+        KQ_X[1] = deepcopy(kQ_infty)
         KQ_P = T1X_ * (KQ_X + (GQ_XX(; κQ) - I(dQ)) * T0P_)
         λₚ = μϕ_const_PCs - KQ_P
-        prior_λₚ[iter, :] = λₚ
+        prior_λₚ[iter, :] = deepcopy(λₚ)
 
         if !isempty(τ)
             # Jensen's Ineqaulity term
