@@ -310,11 +310,11 @@ function scenario_graphs(; τₙ, macros, yields)
 
     p = []
     for i in [3, 7, 13, 18]
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), yields[sdate(2022, 1):sdate(2022, 12), 1+i], c=colorant"#DC143C", label="")
+        ind_p = Plots.plot(1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:12, yields[sdate(2022, 1):sdate(2022, 12), 1+i], c=colorant"#DC143C", label="")
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield2.pdf")
@@ -339,10 +339,10 @@ function scenario_graphs(; τₙ, macros, yields)
             EH_res_dist = deepcopy(EH_res_dist_120)
             ind_name = "EH(τ = 120)"
         end
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EH.pdf")
@@ -352,14 +352,14 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         if is_percent[ind_macro]
-            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
+            Plots.plot!(ind_p, 1:12, raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
         else
-            Plots.plot!(ind_p, Date(2022, 01):Month(1):Date(2022, 12), logmacros[sdate(2022, 1):sdate(2022, 12), ind_macro] - logmacros[sdate(2021, 1):sdate(2021, 12), ind_macro], c=colorant"#DC143C", label="")
+            Plots.plot!(ind_p, 1:12, logmacros[sdate(2022, 1):sdate(2022, 12), ind_macro] - logmacros[sdate(2021, 1):sdate(2021, 12), ind_macro], c=colorant"#DC143C", label="")
         end
         push!(p, ind_p)
     end
@@ -405,10 +405,10 @@ function scenario_graphs(; τₙ, macros, yields)
 
     p = []
     for i in [3, 7, 13, 18]
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2.pdf")
@@ -433,10 +433,10 @@ function scenario_graphs(; τₙ, macros, yields)
             EH_res_dist = deepcopy(EH_res_dist_120)
             ind_name = "EH(τ = 120)"
         end
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH.pdf")
@@ -446,10 +446,10 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro.pdf")
@@ -494,10 +494,10 @@ function scenario_graphs(; τₙ, macros, yields)
 
     p = []
     for i in [3, 7, 13, 18]
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2_c.pdf")
@@ -522,10 +522,10 @@ function scenario_graphs(; τₙ, macros, yields)
             EH_res_dist = deepcopy(EH_res_dist_120)
             ind_name = "EH(τ = 120)"
         end
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH_c.pdf")
@@ -535,10 +535,10 @@ function scenario_graphs(; τₙ, macros, yields)
     for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
-        ind_p = Plots.plot(scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro_c.pdf")
