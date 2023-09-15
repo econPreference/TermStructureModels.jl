@@ -105,28 +105,6 @@ iteration = 15_000
 burnin = 5_000
 TPτ_interest = 120
 
-# scenario analysis
-
-scenario_TP = [24, 120]
-scenario_horizon = 12
-scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
-function gen_scene(scale)
-
-    scene = Vector{Scenario}(undef, 0)
-    combs = zeros(1, dP - dQ + length(τₙ))
-    vals = zeros(size(combs, 1))
-
-    combs[1, 1] = 1
-    vals[1] = scale * yields[sdate(2022, 1), 2]
-    push!(scene, Scenario(combinations=deepcopy(combs), values=deepcopy(vals)))
-    for h = 2:12
-        local combs = zeros(1, dP - dQ + length(τₙ))
-        local combs[1, 1] = 1
-        local vals = [scale * yields[sdate(2022, h), 2]]
-        push!(scene, Scenario(combinations=deepcopy(combs), values=deepcopy(vals)))
-    end
-    return scene
-end
 ##
 
 function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
@@ -150,6 +128,39 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
     saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
     JLD2.save("standard/TP.jld2", "TP", saved_TP)
 
+    return saved_θ, p
+end
+
+function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
+
+    sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
+
+    # Assumed scenario
+    scenario_TP = [24, 120]
+    scenario_horizon = 12
+    scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
+    projections_unconditional = conditional_forecasts([], [], 1, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
+    function gen_scene(scale)
+
+        scene = Vector{Scenario}(undef, scenario_horizon)
+        combs = zeros(1 + dP - dQ, dP - dQ + length(τₙ))
+        vals = zeros(size(combs, 1))
+
+        combs[1, 1] = 1
+        vals[1] = scale * yields[sdate(2022, 1), 2]
+        combs[2:end, length(τₙ)+1:end] = I(dP - dQ)
+        vals[2:end] = mean(projections_unconditional)[:factors][1, 4:end]
+        scene[1] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+        for h = 2:12
+            local combs = zeros(1, dP - dQ + length(τₙ))
+            local combs[1, 1] = 1
+            local vals = [scale * yields[sdate(2022, h), 2]]
+            scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+        end
+        return scene
+    end
+
+    # Do 
     projections = conditional_forecasts(gen_scene(1), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
     responses, responses_u = scenario_analysis(gen_scene(1), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
     JLD2.save("standard/scenario.jld2", "projections", projections, "responses", responses, "responses_u", responses_u)
@@ -535,7 +546,9 @@ end
 tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ)
 JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
-estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
+saved_θ, p = estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
+
+do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
 results = inferences(; upper_p, τₙ, macros, yields)
 

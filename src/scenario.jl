@@ -4,6 +4,7 @@
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
     - If we need an unconditional prediction, `S = []`.
+    - If you are conditionaing a scenario, I assume S = Vector{Scenario}.
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_θ`: the first output of function `posterior_sampler`.
@@ -13,7 +14,7 @@ scenarios, a result of the posterior sampler, and data
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
 """
-function conditional_forecasts(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
+function conditional_forecasts(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="Predicting using scenarios...")
@@ -303,13 +304,16 @@ end
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
+    - Set `S = []` if you do not need a conditional prediction. 
+    - If you are conditionaing a scenario, I assume S = Vector{Scenario}.
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_θ`: the first output of function `posterior_sampler`.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
-- Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters] - E[future obs|past obs, parameters]`.
+- Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`(for the first output) and `E[future obs|past obs, parameters]`(for the second output).
+    - When `S = []`, the first output is not calculated and it returns a dummy.
 """
 function scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; data_scale=1200)
     iteration = length(saved_θ)
@@ -324,11 +328,16 @@ function scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τ�
         σ²FF = saved_θ[:σ²FF][iter]
         Σₒ = saved_θ[:Σₒ][iter]
 
-        spanned_yield, spanned_F, predicted_TP, spanned_yield_u, spanned_F_u, predicted_TP_u = _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+        if isempty(S)
+            spanned_yield_u, spanned_F_u, predicted_TP_u = _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
 
-        scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
-        scenarios_u[iter] = Forecast(yields=deepcopy(spanned_yield_u), factors=deepcopy(spanned_F_u), TP=deepcopy(predicted_TP_u))
+            scenarios_u[iter] = Forecast(yields=deepcopy(spanned_yield_u), factors=deepcopy(spanned_F_u), TP=deepcopy(predicted_TP_u))
+        else
+            spanned_yield, spanned_F, predicted_TP, spanned_yield_u, spanned_F_u, predicted_TP_u = _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
 
+            scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
+            scenarios_u[iter] = Forecast(yields=deepcopy(spanned_yield_u), factors=deepcopy(spanned_F_u), TP=deepcopy(predicted_TP_u))
+        end
         next!(prog)
     end
     finish!(prog)
@@ -338,7 +347,7 @@ end
 
 
 """
-_scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+    _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
 """
 function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
 
@@ -508,6 +517,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
     end
     if isempty(τ)
         predicted_TP = []
+        predicted_TP_u = []
     else
         predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
         predicted_TP_u = Matrix{Float64}(undef, horizon, length(τ))
@@ -518,4 +528,95 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
     end
 
     return spanned_yield[(end-horizon+1):end, :], spanned_factors[(end-horizon+1):end, :], predicted_TP, spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u[(end-horizon+1):end, :], predicted_TP_u
+end
+
+"""
+    _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+"""
+function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+
+    ## Construct GDTSM parameters
+    ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
+    ϕ0 = C \ ϕ0 # reduced form parameters
+    KₚF = ϕ0[:, 1]
+    GₚFF = ϕ0[:, 2:end]
+    ΩFF = (C \ diagm(σ²FF)) / C' |> Symmetric
+
+    N = length(τₙ)
+    dQ = dimQ()
+    dP = size(ΩFF, 1)
+    k = size(GₚFF, 2) + N - dQ + dP # of factors in the companion from
+    p = Int(size(GₚFF, 2) / dP)
+
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+
+    if isempty(macros)
+        data = deepcopy(PCs)
+    else
+        data = [PCs macros]
+    end
+    T = size(data, 1)
+
+    bτ_ = bτ(τₙ[end]; κQ)
+    Bₓ_ = Bₓ(bτ_, τₙ)
+    aτ_ = aτ(τₙ[end], bτ_, τₙ, Wₚ; kQ_infty, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)
+    Aₓ_ = Aₓ(aτ_, τₙ)
+    T1X_ = T1X(Bₓ_, Wₚ)
+    T1P_ = inv(T1X_)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+    ## Construct the Kalman filter parameters
+    # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
+    G_sub = [GₚFF[:, 1:dP] zeros(dP, N - dQ) GₚFF[:, dP+1:end]
+        zeros(N - dQ, dP * p + N - dQ)
+        I(dP) zeros(dP, dP * p - dP + N - dQ)
+        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    G = zeros(k, k)
+    G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
+    G[1:dP, end-dP+1:end] = diagm(KₚF)
+    G[end-dP+1:end, end-dP+1:end] = I(dP)
+
+    Ω = zeros(dP + N - dQ, dP + N - dQ)
+    Ω[1:dP, 1:dP] = ΩFF
+    Ω[dP+1:end, dP+1:end] = diagm(Σₒ)
+    ΩFL = [I(dP) zeros(dP, N - dQ)
+        zeros(N - dQ, dP) I(N - dQ)
+        zeros(dP * p, dP + N - dQ)]
+
+    ## initializing for unconditional_prediction
+    f_ttm_u = zeros(horizon, k)
+    P_ttm_u = zeros(k, k, horizon)
+    f_ll_u = deepcopy(init_f_ll)
+    P_ll_u = deepcopy(init_P_ll)
+    yields_u = zeros(horizon, N)
+
+    ## unconditional prediction
+    for t = 1:horizon
+
+        f_ttm_u[t, :] = G * f_ll_u
+        P_ttm_u[:, :, t] = G * P_ll_u * G' + ΩFL * Ω * ΩFL'
+        yields_u[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * f_ttm_u[t, 1:dQ]
+
+        f_ll_u = f_ttm_u[t, :]
+        P_ll_u = P_ttm_u[:, :, t]
+
+    end
+
+    spanned_factors_u = Matrix{Float64}(undef, T + horizon, dP)
+    spanned_yield_u = Matrix{Float64}(undef, T + horizon, N)
+    spanned_factors_u[1:T, :] = data
+    spanned_yield_u[1:T, :] = yields
+    spanned_factors_u[(T+1):end, :] = f_ttm_u[:, 1:dP]
+    spanned_yield_u[(T+1):end, :] = yields_u
+
+    if isempty(τ)
+        predicted_TP_u = []
+    else
+        predicted_TP_u = Matrix{Float64}(undef, horizon, length(τ))
+        for i in eachindex(τ)
+            predicted_TP_u[:, i] = _termPremium(τ[i], spanned_factors_u[(T-p+1):end, 1:dQ], spanned_factors_u[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)[1]
+        end
+    end
+
+    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u[(end-horizon+1):end, :], predicted_TP_u
 end
