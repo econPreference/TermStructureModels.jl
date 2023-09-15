@@ -137,13 +137,13 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
     # Assumed scenario
     scenario_TP = [24, 120]
-    scenario_horizon = 12
+    scenario_horizon = 60
     scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
     projections_unconditional = conditional_forecasts([], [], scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
     function gen_scene(scale)
         macro_idx = [18, 20, 21, 22, 23]
 
-        scene = Vector{Scenario}(undef, scenario_horizon)
+        scene = Vector{Scenario}(undef, 12)
         for h in 1:6
             combs = zeros(1 + length(macro_idx), dP - dQ + length(τₙ))
             vals = zeros(size(combs, 1))
