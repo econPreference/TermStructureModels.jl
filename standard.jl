@@ -139,22 +139,24 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     scenario_TP = [24, 120]
     scenario_horizon = 12
     scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
-    projections_unconditional = conditional_forecasts([], [], 1, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
+    projections_unconditional = conditional_forecasts([], [], scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
     function gen_scene(scale)
+        macro_idx = [18, 20, 21, 22, 23]
 
         scene = Vector{Scenario}(undef, scenario_horizon)
-        combs = zeros(1 + dP - dQ, dP - dQ + length(τₙ))
-        vals = zeros(size(combs, 1))
-
-        combs[1, 1] = 1
-        vals[1] = scale * yields[sdate(2022, 1), 2]
-        combs[2:end, length(τₙ)+1:end] = I(dP - dQ)
-        vals[2:end] = mean(projections_unconditional)[:factors][1, 4:end]
-        scene[1] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-        for h = 2:12
-            local combs = zeros(1, dP - dQ + length(τₙ))
-            local combs[1, 1] = 1
-            local vals = [scale * yields[sdate(2022, h), 2]]
+        for h in 1:6
+            combs = zeros(1 + length(macro_idx), dP - dQ + length(τₙ))
+            vals = zeros(size(combs, 1))
+            combs[1, 1] = 1
+            vals[1] = scale * yields[sdate(2022, h), 2]
+            combs[2:end, length(τₙ)+1:end] = I(dP - dQ)[macro_idx, :]
+            vals[2:end] = mean(projections_unconditional)[:factors][h, macro_idx.+3]
+            scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+        end
+        for h = 7:12
+            combs = zeros(1, dP - dQ + length(τₙ))
+            combs[1, 1] = 1
+            vals = [scale * yields[sdate(2022, h), 2]]
             scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
         end
         return scene
