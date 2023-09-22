@@ -101,7 +101,7 @@ upper_q =
 σkQ_infty = 0.2
 
 # estimation
-iteration = 15_000
+iteration = 25_000
 burnin = 5_000
 TPτ_interest = 120
 
