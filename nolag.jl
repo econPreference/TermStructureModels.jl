@@ -93,10 +93,10 @@ upper_q =
         10 10
         100 100] .+ 0.0
 μkQ_infty = 0
-σkQ_infty = 0.02
+σkQ_infty = 0.2
 
 # estimation
-iteration = 15_000
+iteration = 25_000
 burnin = 5_000
 TPτ_interest = 120
 
