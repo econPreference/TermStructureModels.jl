@@ -50,9 +50,10 @@ function tuning_hyperparameter(yields, macros, τₙ, ρ; populationsize=50, max
             else
                 μϕ_const[:, i] = [μϕ_const_PCs; zeros(size(macros, 2))]
             end
-            prior_const_TP = calibrate_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000, data_scale, medium_τ_pr, τ=120)[2] |> mean
-            println("For lag $i, μϕ_const[1:dQ] is $μϕ_const_PCs")
-            println("and prior mean of the constant part in the term premium is $prior_const_TP")
+            prior_const_TP = calibrate_μϕ_const(μkQ_infty, σkQ_infty, init_ν0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], τₙ, i; medium_τ, μϕ_const_PCs, iteration=10_000, data_scale, medium_τ_pr, τ=120)[2]
+            println("For lag $i, μϕ_const[1:dQ] is $μϕ_const_PCs ,")
+            println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
+            println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
             println(" ")
         end
     end
