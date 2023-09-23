@@ -137,40 +137,74 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
     # Assumed scenario
-    scenario_TP = [24, 120]
+    scenario_TP = [12, 24, 60, 120]
     scenario_horizon = 24
-    scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
-    projections_unconditional = conditional_forecasts([], [], scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
-    function gen_scene(scale)
-        macro_idx = [18, 21, 23]
+    scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
+    function gen_scene(idx_case)
+        idx_inflt = [21, 23]
+        idx_ur = [5]
 
-        scene = Vector{Scenario}(undef, 12)
-        for h in 1:6
-            combs = zeros(1 + length(macro_idx), dP - dQ + length(τₙ))
-            vals = zeros(size(combs, 1))
-            combs[1, 1] = 1
-            vals[1] = scale * yields[sdate(2022, h), 2]
-            combs[2:end, length(τₙ)+1:end] = I(dP - dQ)[macro_idx, :]
-            vals[2:end] = macros[sdate(2022, h), macro_idx.+1] |> Array
-            scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+        if idx_case == 1
+            scene = Vector{Scenario}(undef, 24)
+            for h in 1:12
+                combs = zeros(1, dP - dQ + length(τₙ))
+                vals = [0.0]
+                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+            end
+            for h = 13:24
+                combs = zeros(2, dP - dQ + length(τₙ))
+                vals = zeros(size(combs, 1))
+
+                combs[1, :] = I(dP - dQ + length(τₙ))[idx_inflt[end]+length(τₙ), :]
+                vals[1] = 2.5 - mean_macros[idx_inflt[end]]
+                combs[2, :] = I(dP - dQ + length(τₙ))[idx_ur[end]+length(τₙ), :]
+                vals[2] = 4.6 - mean_macros[idx_ur[end]]
+                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+            end
+            return scene
+        elseif idx_case == 2
+            scene = Vector{Scenario}(undef, 6)
+            for h in 1:6
+                combs = zeros(1, dP - dQ + length(τₙ))
+                vals = zeros(size(combs, 1))
+
+                combs[1, length(τₙ).+idx_inflt] .= 0.5
+                vals[1] = 5.0 - mean(mean_macros[idx_inflt])
+                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+            end
+            return scene
+        else
+            scene = Vector{Scenario}(undef, 6)
+            VIX_path = [20, 60, 40, 20]
+            for h in 1:6
+                if h > 4
+                    combs = zeros(1, dP - dQ + length(τₙ))
+                    vals = zeros(size(combs, 1))
+
+                    combs[1, length(τₙ).+idx_inflt] .= 0.5
+                    vals[1] = 5.0 - mean(mean_macros[idx_inflt])
+                else
+                    combs = zeros(2, dP - dQ + length(τₙ))
+                    vals = zeros(size(combs, 1))
+
+                    combs[1, length(τₙ).+idx_inflt] .= 0.5
+                    vals[1] = 5.0 - mean(mean_macros[idx_inflt])
+                    combs[2, end] = 1.0
+                    vals[2] = VIX_path[h] - mean_macros[end]
+                end
+                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+            end
+            return scene
         end
-        for h = 7:12
-            combs = zeros(1, dP - dQ + length(τₙ))
-            combs[1, 1] = 1
-            vals = [scale * yields[sdate(2022, h), 2]]
-            scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-        end
-        return scene
     end
 
     # Do 
     iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
 
-    projections = conditional_forecasts(gen_scene(1), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
-    responses, responses_u = scenario_analysis(gen_scene(1), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
-    JLD2.save("standard/scenario.jld2", "projections", projections, "responses", responses, "responses_u", responses_u)
-    responses, responses_u = scenario_analysis(gen_scene(1.5), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
-    JLD2.save("standard/counterfectual.jld2", "responses", responses, "responses_u", responses_u)
+    for i in 1:3
+        projections = conditional_forecasts(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
+        JLD2.save("standard/scenario$i.jld2", "projections", projections)
+    end
 
     return []
 end
@@ -281,27 +315,27 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
 
 end
 
-function scenario_graphs(; τₙ, macros)
+function scenario_graphs(idx_case; τₙ, macros)
 
     set_default_plot_size(16cm, 8cm)
-    scenario_start_date = Date("2023-01-01", "yyyy-mm-dd")
+    scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     idx_date = sdate(yearmonth(scenario_start_date)...)
-    horizon = JLD2.load("standard/scenario.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
+    horizon = JLD2.load("standard/scenario$idx_case.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
     macros_of_interest = ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
 
     ## predictions
 
-    raw_projections = JLD2.load("standard/scenario.jld2")["projections"]
+    raw_projections = JLD2.load("standard/scenario$idx_case.jld2")["projections"]
     projections = Vector{Forecast}(undef, length(raw_projections))
     for i in eachindex(projections)
         predicted_factors = deepcopy(raw_projections[i][:factors])
         for j in 1:dP-dQ
             if idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+                predicted_factors[:, dQ+j] = [raw_macros[idx_date, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
             elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-12:idx_date-1, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date-11:idx_date, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
             elseif idx_diff[j] == 1 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-12:idx_date-1, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+                predicted_factors[:, dQ+j] = [logmacros[idx_date, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-11:idx_date, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
             end
         end
         projections[i] = Forecast(yields=deepcopy(raw_projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_projections[i][:TP]))
@@ -309,7 +343,7 @@ function scenario_graphs(; τₙ, macros)
 
     # yields
     yield_res = mean(projections)[:yields]
-    Plots.surface(τₙ, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield.pdf")
+    Plots.surface(τₙ, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case.pdf")
 
     p = []
     for i in [3, 7, 13, 18]
@@ -319,24 +353,38 @@ function scenario_graphs(; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield2.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case.pdf")
 
     # EH
-    EH_res = mean(projections)[:yields][:, [7, 18]] - mean(projections)[:TP]
+    EH_res = mean(projections)[:yields][:, [5, 7, 13, 18]] - mean(projections)[:TP]
+    EH_res_dist_12 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
+    for i in axes(EH_res_dist_12, 1)
+        EH_res_dist_12[i, :] = projections[:yields][i][:, 5] - projections[:TP][i][:, 1]
+    end
     EH_res_dist_24 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
     for i in axes(EH_res_dist_24, 1)
-        EH_res_dist_24[i, :] = projections[:yields][i][:, 7] - projections[:TP][i][:, 1]
+        EH_res_dist_24[i, :] = projections[:yields][i][:, 7] - projections[:TP][i][:, 2]
+    end
+    EH_res_dist_60 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
+    for i in axes(EH_res_dist_60, 1)
+        EH_res_dist_60[i, :] = projections[:yields][i][:, 13] - projections[:TP][i][:, 3]
     end
     EH_res_dist_120 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
     for i in axes(EH_res_dist_120, 1)
-        EH_res_dist_120[i, :] = projections[:yields][i][:, 18] - projections[:TP][i][:, 2]
+        EH_res_dist_120[i, :] = projections[:yields][i][:, 18] - projections[:TP][i][:, 4]
     end
 
     p = []
-    for i in 1:2
+    for i in 1:4
         if i == 1
+            EH_res_dist = deepcopy(EH_res_dist_12)
+            ind_name = "EH(τ = 12)"
+        elseif i == 2
             EH_res_dist = deepcopy(EH_res_dist_24)
             ind_name = "EH(τ = 24)"
+        elseif i == 3
+            EH_res_dist = deepcopy(EH_res_dist_60)
+            ind_name = "EH(τ = 60)"
         else
             EH_res_dist = deepcopy(EH_res_dist_120)
             ind_name = "EH(τ = 120)"
@@ -347,7 +395,7 @@ function scenario_graphs(; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EH.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EH$idx_case.pdf")
 
     # macros
     p = []
@@ -360,185 +408,7 @@ function scenario_graphs(; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro.pdf")
-
-    ## scenario analysis
-
-    raw_responses_u = JLD2.load("standard/scenario.jld2")["responses_u"]
-    responses_u = Vector{Forecast}(undef, length(raw_responses_u))
-    for i in eachindex(responses_u)
-        predicted_factors = deepcopy(raw_responses_u[i][:factors])
-        for j in 1:dP-dQ
-            if idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-12:idx_date-1, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            elseif idx_diff[j] == 1 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-12:idx_date-1, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            end
-        end
-        responses_u[i] = Forecast(yields=deepcopy(raw_responses_u[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_responses_u[i][:TP]))
-    end
-
-    raw_responses = JLD2.load("standard/scenario.jld2")["responses"]
-    responses = Vector{Forecast}(undef, length(raw_responses))
-    for i in eachindex(responses)
-        predicted_factors = deepcopy(raw_responses[i][:factors])
-        for j in 1:dP-dQ
-            if idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-12:idx_date-1, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            elseif idx_diff[j] == 1 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-12:idx_date-1, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            end
-        end
-        responses[i] = Forecast(yields=raw_responses[i][:yields] - responses_u[i][:yields], factors=predicted_factors - responses_u[i][:factors], TP=raw_responses[i][:TP] - responses_u[i][:TP])
-    end
-
-    # yields
-    yield_res = mean(responses)[:yields]
-    Plots.surface(τₙ, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield.pdf")
-
-    p = []
-    for i in [3, 7, 13, 18]
-        ind_p = Plots.plot(1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        push!(p, ind_p)
-    end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2.pdf")
-
-    # EH
-    EH_res = mean(responses)[:yields][:, [7, 18]] - mean(responses)[:TP]
-    EH_res_dist_24 = Matrix{Float64}(undef, length(responses), size(EH_res, 1))
-    for i in axes(EH_res_dist_24, 1)
-        EH_res_dist_24[i, :] = responses[:yields][i][:, 7] - responses[:TP][i][:, 1]
-    end
-    EH_res_dist_120 = Matrix{Float64}(undef, length(responses), size(EH_res, 1))
-    for i in axes(EH_res_dist_120, 1)
-        EH_res_dist_120[i, :] = responses[:yields][i][:, 18] - responses[:TP][i][:, 2]
-    end
-
-    p = []
-    for i in 1:2
-        if i == 1
-            EH_res_dist = deepcopy(EH_res_dist_24)
-            ind_name = "EH(τ = 24)"
-        else
-            EH_res_dist = deepcopy(EH_res_dist_120)
-            ind_name = "EH(τ = 120)"
-        end
-        ind_p = Plots.plot(1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        push!(p, ind_p)
-    end
-    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH.pdf")
-
-    # macros
-    p = []
-    for i in macros_of_interest
-        ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
-
-        ind_p = Plots.plot(1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        push!(p, ind_p)
-    end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro.pdf")
-
-    ## counterfectual analysis
-
-    raw_responses_u = JLD2.load("standard/counterfectual.jld2")["responses_u"]
-    responses_u = Vector{Forecast}(undef, length(raw_responses_u))
-    for i in eachindex(responses_u)
-        predicted_factors = deepcopy(raw_responses_u[i][:factors])
-        for j in 1:dP-dQ
-            if idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-12:idx_date-1, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            elseif idx_diff[j] == 1 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-12:idx_date-1, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            end
-        end
-        responses_u[i] = Forecast(yields=deepcopy(raw_responses_u[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_responses_u[i][:TP]))
-    end
-
-    raw_responses = JLD2.load("standard/counterfectual.jld2")["responses"]
-    responses = Vector{Forecast}(undef, length(raw_responses))
-    for i in eachindex(responses)
-        predicted_factors = deepcopy(raw_responses[i][:factors])
-        for j in 1:dP-dQ
-            if idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[idx_date-1, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-12:idx_date-1, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            elseif idx_diff[j] == 1 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-1, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-12:idx_date-1, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            end
-        end
-        responses[i] = Forecast(yields=raw_responses[i][:yields] - responses_u[i][:yields], factors=predicted_factors - responses_u[i][:factors], TP=raw_responses[i][:TP] - responses_u[i][:TP])
-    end
-
-    # yields
-    yield_res = mean(responses)[:yields]
-    Plots.surface(τₙ, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield_c.pdf")
-
-    p = []
-    for i in [3, 7, 13, 18]
-        ind_p = Plots.plot(1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:yields][:, i], fillrange=quantile(responses, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        push!(p, ind_p)
-    end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_yield2_c.pdf")
-
-    # EH
-    EH_res = mean(responses)[:yields][:, [7, 18]] - mean(responses)[:TP]
-    EH_res_dist_24 = Matrix{Float64}(undef, length(responses), size(EH_res, 1))
-    for i in axes(EH_res_dist_24, 1)
-        EH_res_dist_24[i, :] = responses[:yields][i][:, 7] - responses[:TP][i][:, 1]
-    end
-    EH_res_dist_120 = Matrix{Float64}(undef, length(responses), size(EH_res, 1))
-    for i in axes(EH_res_dist_120, 1)
-        EH_res_dist_120[i, :] = responses[:yields][i][:, 18] - responses[:TP][i][:, 2]
-    end
-
-    p = []
-    for i in 1:2
-        if i == 1
-            EH_res_dist = deepcopy(EH_res_dist_24)
-            ind_name = "EH(τ = 24)"
-        else
-            EH_res_dist = deepcopy(EH_res_dist_120)
-            ind_name = "EH(τ = 120)"
-        end
-        ind_p = Plots.plot(1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        push!(p, ind_p)
-    end
-    Plots.plot(p[1], p[2], layout=(1, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_EH_c.pdf")
-
-    # macros
-    p = []
-    for i in macros_of_interest
-        ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
-
-        ind_p = Plots.plot(1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(responses)[:factors][:, dimQ()+ind_macro], fillrange=quantile(responses, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        push!(p, ind_p)
-    end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/res_macro_c.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case.pdf")
 
 end
 
@@ -555,4 +425,6 @@ results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
 
-scenario_graphs(; τₙ, macros)
+for i in 1:3
+    scenario_graphs(i; τₙ, macros)
+end
