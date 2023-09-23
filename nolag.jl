@@ -113,7 +113,11 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
     iteration = length(saved_θ)
     JLD2.save("nolag/posterior.jld2", "samples", saved_θ, "acceptPrMH", acceptPrMH, "Pr_stationary", Pr_stationary)
 
-    saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
+    ineff = ineff_factor(saved_θ)
+    JLD2.save("nolag/ineff.jld2", "ineff", ineff)
+
+    iter_sub = JLD2.load("nolag/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
+    saved_TP = term_premium(TPτ_interest, τₙ, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
     JLD2.save("nolag/TP.jld2", "TP", saved_TP)
 
     return []

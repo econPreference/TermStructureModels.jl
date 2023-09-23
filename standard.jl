@@ -125,7 +125,8 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
     ineff = ineff_factor(saved_θ)
     JLD2.save("standard/ineff.jld2", "ineff", ineff)
 
-    saved_TP = term_premium(TPτ_interest, τₙ, saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
+    iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
+    saved_TP = term_premium(TPτ_interest, τₙ, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]))
     JLD2.save("standard/TP.jld2", "TP", saved_TP)
 
     return saved_θ, p
@@ -163,10 +164,12 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     end
 
     # Do 
-    projections = conditional_forecasts(gen_scene(1), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
-    responses, responses_u = scenario_analysis(gen_scene(1), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
+    iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
+
+    projections = conditional_forecasts(gen_scene(1), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ; mean_macros)
+    responses, responses_u = scenario_analysis(gen_scene(1), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
     JLD2.save("standard/scenario.jld2", "projections", projections, "responses", responses, "responses_u", responses_u)
-    responses, responses_u = scenario_analysis(gen_scene(1.5), scenario_TP, scenario_horizon, saved_θ, Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
+    responses, responses_u = scenario_analysis(gen_scene(1.5), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...)-1, 2:end]), τₙ)
     JLD2.save("standard/counterfectual.jld2", "responses", responses, "responses_u", responses_u)
 
     return []
