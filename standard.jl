@@ -281,10 +281,10 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
 
 end
 
-function scenario_graphs(; τₙ, macros, yields)
+function scenario_graphs(; τₙ, macros)
 
     set_default_plot_size(16cm, 8cm)
-    scenario_start_date = Date("2022-01-01", "yyyy-mm-dd")
+    scenario_start_date = Date("2023-01-01", "yyyy-mm-dd")
     idx_date = sdate(yearmonth(scenario_start_date)...)
     horizon = JLD2.load("standard/scenario.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
     macros_of_interest = ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
@@ -317,7 +317,6 @@ function scenario_graphs(; τₙ, macros, yields)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:12, yields[sdate(2022, 1):sdate(2022, 12), 1+i], c=colorant"#DC143C", label="")
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield2.pdf")
@@ -359,11 +358,6 @@ function scenario_graphs(; τₙ, macros, yields)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        if is_percent[ind_macro]
-            Plots.plot!(ind_p, 1:12, raw_macros[sdate(2022, 1):sdate(2022, 12), 1+ind_macro], c=colorant"#DC143C", label="")
-        else
-            Plots.plot!(ind_p, 1:12, logmacros[sdate(2022, 1):sdate(2022, 12), ind_macro] - logmacros[sdate(2021, 1):sdate(2021, 12), ind_macro], c=colorant"#DC143C", label="")
-        end
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro.pdf")
@@ -561,4 +555,4 @@ results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
 
-scenario_graphs(; τₙ, macros, yields)
+scenario_graphs(; τₙ, macros)
