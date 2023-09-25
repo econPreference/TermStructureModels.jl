@@ -177,7 +177,7 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
                     combs[1, length(τₙ).+idx_inflt] .= 0.5
                     vals[1] = 5.0 - mean(mean_macros[idx_inflt])
                     combs[2, end] = 1.0
-                    vals[2] = VIX_path[h] - mean_macros[end]
+                    vals[2] = 100log(VIX_path[h]) - mean_macros[end]
                 end
                 scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             end
@@ -189,7 +189,7 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
 
     for i in 1:2
-        projections = conditional_forecasts(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
+        projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
         JLD2.save("standard/scenario$i.jld2", "projections", projections)
     end
 
