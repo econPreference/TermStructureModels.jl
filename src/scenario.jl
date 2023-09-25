@@ -186,20 +186,24 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, τₙ; κQ, kQ_i
             f_tl = G * f_tt
             P_tl = G * P_tt * G' + ΩFL * Ω * ΩFL'
 
+            # st = St*μM + St*H*F(t)
             St = S_[t].combinations
             st = S_[t].values
-            # st = St*μM + St*H*F(t)
-
-            var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
-            e_tl = st - St * μM - St * H * f_tl
-            precFtm[t] = var_tl \ e_tl
-            Kalgain = P_tl * (St * H)' / var_tl
-            Ktm[t] = G * Kalgain
 
             if maximum(abs.(St)) > 0
+                var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
+                e_tl = st - St * μM - St * H * f_tl
+                Kalgain = P_tl * (St * H)' / var_tl
+
+                precFtm[t] = var_tl \ e_tl
+                Ktm[t] = G * Kalgain
+
                 f_tt = f_tl + Kalgain * e_tl
                 P_tt = P_tl - Kalgain * St * H * P_tl
             else
+                precFtm[t] = zeros(size(St, 1))
+                Ktm[t] = zeros(k, size(St, 1))
+
                 f_tt = deepcopy(f_tl)
                 P_tt = deepcopy(P_tl)
             end
@@ -444,20 +448,24 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
             f_tl = G * f_tt
             P_tl = G * P_tt * G' + ΩFL * Ω * ΩFL'
 
+            # st = St*μM + St*H*F(t)
             St = S_[t].combinations
             st = S_[t].values
-            # st = St*μM + St*H*F(t)
-
-            var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
-            e_tl = st - St * μM - St * H * f_tl
-            precFtm[t] = var_tl \ e_tl
-            Kalgain = P_tl * (St * H)' / var_tl
-            Ktm[t] = G * Kalgain
 
             if maximum(abs.(St)) > 0
+                var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
+                e_tl = st - St * μM - St * H * f_tl
+                Kalgain = P_tl * (St * H)' / var_tl
+
+                precFtm[t] = var_tl \ e_tl
+                Ktm[t] = G * Kalgain
+
                 f_tt = f_tl + Kalgain * e_tl
                 P_tt = P_tl - Kalgain * St * H * P_tl
             else
+                precFtm[t] = zeros(size(St, 1))
+                Ktm[t] = zeros(k, size(St, 1))
+
                 f_tt = deepcopy(f_tl)
                 P_tt = deepcopy(P_tl)
             end

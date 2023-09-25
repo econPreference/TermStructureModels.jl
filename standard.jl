@@ -138,38 +138,25 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
     # Assumed scenario
     scenario_TP = [12, 24, 60, 120]
-    scenario_horizon = 24
+    scenario_horizon = 36
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     function gen_scene(idx_case)
         idx_inflt = [21, 23]
         idx_ur = [5]
 
         if idx_case == 1
-            scene = Vector{Scenario}(undef, 24)
-            for h in 1:12
+            scene = Vector{Scenario}(undef, 25)
+            for h in 1:24
                 combs = zeros(1, dP - dQ + length(τₙ))
                 vals = [0.0]
                 scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             end
-            for h = 13:24
-                combs = zeros(2, dP - dQ + length(τₙ))
-                vals = zeros(size(combs, 1))
-
-                combs[1, :] = I(dP - dQ + length(τₙ))[idx_inflt[end]+length(τₙ), :]
-                vals[1] = 2.5 - mean_macros[idx_inflt[end]]
-                combs[2, :] = I(dP - dQ + length(τₙ))[idx_ur[end]+length(τₙ), :]
-                vals[2] = 4.6 - mean_macros[idx_ur[end]]
-                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-            end
-            return scene
-        elseif idx_case == 2
-            scene = Vector{Scenario}(undef, 6)
-            for h in 1:6
+            for h = 25:25
                 combs = zeros(1, dP - dQ + length(τₙ))
                 vals = zeros(size(combs, 1))
 
-                combs[1, length(τₙ).+idx_inflt] .= 0.5
-                vals[1] = 5.0 - mean(mean_macros[idx_inflt])
+                combs[1, 1] = 1
+                vals[1] = 2.5
                 scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             end
             return scene
@@ -201,7 +188,7 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     # Do 
     iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
 
-    for i in 1:3
+    for i in 1:2
         projections = conditional_forecasts(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
         JLD2.save("standard/scenario$i.jld2", "projections", projections)
     end
@@ -425,6 +412,6 @@ results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
 
-for i in 1:3
+for i in 1:2
     scenario_graphs(i; τₙ, macros)
 end
