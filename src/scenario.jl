@@ -17,7 +17,7 @@ scenarios, a result of the posterior sampler, and data
 function conditional_forecasts(S, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="Predicting using scenarios...")
+    prog = Progress(iteration; dt=5, desc="conditional_forecasts...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -322,7 +322,7 @@ scenarios, a result of the posterior sampler, and data
 function scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="generating responses under scenarios...")
+    prog = Progress(iteration; dt=5, desc="scenario_analysis...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]

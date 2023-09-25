@@ -191,7 +191,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperpar
 
     isaccept_MH = zeros(dQ)
     saved_θ = Vector{Parameter}(undef, iteration)
-    @showprogress 5 "Sampling the posterior..." for iter in 1:iteration
+    @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
         κQ = rand(post_κQ(yields, prior_κQ_, τₙ; kQ_infty, ϕ, σ²FF, Σₒ, data_scale))
 
@@ -275,7 +275,7 @@ function ineff_factor(saved_θ)
     initial_θ = [init_κQ; init_kQ_infty; init_γ; init_Σₒ; init_σ²FF; init_ϕ]
     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_θ[1, :] = initial_θ
-    prog = Progress(iteration - 1; dt=5, desc="Vectorizing posterior samples...")
+    prog = Progress(iteration - 1; dt=5, desc="ineff_factor...")
     Threads.@threads for iter in 2:iteration
         κQ = saved_θ[:κQ][iter]
         kQ_infty = saved_θ[:kQ_infty][iter]
@@ -291,7 +291,7 @@ function ineff_factor(saved_θ)
 
     ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
     kernel = QuadraticSpectralKernel{Andrews}()
-    prog = Progress(size(vec_saved_θ, 2); dt=5, desc="Calculating Ineff factors...")
+    prog = Progress(size(vec_saved_θ, 2); dt=5, desc="ineff_factor...")
     Threads.@threads for i in axes(vec_saved_θ, 2)
         object = Matrix{Float64}(undef, iteration, 1)
         object[:] = vec_saved_θ[:, i]

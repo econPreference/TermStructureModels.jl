@@ -182,7 +182,7 @@ function erase_nonstationary_param(saved_θ)
 
     iteration = length(saved_θ)
     stationary_saved_θ = Vector{Parameter}(undef, 0)
-    prog = Progress(iteration; dt=5, desc="Erase explosive systems...")
+    prog = Progress(iteration; dt=5, desc="erase_nonstationary_param...")
     #Threads.@threads 
     for iter in 1:iteration
 
@@ -229,7 +229,7 @@ function reducedform(saved_θ, yields, macros, τₙ; data_scale=1200)
 
     iteration = length(saved_θ)
     reduced_θ = Vector{ReducedForm}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="Moving to the reduced form...")
+    prog = Progress(iteration; dt=5, desc="reducedform...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]

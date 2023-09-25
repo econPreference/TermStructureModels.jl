@@ -251,7 +251,7 @@ function term_premium(τ, τₙ, saved_θ, yields, macros; data_scale=1200)
     p = Int((size(saved_θ[:ϕ][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
-    prog = Progress(iteration; dt=5, desc="Calculating TPs...")
+    prog = Progress(iteration; dt=5, desc="term_premium...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -297,7 +297,7 @@ function latentspace(saved_θ, yields, τₙ; data_scale=1200)
 
     iteration = length(saved_θ)
     saved_θ_latent = Vector{LatentSpace}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="Moving to the latent space...")
+    prog = Progress(iteration; dt=5, desc="latentspace...")
     Threads.@threads for iter in 1:iteration
 
         κQ = saved_θ[:κQ][iter]
@@ -395,7 +395,7 @@ function fitted_YieldCurve(τ0, saved_Xθ::Vector{LatentSpace}; data_scale=1200)
     dQ = dimQ()
     iteration = length(saved_Xθ)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="Fitting yield curve...")
+    prog = Progress(iteration; dt=5, desc="fitted_YieldCurve...")
     Threads.@threads for iter in 1:iteration
 
         latents = saved_Xθ[:latents][iter]
