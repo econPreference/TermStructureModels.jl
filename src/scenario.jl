@@ -304,25 +304,24 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, τₙ; κQ, kQ_i
 end
 
 """
-    scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; data_scale=1200)
+    scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
-    - Set `S = []` if you do not need a conditional prediction. 
+    - Set `S = []` if you need an unconditional prediction. 
     - If you are conditionaing a scenario, I assume S = Vector{Scenario}.
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_θ`: the first output of function `posterior_sampler`.
+- `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
-- Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`(for the first output) and `E[future obs|past obs, parameters]`(for the second output).
-    - When `S = []`, the first output is not calculated and it returns a dummy.
+- Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
 """
-function scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; data_scale=1200)
+function scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τₙ; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_θ)
     scenarios = Vector{Forecast}(undef, iteration)
-    scenarios_u = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="generating responses under scenarios...")
     Threads.@threads for iter in 1:iteration
 
@@ -333,27 +332,23 @@ function scenario_analysis(S::Vector, τ, horizon, saved_θ, yields, macros, τ�
         Σₒ = saved_θ[:Σₒ][iter]
 
         if isempty(S)
-            spanned_yield_u, spanned_F_u, predicted_TP_u = _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
-
-            scenarios_u[iter] = Forecast(yields=deepcopy(spanned_yield_u), factors=deepcopy(spanned_F_u), TP=deepcopy(predicted_TP_u))
+            spanned_yield, spanned_F, predicted_TP = _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP, spanned_yield_u, spanned_F_u, predicted_TP_u = _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
-
-            scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
-            scenarios_u[iter] = Forecast(yields=deepcopy(spanned_yield_u), factors=deepcopy(spanned_F_u), TP=deepcopy(predicted_TP_u))
+            spanned_yield, spanned_F, predicted_TP = _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
         end
+        scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
         next!(prog)
     end
     finish!(prog)
 
-    return scenarios, scenarios_u
+    return scenarios
 end
 
 
 """
-    _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+    _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 """
-function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
@@ -372,6 +367,10 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
+
+    if isempty(mean_macros)
+        mean_macros = zeros(dP - dQ)
+    end
 
     if isempty(macros)
         data = deepcopy(PCs)
@@ -418,24 +417,6 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
     W_mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
     init_f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dQ]; x[dP+1:end]; ones(dP)]
     init_P_ll = zeros(k, k)
-    # for unconditional_prediction
-    f_ttm_u = zeros(horizon, k)
-    P_ttm_u = zeros(k, k, horizon)
-    f_ll_u = deepcopy(init_f_ll)
-    P_ll_u = deepcopy(init_P_ll)
-    yields_u = zeros(horizon, N)
-
-    ## unconditional prediction
-    for t = 1:horizon
-
-        f_ttm_u[t, :] = G * f_ll_u
-        P_ttm_u[:, :, t] = G * P_ll_u * G' + ΩFL * Ω * ΩFL'
-        yields_u[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * f_ttm_u[t, 1:dQ]
-
-        f_ll_u = f_ttm_u[t, :]
-        P_ll_u = P_ttm_u[:, :, t]
-
-    end
 
     ## Conditional prediction
     function filtering_smoothing(S_)
@@ -507,15 +488,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
     spanned_yield = Matrix{Float64}(undef, T + horizon, N)
     spanned_factors[1:T, :] = data
     spanned_yield[1:T, :] = yields
-    spanned_factors_u = Matrix{Float64}(undef, T + horizon, dP)
-    spanned_yield_u = Matrix{Float64}(undef, T + horizon, N)
-    spanned_factors_u[1:T, :] = data
-    spanned_yield_u[1:T, :] = yields
-
     spanned_factors[(T+1):(T+dh), :] = predicted_F[:, 1:dP]
-    spanned_factors_u[(T+1):end, :] = f_ttm_u[:, 1:dP]
-    spanned_yield_u[(T+1):end, :] = yields_u
-
     for t in (T+1):(T+horizon) # predicted period
         if t > T + dh
             X = spanned_factors[t-1:-1:t-p, :] |> X -> vec(X')
@@ -525,23 +498,24 @@ function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty
     end
     if isempty(τ)
         predicted_TP = []
-        predicted_TP_u = []
     else
         predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
-        predicted_TP_u = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
             predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)[1]
-            predicted_TP_u[:, i] = _termPremium(τ[i], spanned_factors_u[(T-p+1):end, 1:dQ], spanned_factors_u[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; κQ, kQ_infty, KₚF, GₚFF, ΩPP=ΩFF[1:dQ, 1:dQ], data_scale)[1]
         end
     end
 
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors[(end-horizon+1):end, :], predicted_TP, spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u[(end-horizon+1):end, :], predicted_TP_u
+    spanned_factors = spanned_factors[(end-horizon+1):end, :]
+    for i in 1:dP-dQ
+        spanned_factors[:, dQ+i] .+= mean_macros[i]
+    end
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+    _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 """
-function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, data_scale)
+function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
     ## Construct GDTSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
@@ -557,6 +531,10 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κ
     p = Int(size(GₚFF, 2) / dP)
 
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+
+    if isempty(mean_macros)
+        mean_macros = zeros(dP - dQ)
+    end
 
     if isempty(macros)
         data = deepcopy(PCs)
@@ -626,5 +604,9 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κ
         end
     end
 
-    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u[(end-horizon+1):end, :], predicted_TP_u
+    spanned_factors_u = spanned_factors_u[(end-horizon+1):end, :]
+    for i in 1:dP-dQ
+        spanned_factors_u[:, dQ+i] .+= mean_macros[i]
+    end
+    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u
 end

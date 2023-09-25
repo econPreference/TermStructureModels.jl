@@ -308,7 +308,7 @@ function scenario_graphs(idx_case; τₙ, macros)
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     idx_date = sdate(yearmonth(scenario_start_date)...)
     horizon = JLD2.load("standard/scenario$idx_case.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
-    macros_of_interest = ["RPI", "INDPRO", "CPIAUCSL", "S&P 500", "INVEST", "HOUST"]
+    macros_of_interest = ["RPI", "INDPRO", "UNRATE", "REALLN", "S&P 500", "BAA", "CPIAUCSL", "PCEPI", "WPSFD49207"]
 
     ## predictions
 
@@ -330,7 +330,7 @@ function scenario_graphs(idx_case; τₙ, macros)
 
     # yields
     yield_res = mean(projections)[:yields]
-    Plots.surface(τₙ, scenario_start_date:Month(1):scenario_start_date+Month(horizon - 1), yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case.pdf")
+    Plots.surface(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case.pdf")
 
     p = []
     for i in [3, 7, 13, 18]
@@ -395,7 +395,7 @@ function scenario_graphs(idx_case; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(3, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case.pdf")
 
 end
 
