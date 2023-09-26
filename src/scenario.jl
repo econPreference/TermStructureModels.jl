@@ -530,7 +530,8 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κ
     k = size(GₚFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GₚFF, 2) / dP)
 
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    W = [Wₒ; Wₚ]
 
     if isempty(mean_macros)
         mean_macros = zeros(dP - dQ)
@@ -570,10 +571,11 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κ
         zeros(dP * p, dP + N - dQ)]
 
     ## initializing for unconditional_prediction
+    W_mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
     f_ttm_u = zeros(horizon, k)
     P_ttm_u = zeros(k, k, horizon)
-    f_ll_u = deepcopy(init_f_ll)
-    P_ll_u = deepcopy(init_P_ll)
+    f_ll_u = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dQ]; x[dP+1:end]; ones(dP)]
+    P_ll_u = zeros(k, k)
     yields_u = zeros(horizon, N)
 
     ## unconditional prediction

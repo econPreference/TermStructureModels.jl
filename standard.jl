@@ -145,26 +145,30 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
         idx_ur = [5]
 
         if idx_case == 1
-            scene = Vector{Scenario}(undef, 25)
-            for h in 1:24
+            scene = Vector{Scenario}(undef, 36)
+            for h in 1:36
                 combs = zeros(1, dP - dQ + length(τₙ))
                 vals = [0.0]
                 scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             end
-            for h = 25:25
-                combs = zeros(1, dP - dQ + length(τₙ))
-                vals = zeros(size(combs, 1))
 
-                combs[1, 1] = 1
-                vals[1] = 2.5
-                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-            end
+            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
+            vals = [5.125]
+            scene[6] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+
+            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
+            vals = [4.875]
+            scene[7] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+
+            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
+            vals = [2.5]
+            scene[end] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             return scene
         else
-            scene = Vector{Scenario}(undef, 6)
-            VIX_path = [20, 60, 40, 20]
-            for h in 1:6
-                if h > 4
+            scene = Vector{Scenario}(undef, 12)
+            VIX_path = [30, 60, 60, 50, 45, 45, 45, 40, 30]
+            for h in 1:12
+                if h > 9
                     combs = zeros(1, dP - dQ + length(τₙ))
                     vals = zeros(size(combs, 1))
 
@@ -188,8 +192,14 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     # Do 
     iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
 
+    # unconditional prediction
+    uncond_projections = scenario_analysis([], scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
     for i in 1:2
         projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
+
+        for iter in eachindex(projections)
+            projections[iter] = Forecast(yields=deepcopy(projections[iter].yields - uncond_projections[iter].yields), factors=deepcopy(projections[iter].factors - uncond_projections[iter].factors), TP=deepcopy(projections[iter].TP - uncond_projections[iter].TP))
+        end
         JLD2.save("standard/scenario$i.jld2", "projections", projections)
     end
 
@@ -333,7 +343,7 @@ function scenario_graphs(idx_case; τₙ, macros)
     Plots.surface(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case.pdf")
 
     p = []
-    for i in [3, 7, 13, 18]
+    for i in [2, 7, 13, 18]
         ind_p = Plots.plot(1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
