@@ -104,6 +104,7 @@ upper_q =
 iteration = 25_000
 burnin = 5_000
 TPτ_interest = 120
+is_control = true
 
 ##
 
@@ -165,9 +166,9 @@ function do_projection(saved_θ, p, is_control::Bool; upper_p, τₙ, macros, yi
             scene[end] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             return scene
         elseif idx_case == 2
-            scene = Vector{Scenario}(undef, 9)
-            VIX_path = [30, 60, 60, 50, 45, 45, 45, 40, 30]
-            for h in 1:9
+            scene = Vector{Scenario}(undef, 10)
+            VIX_path = raw_macros[sdate(2008, 9):sdate(2009, 6), end]
+            for h in 1:10
                 combs = zeros(1, dP - dQ + length(τₙ))
                 vals = zeros(size(combs, 1))
 
@@ -351,7 +352,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
 
     # yields
     yield_res = mean(projections)[:yields]
-    Plots.surface(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case.pdf")
+    Plots.surface(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
 
     p = []
     for i in [2, 7, 13, 18]
@@ -361,7 +362,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control.pdf")
 
     # EH
     EH_res = mean(projections)[:yields][:, [5, 7, 13, 18]] - mean(projections)[:TP]
@@ -403,7 +404,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EH$idx_case.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EH$idx_case,control=$is_control.pdf")
 
     # macros
     p = []
@@ -416,7 +417,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
 
 end
 
@@ -427,7 +428,6 @@ JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
 saved_θ, p = estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
 
-is_control = false
 do_projection(saved_θ, p, is_control; upper_p, τₙ, macros, yields)
 
 results = inferences(; upper_p, τₙ, macros, yields)
