@@ -104,7 +104,6 @@ upper_q =
 iteration = 25_000
 burnin = 5_000
 TPτ_interest = 120
-is_control = true
 
 ##
 
@@ -133,7 +132,7 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
     return saved_θ, p
 end
 
-function do_projection(saved_θ, p, is_control::Bool; upper_p, τₙ, macros, yields)
+function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
@@ -177,23 +176,18 @@ function do_projection(saved_θ, p, is_control::Bool; upper_p, τₙ, macros, yi
                 scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
             end
             return scene
-        elseif idx_case == 3
-            return []
-        elseif idx_case == 4
-            return []
         end
     end
 
-    # Do 
+    ## Do 
     iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
-    for i in 1:2
-        if is_control
-            # unconditional prediction
-            projections = scenario_analysis(gen_scene(i + 2), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
-            JLD2.save("standard/uncond_scenario$i.jld2", "projections", projections)
-        end
 
-        # conditional prediction
+    # unconditional prediction
+    projections = scenario_analysis([], scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
+    JLD2.save("standard/uncond_scenario$i.jld2", "projections", projections)
+    # conditional prediction
+    for i in 1:2
+
         projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
         JLD2.save("standard/scenario$i.jld2", "projections", projections)
     end
@@ -428,12 +422,12 @@ JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
 saved_θ, p = estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
 
-do_projection(saved_θ, p, is_control; upper_p, τₙ, macros, yields)
+do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
 results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
 
 for i in 1:2
-    scenario_graphs(i, is_control; τₙ, macros)
+    scenario_graphs(i, true; τₙ, macros)
 end
