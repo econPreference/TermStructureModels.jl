@@ -132,7 +132,7 @@ function estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, 
     return saved_θ, p
 end
 
-function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
+function do_projection(saved_θ, p, is_control::Bool; upper_p, τₙ, macros, yields)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
 
@@ -154,7 +154,11 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
             combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
             vals = [5.1]
-            scene[6] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+            scene[12] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+
+            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
+            vals = [4.1]
+            scene[24] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
 
             combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
             vals = [3.1]
@@ -173,25 +177,7 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
             end
             return scene
         elseif idx_case == 3
-            scene = Vector{Scenario}(undef, 36)
-            for h in 1:36
-                combs = zeros(1, dP - dQ + length(τₙ))
-                vals = [0.0]
-                scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-            end
-
-            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
-            vals = [5.1]
-            scene[12] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-
-            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
-            vals = [4.1]
-            scene[24] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-
-            combs = [1 zeros(1, dP - dQ + length(τₙ) - 1)]
-            vals = [3.1]
-            scene[end] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-            return scene
+            return []
         elseif idx_case == 4
             return []
         end
@@ -202,9 +188,11 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
 
     for i in 1:2
-        # unconditional prediction
-        projections = scenario_analysis(gen_scene(i + 2), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
-        JLD2.save("standard/uncond_scenario$i.jld2", "projections", projections)
+        if is_control
+            # unconditional prediction
+            projections = scenario_analysis(gen_scene(i + 2), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
+            JLD2.save("standard/uncond_scenario$i.jld2", "projections", projections)
+        end
 
         # conditional prediction
         projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
@@ -320,7 +308,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
 
 end
 
-function scenario_graphs(idx_case; τₙ, macros)
+function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
 
     set_default_plot_size(16cm, 8cm)
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
@@ -329,23 +317,7 @@ function scenario_graphs(idx_case; τₙ, macros)
     macros_of_interest = ["CUMFNS", "INDPRO", "UNRATE", "REALLN", "S&P 500", "BAA", "CPIAUCSL", "PCEPI", "WPSFD49207"]
 
     ## constructing predictions
-    # unconditional prediction
-    raw_projections = JLD2.load("standard/uncond_scenario$idx_case.jld2")["projections"]
-    uncond_projections = Vector{Forecast}(undef, length(raw_projections))
-    for i in eachindex(uncond_projections)
-        predicted_factors = deepcopy(raw_projections[i][:factors])
-        for j in 1:dP-dQ
-            if idx_diff[j] == 1 && is_percent[j]
-                predicted_factors[:, dQ+j] = [raw_macros[idx_date, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
-            elseif idx_diff[j] == 0 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date-11:idx_date, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            elseif idx_diff[j] == 1 && !is_percent[j]
-                predicted_factors[:, dQ+j] = [logmacros[idx_date, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-11:idx_date, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
-            end
-        end
-        uncond_projections[i] = Forecast(yields=deepcopy(raw_projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_projections[i][:TP]))
-    end
-
+    # load results
     raw_projections = JLD2.load("standard/scenario$idx_case.jld2")["projections"]
     projections = Vector{Forecast}(undef, length(raw_projections))
     for i in eachindex(projections)
@@ -359,7 +331,24 @@ function scenario_graphs(idx_case; τₙ, macros)
                 predicted_factors[:, dQ+j] = [logmacros[idx_date, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-11:idx_date, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
             end
         end
-        projections[i] = Forecast(yields=deepcopy(raw_projections[i][:yields] - uncond_projections[i].yields), factors=deepcopy(predicted_factors - uncond_projections[i].factors), TP=deepcopy(raw_projections[i][:TP] - uncond_projections[i].TP))
+        projections[i] = Forecast(yields=deepcopy(raw_projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_projections[i][:TP]))
+    end
+
+    if is_control # if there is a control group
+        raw_projections = JLD2.load("standard/uncond_scenario$idx_case.jld2")["projections"]
+        for i in eachindex(projections)
+            predicted_factors = deepcopy(raw_projections[i][:factors])
+            for j in 1:dP-dQ
+                if idx_diff[j] == 1 && is_percent[j]
+                    predicted_factors[:, dQ+j] = [raw_macros[idx_date, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+                elseif idx_diff[j] == 0 && !is_percent[j]
+                    predicted_factors[:, dQ+j] = [logmacros[idx_date-11:idx_date, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+                elseif idx_diff[j] == 1 && !is_percent[j]
+                    predicted_factors[:, dQ+j] = [logmacros[idx_date, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-11:idx_date, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+                end
+            end
+            projections[i] = Forecast(yields=deepcopy(projections[i][:yields] - raw_projections[i][:yields]), factors=deepcopy(projections[i][:factors] - predicted_factors), TP=deepcopy(projections[i][:TP] - raw_projections[i][:TP]))
+        end
     end
 
     # yields
@@ -440,12 +429,13 @@ JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
 saved_θ, p = estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
 
-do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
+is_control = false
+do_projection(saved_θ, p, is_control; upper_p, τₙ, macros, yields)
 
 results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
 
 for i in 1:2
-    scenario_graphs(i; τₙ, macros)
+    scenario_graphs(i, is_control; τₙ, macros)
 end
