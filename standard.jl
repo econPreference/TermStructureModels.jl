@@ -184,7 +184,7 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
     # unconditional prediction
     projections = scenario_analysis([], scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
-    JLD2.save("standard/uncond_scenario$i.jld2", "projections", projections)
+    JLD2.save("standard/uncond_scenario.jld2", "projections", projections)
     # conditional prediction
     for i in 1:2
 
@@ -328,7 +328,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     end
 
     if is_control # if there is a control group
-        raw_projections = JLD2.load("standard/uncond_scenario$idx_case.jld2")["projections"]
+        raw_projections = JLD2.load("standard/uncond_scenario.jld2")["projections"]
         for i in eachindex(projections)
             predicted_factors = deepcopy(raw_projections[i][:factors])
             for j in 1:dP-dQ
