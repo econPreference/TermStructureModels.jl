@@ -185,8 +185,6 @@ function do_projection(saved_θ, p, is_control::Bool; upper_p, τₙ, macros, yi
 
     # Do 
     iter_sub = JLD2.load("standard/ineff.jld2")["ineff"] |> x -> (x[1], x[2], x[3] |> maximum, x[4] |> maximum, x[5] |> maximum, x[6] |> maximum) |> maximum |> ceil |> Int
-
-
     for i in 1:2
         if is_control
             # unconditional prediction
