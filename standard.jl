@@ -4,7 +4,7 @@ Pkg.instantiate()
 Pkg.precompile()
 using GDTSM, ProgressMeter, StatsBase, Dates
 using CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
-using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions
+using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions, ColorSchemes
 import Plots, JLD2
 import StatsPlots: @df
 
@@ -266,7 +266,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
     plot(
         layer(x=yields[sdate(1987, 1):end, 1], y=mean(saved_TP)[:TP], Geom.line, color=[colorant"#000000"], Theme(line_width=2pt)),
         layer(x=yields[sdate(1987, 1):end, 1], y=mean(TP_nomacro)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt, line_style=[:dash])),
-        layer(x=yields[sdate(1987, 1):end, 1], y=mean(TP_nolag)[:TP], Geom.line, color=[colorant"#DC143C"], Theme(line_width=2pt, line_style=[:dot])),
+        layer(x=yields[sdate(1987, 1):end, 1], y=mean(TP_nolag)[:TP], Geom.point, Geom.line, color=[colorant"#DC143C"], Theme(line_style=[:dot], point_size=2pt)),
         layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
         Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=-2:2:4)
     ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/TPs.pdf")
@@ -346,7 +346,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
 
     # yields
     yield_res = mean(projections)[:yields]
-    Plots.surface(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", zlabel="yield", camera=(15, 30), legend=:none, linetype=:wireframe) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
+    Plots.heatmap(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", ylabel="horizon (months)", c=:Blues) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
 
     p = []
     for i in [2, 7, 13, 18]
@@ -428,6 +428,6 @@ results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
 
-for i in 1:2
-    scenario_graphs(i, true; τₙ, macros)
+for i in 1:2, j = [true, false]
+    scenario_graphs(i, j; τₙ, macros)
 end
