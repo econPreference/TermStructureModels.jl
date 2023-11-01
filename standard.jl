@@ -415,15 +415,18 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
 
 end
 
-## Do
+## Estimation mode
+do_estimation = true
+if do_estimation
+    tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ)
+    JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
 
-tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ)
-JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
+    saved_θ, p = estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
 
-saved_θ, p = estimation(; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
+    do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
+end
 
-do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
-
+## Inference mode
 results = inferences(; upper_p, τₙ, macros, yields)
 
 graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
