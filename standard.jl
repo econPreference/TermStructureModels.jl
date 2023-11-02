@@ -242,19 +242,7 @@ function inferences(; upper_p, τₙ, macros, yields)
     reduced_θ = reducedform(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
-    return (;
-        opt=deepcopy(opt),
-        tuned=deepcopy(tuned),
-        saved_θ=deepcopy(saved_θ),
-        acceptPrMH=deepcopy(acceptPrMH),
-        Pr_stationary=deepcopy(Pr_stationary),
-        saved_TP=deepcopy(saved_TP),
-        ineff=deepcopy(ineff),
-        saved_Xθ=deepcopy(saved_Xθ),
-        fitted_yields=deepcopy(fitted),
-        realized_SR=deepcopy(realized_SR),
-        reduced_θ=deepcopy(reduced_θ),
-        mSR=deepcopy(mSR))
+    return opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fitted, realized_SR, reduced_θ, mSR
 end
 
 function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
@@ -278,7 +266,8 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
         collect(range(eps(), 0.02, length=11)),
         [collect(range(33, tuned.ν0, length=6)); collect(range(tuned.ν0, 45, length=6))],
         collect(1:upper_p)]
-    @showprogress "plotting the optimization graphs" for i in 1:10
+    prog = Progress(10; dt=1, desc="plotting the optimization graphs")
+    Threads.@threads for i in 1:10
         ind_range = ranges[i]
         if i == 10
             ml = Vector{Float64}(undef, upper_p)
@@ -310,18 +299,20 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
             end
             ml_results[i] = deepcopy(ml)
         end
+        next!(prog)
     end
+    finish!(prog)
 
     Plots.plot(ranges[1], ml_results[1], ylabel="log marginal likelihood", label="", line_width=2pt)
-    Plots.plot!(ranges[5], ml_results[5], xlabel="q[1,1](solid) & q[1, 2](dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38880, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q1.pdf")
+    Plots.plot!(ranges[5], ml_results[5], xlabel=L"q_{1, 1}(solid), q_{1, 2}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38880, -38845)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q1.pdf")
     Plots.plot(ranges[2], ml_results[2], ylabel="log marginal likelihood", label="", line_width=2pt)
-    Plots.plot!(ranges[6], ml_results[6], xlabel="q[2,1](solid) & q[2, 2](dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38950, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q2.pdf")
+    Plots.plot!(ranges[6], ml_results[6], xlabel=L"q_{2, 1}(solid), q_{2, 2}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38950, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q2.pdf")
     Plots.plot(ranges[3], ml_results[3], ylabel="log marginal likelihood", label="", line_width=2pt)
-    Plots.plot!(ranges[7], ml_results[7], xlabel="q[3,1](solid) & q[3, 2](dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-39100, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q3.pdf")
+    Plots.plot!(ranges[7], ml_results[7], xlabel=L"q_{3, 1}(solid), q_{3, 2}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-39100, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q3.pdf")
     Plots.plot(ranges[4], ml_results[4], ylabel="log marginal likelihood", label="", line_width=2pt)
-    Plots.plot!(ranges[8], ml_results[8], xlabel="q[4,1](solid) & q[4, 2](dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38860, -38846)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
-    Plots.plot(ranges[9], ml_results[9], xlabel="ν0", ylabel="log marginal likelihood", label="", line_width=2pt) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_nu0.pdf")
-    Plots.plot(ranges[10], ml_results[10], xlabel="lag", ylabel="log marginal likelihood", label="", line_width=2pt) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
+    Plots.plot!(ranges[8], ml_results[8], xlabel=L"q_{4, 1}(solid), q_{4, 2}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38860, -38846)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
+    Plots.plot(ranges[9], ml_results[9], xlabel=L"ν_{0}", ylabel="log marginal likelihood", label="", line_width=2pt) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_nu0.pdf")
+    Plots.plot(ranges[10], ml_results[10], xlabel="lag", ylabel="log marginal likelihood", label="", line_width=2pt, xticks=1:2:upper_p) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
 
     ## decay parameter
     medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
@@ -497,7 +488,7 @@ end
 ## Do
 read_only = false
 if read_only
-    results = inferences(; upper_p, τₙ, macros, yields)
+    opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fitted, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
 else
     tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ)
     JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
@@ -506,9 +497,9 @@ else
 
     do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
-    results = inferences(; upper_p, τₙ, macros, yields)
+    opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fitted, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
 
-    graphs(; medium_τ, macros, yields, tuned=results.tuned, saved_θ=results.saved_θ, saved_TP=results.saved_TP, fitted=results.fitted_yields)
+    graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
 
     for i in 1:2, j = [true, false]
         scenario_graphs(i, j; τₙ, macros)
