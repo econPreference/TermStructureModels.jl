@@ -210,8 +210,29 @@ function inferences(; upper_p, τₙ, macros, yields)
     Pr_stationary = JLD2.load("standard/posterior.jld2")["Pr_stationary"]
     saved_TP = JLD2.load("standard/TP.jld2")["TP"]
     ineff = JLD2.load("standard/ineff.jld2")["ineff"]
-    @show (ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum)
 
+    ## Convergence of MCMC
+    @show (ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum)
+    ineff_samples = Matrix{Float64}(undef, length(saved_θ), 6)
+    ineff_samples[:, 1] = saved_θ[:κQ]
+    ineff_samples[:, 2] = saved_θ[:kQ_infty]
+    ineff_samples[:, 3] = ineff[3] |> findmax |> x -> x[2] |> x -> [saved_θ[:γ][i][x] for i in 1:length(saved_θ)]
+    ineff_samples[:, 4] = ineff[4] |> findmax |> x -> x[2] |> x -> [saved_θ[:Σₒ][i][x] for i in 1:length(saved_θ)]
+    ineff_samples[:, 5] = ineff[5] |> findmax |> x -> x[2] |> x -> [saved_θ[:σ²FF][i][x] for i in 1:length(saved_θ)]
+    ineff_samples[:, 6] = ineff[6] |> findmax |> x -> x[2] |> x -> [saved_θ[:ϕ][i][x] for i in 1:length(saved_θ)]
+
+    ineff_means = Matrix{Float64}(undef, length(saved_θ) - 99, 6)
+    ineff_stds = Matrix{Float64}(undef, length(saved_θ) - 99, 6)
+    @showprogress "diagnostics graphs for MCMC" for i in 100:length(saved_θ), j in 1:6
+        ineff_means[i-99, j] = mean(ineff_samples[i-99:i, j])
+        ineff_stds[i-99, j] = std(ineff_samples[i-99:i, j])
+    end
+    for i in axes(ineff_samples, 2)
+        @show minimum(ineff_means[:, i]), median(ineff_means[:, i]), maximum(ineff_means[:, i])
+        @show minimum(ineff_stds[:, i]), median(ineff_stds[:, i]), maximum(ineff_stds[:, i])
+    end
+
+    ## additional inferences
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), τₙ)
     fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
     decimal_yield = mean(fitted)[:yields] / 1200
