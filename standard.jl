@@ -223,7 +223,7 @@ function inferences(; upper_p, τₙ, macros, yields)
 
     ineff_means = Matrix{Float64}(undef, length(saved_θ) - 99, 6)
     ineff_stds = Matrix{Float64}(undef, length(saved_θ) - 99, 6)
-    @showprogress "diagnostics graphs for MCMC" for i in 100:length(saved_θ), j in 1:6
+    for i in 100:length(saved_θ), j in 1:6
         ineff_means[i-99, j] = mean(ineff_samples[i-99:i, j])
         ineff_stds[i-99, j] = std(ineff_samples[i-99:i, j])
     end
