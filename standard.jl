@@ -256,14 +256,14 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     ## check optimization performance
     PCs, ~, Wₚ = PCA(Array(yields[upper_p-tuned.p+1:end, 2:end]), tuned.p)
     ml_results = Vector{Vector}(undef, 10)
-    ranges = [[collect(range(eps(), tuned.q[1, 1], length=6)); collect(range(tuned.q[1, 1], 0.2, length=6))],
-        [collect(range(eps(), tuned.q[2, 1], length=6)); collect(range(tuned.q[2, 1], 0.015, length=6))],
-        [collect(range(eps(), tuned.q[3, 1], length=6)); collect(range(tuned.q[3, 1], 4, length=6))],
-        [collect(range(eps(), tuned.q[4, 1], length=6)); collect(range(tuned.q[4, 1], 0.02, length=6))],
-        [collect(range(eps(), tuned.q[1, 2], length=6)); collect(range(tuned.q[1, 2], 0.2, length=6))],
-        [collect(range(eps(), tuned.q[2, 2], length=6)); collect(range(tuned.q[2, 2], 0.015, length=6))],
-        [collect(range(eps(), tuned.q[3, 2], length=6)); collect(range(tuned.q[3, 2], 4, length=6))],
-        collect(range(eps(), 0.02, length=11)),
+    ranges = [[collect(range(eps(), tuned.q[1, 1], length=6)); collect(range(tuned.q[1, 1], 0.5, length=6))],
+        [collect(range(eps(), tuned.q[2, 1], length=6)); collect(range(tuned.q[2, 1], 0.05, length=6))],
+        [collect(range(eps(), tuned.q[3, 1], length=6)); collect(range(tuned.q[3, 1], 8, length=6))],
+        [collect(range(eps(), tuned.q[4, 1], length=6)); collect(range(tuned.q[4, 1], 0.03, length=6))],
+        [collect(range(eps(), tuned.q[1, 2], length=6)); collect(range(tuned.q[1, 2], 0.5, length=6))],
+        [collect(range(eps(), tuned.q[2, 2], length=6)); collect(range(tuned.q[2, 2], 0.05, length=6))],
+        [collect(range(eps(), tuned.q[3, 2], length=6)); collect(range(tuned.q[3, 2], 8, length=6))],
+        collect(range(eps(), 0.03, length=11)),
         [collect(range(33, tuned.ν0, length=6)); collect(range(tuned.ν0, 45, length=6))],
         collect(1:upper_p)]
     prog = Progress(10; dt=1, desc="plotting the optimization graphs")
@@ -310,7 +310,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     Plots.plot(ranges[3], ml_results[3], ylabel="log marginal likelihood", label="", line_width=2pt)
     Plots.plot!(ranges[7], ml_results[7], xlabel=L"q_{31}(solid), q_{32}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-39100, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q3.pdf")
     Plots.plot(ranges[4], ml_results[4], ylabel="log marginal likelihood", label="", line_width=2pt)
-    Plots.plot!(ranges[8], ml_results[8], xlabel=L"q_{41}(solid), q_{42}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38860, -38846)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
+    Plots.plot!(ranges[8], ml_results[8], xlabel=L"q_{41}(solid), q_{42}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38852, -38846)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
     Plots.plot(ranges[9], ml_results[9], xlabel=L"ν_{0}", ylabel="log marginal likelihood", label="", line_width=2pt) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_nu0.pdf")
     Plots.plot(ranges[10], ml_results[10], xlabel="lag", ylabel="log marginal likelihood", label="", line_width=2pt, xticks=1:2:upper_p) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
 
