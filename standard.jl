@@ -344,8 +344,9 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     ## individual TP components
     ind_TP_ratio = mean(saved_TP)[:timevarying_TP] |> x -> var(x, dims=1) ./ var(mean(saved_TP)[:TP]) |> x -> x[1, :]
     ind_TP_order = sortperm(ind_TP_ratio, rev=true)
-    n_top = 7
+    n_top = 10
     ind_TP_names = ["PC1"; "PC2"; "PC3"; names(macros[1, 2:end])]
+    ind_TP_names[findall(x -> x .== "S&P 500", ind_TP_names)[1]] = "SP 500"
 
     ind_TP = mean(saved_TP)[:timevarying_TP][:, ind_TP_order[1]]
     mesh = [yields[sdate(1987, 1):end, 1] fill(ind_TP_names[ind_TP_order[1]], length(ind_TP)) ind_TP]
@@ -366,7 +367,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     plot(
         layer(x=yields[sdate(1987, 1):end, 1], y=mean(fits)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
         layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-        Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[0; collect(1:7)])
+        Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[0; collect(1:6)])
     ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/EH10.pdf")
 
 end
@@ -377,7 +378,11 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     idx_date = sdate(yearmonth(scenario_start_date)...)
     horizon = JLD2.load("standard/scenario$idx_case.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
-    macros_of_interest = ["CUMFNS", "INDPRO", "UNRATE", "REALLN", "S&P 500", "BAA", "CPIAUCSL", "PCEPI", "WPSFD49207"]
+    if idx_case == 1
+        macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "INVEST", "VIXCLSx"]
+    else
+        macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "PCEPI", "UMCSENTx", "DTCTHFNM", "INVEST", "VIXCLSx"]
+    end
 
     ## constructing predictions
     # load results
@@ -419,56 +424,49 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     Plots.heatmap(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", ylabel="horizon (months)", c=:Blues) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
 
     p = []
-    for i in [2, 7, 13, 18]
+    for i in [2, 7, 18]
         ind_p = Plots.plot(1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control.pdf")
 
-    # EH
-    EH_res = mean(projections)[:yields][:, [5, 7, 13, 18]] - mean(projections)[:TP]
-    EH_res_dist_12 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
-    for i in axes(EH_res_dist_12, 1)
-        EH_res_dist_12[i, :] = projections[:yields][i][:, 5] - projections[:TP][i][:, 1]
-    end
-    EH_res_dist_24 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
+    # EH & TP
+    EHTP_res = [mean(projections)[:yields][:, [7, 13]] - mean(projections)[:TP][:, 2:3] mean(projections)[:TP][:, 4]]
+    EH_res_dist_24 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
     for i in axes(EH_res_dist_24, 1)
         EH_res_dist_24[i, :] = projections[:yields][i][:, 7] - projections[:TP][i][:, 2]
     end
-    EH_res_dist_60 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
+    EH_res_dist_60 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
     for i in axes(EH_res_dist_60, 1)
         EH_res_dist_60[i, :] = projections[:yields][i][:, 13] - projections[:TP][i][:, 3]
     end
-    EH_res_dist_120 = Matrix{Float64}(undef, length(projections), size(EH_res, 1))
-    for i in axes(EH_res_dist_120, 1)
-        EH_res_dist_120[i, :] = projections[:yields][i][:, 18] - projections[:TP][i][:, 4]
+    TP_res_dist_120 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
+    for i in axes(TP_res_dist_120, 1)
+        TP_res_dist_120[i, :] = projections[:TP][i][:, 4]
     end
 
     p = []
-    for i in 1:4
+    for i in 1:3
         if i == 1
-            EH_res_dist = deepcopy(EH_res_dist_12)
-            ind_name = "EH(τ = 12)"
-        elseif i == 2
-            EH_res_dist = deepcopy(EH_res_dist_24)
+            EHTP_res_dist = deepcopy(EH_res_dist_24)
             ind_name = "EH(τ = 24)"
-        elseif i == 3
-            EH_res_dist = deepcopy(EH_res_dist_60)
+        elseif i == 2
+            EHTP_res_dist = deepcopy(EH_res_dist_60)
             ind_name = "EH(τ = 60)"
         else
-            EH_res_dist = deepcopy(EH_res_dist_120)
-            ind_name = "EH(τ = 120)"
+            EHTP_res_dist = deepcopy(TP_res_dist_120)
+            ind_name = "TP(τ = 120)"
         end
-        ind_p = Plots.plot(1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.16) for i in axes(EH_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.84) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.025) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EH_res[:, i], fillrange=[quantile(EH_res_dist[:, i], 0.975) for i in axes(EH_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.16) for i in axes(EHTP_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.84) for i in axes(EHTP_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.025) for i in axes(EHTP_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.975) for i in axes(EHTP_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], layout=(2, 2), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EH$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EHTP$idx_case,control=$is_control.pdf")
 
     # macros
     p = []
@@ -481,7 +479,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], layout=(4, 3), xlabel="", size=(600, 600)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
 
 end
 
