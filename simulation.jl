@@ -45,9 +45,9 @@ ineff = ineff_factor(saved_θ)
 saved_Xθ = latentspace(saved_θ, yields, τₙ)
 saved_TP = term_premium(120, τₙ, saved_θ[1:50:end], yields, macros)
 reduced_θ = reducedform(saved_θ, yields, macros, τₙ)
-fitted = fitted_YieldCurve(τₙ, saved_Xθ)
+fits = fitted_YieldCurve(τₙ, saved_Xθ)
 idx = 18
-plot(mean(fitted)[:yields][:, idx])
+plot(mean(fits)[:yields][:, idx])
 plot!(yields[:, idx])
 
 data = [yields macros]

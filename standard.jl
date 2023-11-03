@@ -234,18 +234,18 @@ function inferences(; upper_p, τₙ, macros, yields)
 
     ## additional inferences
     saved_Xθ = latentspace(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), τₙ)
-    fitted = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
-    decimal_yield = mean(fitted)[:yields] / 1200
+    fits = fitted_YieldCurve(collect(1:τₙ[end]), saved_Xθ)
+    decimal_yield = mean(fits)[:yields] / 1200
     log_price = -collect(1:τₙ[end])' .* decimal_yield[p:end, :]
     xr = log_price[2:end, 1:end-1] - log_price[1:end-1, 2:end] .- decimal_yield[p:end-1, 1]
     realized_SR = mean(xr, dims=1) ./ std(xr, dims=1) |> x -> x[1, :]
     reduced_θ = reducedform(saved_θ, Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ)
     mSR = [reduced_θ[:mpr][i] |> x -> sqrt.(diag(x * x')) for i in eachindex(reduced_θ)] |> mean
 
-    return opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fitted, realized_SR, reduced_θ, mSR
+    return opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fits, realized_SR, reduced_θ, mSR
 end
 
-function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
+function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
     TP_nolag = JLD2.load("nolag/TP.jld2")["TP"]
@@ -364,7 +364,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
 
     ## EH components
     plot(
-        layer(x=yields[sdate(1987, 1):end, 1], y=mean(fitted)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
+        layer(x=yields[sdate(1987, 1):end, 1], y=mean(fits)[:yields][tuned.p+1:end, end] - mean(saved_TP)[:TP], Geom.line, color=[colorant"#4682B4"], Theme(line_width=2pt)),
         layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
         Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(54):DateTime("2023-06-01")), Guide.yticks(ticks=[0; collect(1:7)])
     ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/EH10.pdf")
@@ -488,7 +488,7 @@ end
 ## Do
 read_only = false
 if read_only
-    opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fitted, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
+    opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fits, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
 else
     tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), τₙ, ρ; upper_p, upper_q, μkQ_infty, σkQ_infty, medium_τ)
     JLD2.save("standard/tuned.jld2", "tuned", tuned, "opt", opt)
@@ -497,9 +497,9 @@ else
 
     do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
-    opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fitted, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
+    opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fits, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
 
-    graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fitted)
+    graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
 
     for i in 1:2, j = [true, false]
         scenario_graphs(i, j; τₙ, macros)
