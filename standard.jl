@@ -379,9 +379,11 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     idx_date = sdate(yearmonth(scenario_start_date)...)
     horizon = JLD2.load("standard/scenario$idx_case.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
     if idx_case == 1
-        macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "INVEST", "VIXCLSx"]
+        #macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "INVEST", "VIXCLSx"]
+        macros_of_interest = ["UNRATE", "PERMIT", "M2SL", "OILPRICEx", "PPICMM", "PCEPI"]
     else
-        macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "PCEPI", "UMCSENTx", "DTCTHFNM", "INVEST", "VIXCLSx"]
+        #macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "PCEPI", "UMCSENTx", "DTCTHFNM", "INVEST", "VIXCLSx"]
+        macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "PCEPI"]
     end
 
     ## constructing predictions
@@ -479,7 +481,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], layout=(4, 3), xlabel="", size=(600, 600)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(2, 3), xlabel="", size=(600, 400)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
 
 end
 
