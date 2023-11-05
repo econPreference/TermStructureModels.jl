@@ -312,7 +312,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     Plots.plot(ranges[4], ml_results[4], ylabel="log marginal likelihood", label="", line_width=2pt)
     Plots.plot!(ranges[8], ml_results[8], xlabel=L"q_{41}(solid), q_{42}(dashed)", ylabel="log marginal likelihood", label="", line_width=2pt, ls=:dash, ylims=(-38852, -38846)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
     Plots.plot(ranges[9], ml_results[9], xlabel=L"ν_{0}", ylabel="log marginal likelihood", label="", line_width=2pt) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_nu0.pdf")
-    Plots.plot(ranges[10], ml_results[10], xlabel="lag", ylabel="log marginal likelihood", label="", line_width=2pt, xticks=1:2:upper_p) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
+    Plots.plot(ranges[10], ml_results[10], xlabel=L"p", ylabel="log marginal likelihood", label="", line_width=2pt, xticks=1:2:upper_p) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
 
     ## decay parameter
     medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
@@ -359,7 +359,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     plot(df,
         layer(x=:dates, y=:TP, Geom.line, color=:macros, Theme(line_width=1pt)),
         layer(xmin=rec_dates[:, 1], xmax=rec_dates[:, 2], Geom.band(; orientation=:vertical), color=[colorant"#DCDCDC"]),
-        Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=10pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(72):DateTime("2023-06-01"), orientation=:horizontal),
+        Theme(major_label_font_size=10pt, minor_label_font_size=9pt, key_label_font_size=9pt, point_size=4pt), Guide.ylabel("percent per annum"), Guide.xlabel(""), Guide.xticks(ticks=DateTime("1986-07-01"):Month(72):DateTime("2023-06-01"), orientation=:horizontal),
         Guide.yticks(ticks=[-8; collect(-6:2:10)])
     ) |> PDF("/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ind_TP10.pdf")
 
