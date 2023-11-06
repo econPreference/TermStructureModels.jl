@@ -138,7 +138,6 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
     # Assumed scenario
     scenario_TP = [12, 24, 60, 120]
-    scenario_horizon = 36
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     function gen_scene(idx_case)
         idx_inflt = [21, 23]
@@ -187,6 +186,11 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     JLD2.save("standard/uncond_scenario.jld2", "projections", projections)
     # conditional prediction
     for i in 1:2
+        if i == 1
+            scenario_horizon = 60
+        elseif i == 2
+            scenario_horizon = 36
+        end
 
         projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
         JLD2.save("standard/scenario$i.jld2", "projections", projections)
@@ -380,10 +384,10 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     horizon = JLD2.load("standard/scenario$idx_case.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
     if idx_case == 1
         #macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "INVEST", "VIXCLSx"]
-        macros_of_interest = ["UNRATE", "PERMIT", "M2SL", "OILPRICEx", "PPICMM", "PCEPI"]
+        macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "VIXCLSx"]
     else
         #macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "PCEPI", "UMCSENTx", "DTCTHFNM", "INVEST", "VIXCLSx"]
-        macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "PCEPI"]
+        macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "S&P 500", "PCEPI", "UMCSENTx", "VIXCLSx"]
     end
 
     ## constructing predictions
