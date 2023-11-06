@@ -138,6 +138,7 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
 
     # Assumed scenario
     scenario_TP = [12, 24, 60, 120]
+    scenario_horizon = 60
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     function gen_scene(idx_case)
         idx_inflt = [21, 23]
@@ -186,12 +187,6 @@ function do_projection(saved_θ, p; upper_p, τₙ, macros, yields)
     JLD2.save("standard/uncond_scenario.jld2", "projections", projections)
     # conditional prediction
     for i in 1:2
-        if i == 1
-            scenario_horizon = 60
-        elseif i == 2
-            scenario_horizon = 36
-        end
-
         projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_θ[1:iter_sub:end], Array(yields[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), Array(macros[upper_p-p+1:sdate(yearmonth(scenario_start_date)...), 2:end]), τₙ; mean_macros)
         JLD2.save("standard/scenario$i.jld2", "projections", projections)
     end
@@ -381,7 +376,11 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     set_default_plot_size(16cm, 8cm)
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
     idx_date = sdate(yearmonth(scenario_start_date)...)
-    horizon = JLD2.load("standard/scenario$idx_case.jld2")["projections"][:factors] |> mean |> x -> size(x, 1)
+    if idx_case == 1
+        horizon = 60
+    elseif idx_case == 2
+        horizon = 36
+    end
     if idx_case == 1
         #macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "INVEST", "VIXCLSx"]
         macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "VIXCLSx"]
@@ -427,14 +426,14 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
 
     # yields
     yield_res = mean(projections)[:yields]
-    Plots.heatmap(τₙ, 1:horizon, yield_res, xlabel="maturity (months)", ylabel="horizon (months)", c=:Blues) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
+    Plots.heatmap(τₙ, 1:horizon, yield_res[1:horizon, :], xlabel="maturity (months)", ylabel="horizon (months)", c=:Blues) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
 
     p = []
     for i in [2, 7, 18]
-        ind_p = Plots.plot(1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.16)[:yields][:, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.84)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.025)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][:, i], fillrange=quantile(projections, 0.975)[:yields][:, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(projections)[:yields][1:horizon, i], fillrange=quantile(projections, 0.16)[:yields][1:horizon, i], labels="", title="yields(τ = $(τₙ[i]))", titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][1:horizon, i], fillrange=quantile(projections, 0.84)[:yields][1:horizon, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][1:horizon, i], fillrange=quantile(projections, 0.025)[:yields][1:horizon, i], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][1:horizon, i], fillrange=quantile(projections, 0.975)[:yields][1:horizon, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control.pdf")
@@ -466,10 +465,10 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
             EHTP_res_dist = deepcopy(TP_res_dist_120)
             ind_name = "TP(τ = 120)"
         end
-        ind_p = Plots.plot(1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.16) for i in axes(EHTP_res_dist, 2)], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.84) for i in axes(EHTP_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.025) for i in axes(EHTP_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, EHTP_res[:, i], fillrange=[quantile(EHTP_res_dist[:, i], 0.975) for i in axes(EHTP_res_dist, 2)], labels="", c=colorant"#4682B4", alpha=0.6)
+        ind_p = Plots.plot(1:horizon, EHTP_res[1:horizon, i], fillrange=[quantile(EHTP_res_dist[:, j], 0.16) for j in axes(EHTP_res_dist, 2)][1:horizon], labels="", title=ind_name, titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EHTP_res[1:horizon, i], fillrange=[quantile(EHTP_res_dist[:, j], 0.84) for j in axes(EHTP_res_dist, 2)][1:horizon], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EHTP_res[1:horizon, i], fillrange=[quantile(EHTP_res_dist[:, j], 0.025) for j in axes(EHTP_res_dist, 2)][1:horizon], labels="", c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, EHTP_res[1:horizon, i], fillrange=[quantile(EHTP_res_dist[:, j], 0.975) for j in axes(EHTP_res_dist, 2)][1:horizon], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
     Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EHTP$idx_case,control=$is_control.pdf")
@@ -479,13 +478,13 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     for i in macros_of_interest
         ind_macro = findall(x -> x == string(i), names(macros[1, 2:end]))[1]
 
-        ind_p = Plots.plot(1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.025)[:factors][:, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
-        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][:, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][:, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        ind_p = Plots.plot(1:horizon, mean(projections)[:factors][1:horizon, dimQ()+ind_macro], fillrange=quantile(projections, 0.025)[:factors][1:horizon, dimQ()+ind_macro], labels="", title=string(i), titlefontsize=10, c=colorant"#4682B4", alpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][1:horizon, dimQ()+ind_macro], fillrange=quantile(projections, 0.975)[:factors][1:horizon, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][1:horizon, dimQ()+ind_macro], fillrange=quantile(projections, 0.16)[:factors][1:horizon, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
+        Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][1:horizon, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][1:horizon, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], layout=(2, 3), xlabel="", size=(600, 400)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="", size=(600, 600)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
 
 end
 
