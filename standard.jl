@@ -244,7 +244,7 @@ function inferences(; upper_p, τₙ, macros, yields)
     return opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fits, realized_SR, reduced_θ, mSR
 end
 
-function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
+function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits, reduced_θ)
 
     sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
     TP_nolag = JLD2.load("nolag/TP.jld2")["TP"]
@@ -318,6 +318,29 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     κQ_support = [reverse(medium_τ) support(prior_κQ(medium_τ, medium_τ_pr))]
     Plots.histogram(saved_θ[:κQ], xticks=(κQ_support[:, 2], ["$(round(κQ_support[i,2],digits=4))\n(τ = $(round(Int,κQ_support[i,1])))" for i in axes(κQ_support, 1)]), bins=40, xlabel=L"\kappa_{Q} ( maturity \, \tau )", labels="") |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/decay.pdf")
 
+    ## Transition equation error covarinace
+    upper_idx = findall(x -> x > 0, quantile(reduced_θ, 0.025)[:ΩFF])
+    lower_idx = findall(x -> x < 0, quantile(reduced_θ, 0.975)[:ΩFF])
+    corr = Vector{Matrix}(undef, length(reduced_θ))
+    for i in eachindex(reduced_θ)
+        corr[i] = reduced_θ[:ΩFF][i] |> x -> diagm(1 ./ sqrt.(diag(x))) * x * diagm(1 ./ sqrt.(diag(x)))
+    end
+    corr_mean = mean(corr)
+
+    sparse_corr_mean = zeros(dP, dP)
+    for i in eachindex(upper_idx)
+        sparse_corr_mean[upper_idx[i]] = corr_mean[upper_idx[i]]
+    end
+    for i in eachindex(lower_idx)
+        sparse_corr_mean[lower_idx[i]] = corr_mean[lower_idx[i]]
+    end
+    for i in 1:dP, j in (i+1):dP
+        sparse_corr_mean[i, j] = 0.0
+    end
+    Plots.heatmap(sparse_corr_mean, c=:RdBu, clim=(-1, 1), yflip=true)
+    Plots.xticks!([1:31;], ["PC1"; "PC2"; "PC3"; names(macros[:, 2:end])], xrot=90)
+    Plots.yticks!([1:31;], ["PC1"; "PC2"; "PC3"; names(macros[:, 2:end])], margin=10mm, size=(1000, 900)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/cor.pdf")
+
     ## TP components
     rec_dates = DateTime.(["1990-07-01" "1991-03-01"
         "2001-03-01" "2001-11-01"
@@ -343,7 +366,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
     ## individual TP components
     ind_TP_ratio = mean(saved_TP)[:timevarying_TP] |> x -> var(x, dims=1) ./ var(mean(saved_TP)[:TP]) |> x -> x[1, :]
     ind_TP_order = sortperm(ind_TP_ratio, rev=true)
-    n_top = 10
+    n_top = 5
     ind_TP_names = ["PC1"; "PC2"; "PC3"; names(macros[1, 2:end])]
     ind_TP_names[findall(x -> x .== "S&P 500", ind_TP_names)[1]] = "SP 500"
 
@@ -502,7 +525,7 @@ else
 
     opt, tuned, saved_θ, acceptPrMH, Pr_stationary, saved_TP, ineff, saved_Xθ, fits, realized_SR, reduced_θ, mSR = inferences(; upper_p, τₙ, macros, yields)
 
-    graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits)
+    graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits, reduced_θ)
 
     for i in 1:2, j = [true, false]
         scenario_graphs(i, j; τₙ, macros)
