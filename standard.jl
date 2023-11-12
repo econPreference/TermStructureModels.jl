@@ -406,7 +406,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
     end
     if idx_case == 1
         #macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "INVEST", "VIXCLSx"]
-        macros_of_interest = ["INDPRO", "UNRATE", "PERMIT", "M2SL", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "VIXCLSx"]
+        macros_of_interest = ["INDPRO", "PERMIT", "M2SL", "S&P 500", "OILPRICEx", "PPICMM", "PCEPI", "DTCTHFNM", "VIXCLSx"]
     else
         #macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "TOTRESNS", "S&P 500", "PCEPI", "UMCSENTx", "DTCTHFNM", "INVEST", "VIXCLSx"]
         macros_of_interest = ["INDPRO", "CUMFNS", "UNRATE", "PERMIT", "M2SL", "S&P 500", "PCEPI", "UMCSENTx", "VIXCLSx"]
