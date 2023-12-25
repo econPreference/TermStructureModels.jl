@@ -144,12 +144,13 @@ else
 end
 
 ## Comparisons
+ind_ϕ = quantile(saved_θ_vec[1], 0.025)[:ϕ] .* quantile(saved_θ_vec[1], 0.975)[:ϕ] |> x -> findall(y -> y > 0, x)
 for i in ["κQ", "kQ_infty", "ϕ", "σ²FF", "Σₒ", "γ"]
     for j in 2:6
         println(i, ", ", "p = $(j+12)")
         if i == "ϕ"
-            println("mean: ", maximum(abs.(mean(saved_θ_vec[j][Symbol(i)])[:, 1:404] ./ mean(saved_θ_vec[1][Symbol(i)])[:, 1:404])))
-            println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)])[:, 1:404] ./ std(saved_θ_vec[1][Symbol(i)])[:, 1:404])))
+            println("mean: ", maximum(abs.(mean(saved_θ_vec[j][Symbol(i)])[ind_ϕ] ./ mean(saved_θ_vec[1][Symbol(i)])[ind_ϕ])))
+            println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)])[ind_ϕ] ./ std(saved_θ_vec[1][Symbol(i)])[ind_ϕ])))
         else
             println("mean: ", maximum(abs.(exp.(log.(mean(saved_θ_vec[j][Symbol(i)]) ./ mean(saved_θ_vec[1][Symbol(i)]))))))
             println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)]) ./ std(saved_θ_vec[1][Symbol(i)]))))
