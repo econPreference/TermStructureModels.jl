@@ -108,10 +108,10 @@ TPτ_interest = 120
 ##
 
 sdate(yy, mm) = findall(x -> x == Date(yy, mm), macros[:, 1])[1]
-function estimation(p_, tuned; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
+function estimation(p, tuned; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
 
-    tuned_ = Hyperparameter(p=p_, q=deepcopy(tuned.q), ν0=deepcopy(tuned.ν0), Ω0=deepcopy(tuned.Ω0), μϕ_const=deepcopy(tuned.μϕ_const))
-    saved_θ = posterior_sampler(Array(yields[upper_p-p_+1:end, 2:end]), Array(macros[upper_p-p_+1:end, 2:end]), τₙ, ρ, iteration, tuned_; medium_τ, μkQ_infty, σkQ_infty)[1]
+    tuned_ = Hyperparameter(p=p, q=deepcopy(tuned.q), ν0=deepcopy(tuned.ν0), Ω0=deepcopy(tuned.Ω0), μϕ_const=deepcopy(tuned.μϕ_const))
+    saved_θ = posterior_sampler(Array(yields[upper_p-p+1:end, 2:end]), Array(macros[upper_p-p+1:end, 2:end]), τₙ, ρ, iteration, tuned_; medium_τ, μkQ_infty, σkQ_infty)[1]
     saved_θ = saved_θ[burnin+1:end]
     return erase_nonstationary_param(saved_θ)[1]
 
@@ -122,6 +122,7 @@ end
 is_load = true
 if is_load
     saved_θ_vec = JLD2.load("standard/posterior_robustness_lag.jld2")["samples"]
+    saved_TP_vec = JLD2.load("standard/TP_robustness_lag.jld2")["TP"]
 else
     tuned = JLD2.load("standard/tuned.jld2")["tuned"]
     saved_θ_vec = Vector{Vector}(undef, 6)
@@ -131,20 +132,37 @@ else
         next!(prog)
     end
     finish!(prog)
-
     JLD2.save("standard/posterior_robustness_lag.jld2", "samples", saved_θ_vec)
+
+    saved_TP_vec = Vector{Vector}(undef, 6)
+    iter_sub = 10
+    for p_ in 13:upper_p
+        saved_θ = saved_θ_vec[p_-12]
+        saved_TP_vec[p_-12] = term_premium(TPτ_interest, τₙ, saved_θ[1:iter_sub:end], Array(yields[upper_p-p_+1:end, 2:end]), Array(macros[upper_p-p_+1:end, 2:end]))
+    end
+    JLD2.save("standard/TP_robustness_lag.jld2", "TP", saved_TP_vec)
 end
 
 ## Comparisons
 for i in ["κQ", "kQ_infty", "ϕ", "σ²FF", "Σₒ", "γ"]
-    for j in [1, 2, 3, 4, 6]
+    for j in 2:6
         println(i, ", ", "p = $(j+12)")
         if i == "ϕ"
-            println("mean: ", maximum(abs.(mean(saved_θ_vec[j][Symbol(i)])[:, 1:435] ./ mean(saved_θ_vec[5][Symbol(i)])[:, 1:435])))
-            println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)])[:, 1:435] ./ std(saved_θ_vec[5][Symbol(i)])[:, 1:435])))
+            println("mean: ", maximum(abs.(mean(saved_θ_vec[j][Symbol(i)])[:, 1:404] ./ mean(saved_θ_vec[1][Symbol(i)])[:, 1:404])))
+            println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)])[:, 1:404] ./ std(saved_θ_vec[1][Symbol(i)])[:, 1:404])))
         else
-            println("mean: ", maximum(abs.(mean(saved_θ_vec[j][Symbol(i)]) ./ mean(saved_θ_vec[5][Symbol(i)]))))
-            println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)]) ./ std(saved_θ_vec[5][Symbol(i)]))))
+            println("mean: ", maximum(abs.(exp.(log.(mean(saved_θ_vec[j][Symbol(i)]) ./ mean(saved_θ_vec[1][Symbol(i)]))))))
+            println("std: ", maximum(abs.(std(saved_θ_vec[j][Symbol(i)]) ./ std(saved_θ_vec[1][Symbol(i)]))))
         end
     end
 end
+
+## Compare TP
+TPs_mean = Matrix{Float64}(undef, size(mean(saved_TP_vec[1])[:TP], 1), 6)
+TPs_std = Matrix{Float64}(undef, size(mean(saved_TP_vec[1])[:TP], 1), 6)
+for i in axes(TPs_mean, 2)
+    TPs_mean[:, i] = mean(saved_TP_vec[i])[:TP]
+    TPs_std[:, i] = std(saved_TP_vec[i])[:TP]
+end
+Plots.plot(TPs_mean)
+Plots.plot(TPs_std)
