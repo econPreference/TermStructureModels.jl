@@ -119,19 +119,19 @@ end
 
 ## Do
 
-tuned = JLD2.load("standard/tuned.jld2")["tuned"]
-saved_θ_vec = Vector{Vector}(undef, 6)
-prog = Progress(iteration; dt=5, desc="robustness_lag.jl")
-Threads.@threads for p_ in 13:upper_p
-    saved_θ_vec[p_-12] = estimation(p_, tuned; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
-    next!(prog)
-end
-finish!(prog)
-
 is_load = true
 if is_load
     saved_θ_vec = JLD2.load("standard/posterior_robustness_lag.jld2")["samples"]
 else
+    tuned = JLD2.load("standard/tuned.jld2")["tuned"]
+    saved_θ_vec = Vector{Vector}(undef, 6)
+    prog = Progress(iteration; dt=5, desc="robustness_lag.jl")
+    Threads.@threads for p_ in 13:upper_p
+        saved_θ_vec[p_-12] = estimation(p_, tuned; upper_p, τₙ, medium_τ, iteration, burnin, ρ, macros, yields, μkQ_infty, σkQ_infty)
+        next!(prog)
+    end
+    finish!(prog)
+
     JLD2.save("standard/posterior_robustness_lag.jld2", "samples", saved_θ_vec)
 end
 
