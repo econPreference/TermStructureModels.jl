@@ -303,15 +303,15 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits, re
     finish!(prog)
 
     Plots.plot(ranges[1], ml_results[1], ylabel="log marginal likelihood", label="", linewidth=3)
-    Plots.plot!(ranges[5], ml_results[5], xlabel=L"q_{11}(solid), q_{12}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-38880, -38845)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q1.pdf")
+    Plots.plot!(ranges[5], ml_results[5], xlabel=L"q_{11}(solid), q_{12}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-38880, -38845), xtickfontsize=12, ytickfontsize=10, xguidefontsize=16, yguidefontsize=14) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q1.pdf")
     Plots.plot(ranges[2], ml_results[2], ylabel="log marginal likelihood", label="", linewidth=3)
-    Plots.plot!(ranges[6], ml_results[6], xlabel=L"q_{21}(solid), q_{22}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-38950, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q2.pdf")
+    Plots.plot!(ranges[6], ml_results[6], xlabel=L"q_{21}(solid), q_{22}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-38950, -38840), xtickfontsize=12, ytickfontsize=10, xguidefontsize=16, yguidefontsize=14) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q2.pdf")
     Plots.plot(ranges[3], ml_results[3], ylabel="log marginal likelihood", label="", linewidth=3)
-    Plots.plot!(ranges[7], ml_results[7], xlabel=L"q_{31}(solid), q_{32}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-39100, -38840)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q3.pdf")
+    Plots.plot!(ranges[7], ml_results[7], xlabel=L"q_{31}(solid), q_{32}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-39100, -38840), xtickfontsize=12, ytickfontsize=10, xguidefontsize=16, yguidefontsize=14) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q3.pdf")
     Plots.plot(ranges[4], ml_results[4], ylabel="log marginal likelihood", label="", linewidth=3)
-    Plots.plot!(ranges[8], ml_results[8], xlabel=L"q_{41}(solid), q_{42}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-38852, -38846)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
-    Plots.plot(ranges[9], ml_results[9], xlabel=L"ν_{0}", ylabel="log marginal likelihood", label="", linewidth=3) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_nu0.pdf")
-    Plots.plot(ranges[10], ml_results[10], xlabel=L"p", ylabel="log marginal likelihood", label="", linewidth=3, xticks=1:2:upper_p) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
+    Plots.plot!(ranges[8], ml_results[8], xlabel=L"q_{41}(solid), q_{42}(dashed)", ylabel="log marginal likelihood", label="", linewidth=3, ls=:dash, ylims=(-38852, -38846), xtickfontsize=12, ytickfontsize=10, xguidefontsize=16, yguidefontsize=14) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_q4.pdf")
+    Plots.plot(ranges[9], ml_results[9], xlabel=L"ν_{0}", ylabel="log marginal likelihood", label="", linewidth=3, xtickfontsize=12, ytickfontsize=10, xguidefontsize=16, yguidefontsize=14) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_nu0.pdf")
+    Plots.plot(ranges[10], ml_results[10], xlabel=L"p", ylabel="log marginal likelihood", label="", linewidth=3, xticks=1:2:upper_p, xtickfontsize=12, ytickfontsize=10, xguidefontsize=16, yguidefontsize=14) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/ML_lag.pdf")
 
     ## decay parameter
     medium_τ_pr = length(medium_τ) |> x -> ones(x) / x
@@ -339,7 +339,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits, re
     end
     Plots.heatmap(sparse_corr_mean, c=:RdBu, clim=(-1, 1), yflip=true)
     Plots.xticks!([1:31;], ["PC1"; "PC2"; "PC3"; names(macros[:, 2:end])], xrot=90)
-    Plots.yticks!([1:31;], ["PC1"; "PC2"; "PC3"; names(macros[:, 2:end])], margin=10mm, size=(1000, 900)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/cor.pdf")
+    Plots.yticks!([1:31;], ["PC1"; "PC2"; "PC3"; names(macros[:, 2:end])], margin=10mm, size=(1000, 900), xtickfontsize=10, ytickfontsize=10) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/cor.pdf")
 
     ## TP components
     rec_dates = DateTime.(["1990-07-01" "1991-03-01"
