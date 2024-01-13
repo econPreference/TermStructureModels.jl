@@ -394,7 +394,7 @@ function graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits, re
 
 end
 
-function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
+function scenario_graphs(idx_case, is_control::Bool, is_level::Bool; τₙ, macros)
 
     set_default_plot_size(16cm, 8cm)
     scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
@@ -447,9 +447,40 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         end
     end
 
+    if is_level
+        if is_control
+            for i in eachindex(projections)
+                predicted_factors = deepcopy(projections[i][:factors])
+                for j in 1:dP-dQ
+                    if !is_percent[j]
+                        for k in 13:size(predicted_factors, 1)
+                            predicted_factors[k, dQ+j] += predicted_factors[k-12, dQ+j]
+                        end
+                    end
+                end
+                projections[i] = Forecast(yields=deepcopy(projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(projections[i][:TP]))
+            end
+        else
+            for i in eachindex(projections)
+                predicted_factors = deepcopy(projections[i][:factors])
+                for j in 1:dP-dQ
+                    if !is_percent[j]
+                        aux = [logmacros[idx_date-11:idx_date, j]; predicted_factors[:, dQ+j]]
+                        for k in 13:size(aux, 1)
+                            aux[k] += aux[k-12]
+                        end
+                        aux ./= 100
+                        predicted_factors[:, dQ+j] = exp.(aux[13:end])
+                    end
+                end
+                projections[i] = Forecast(yields=deepcopy(projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(projections[i][:TP]))
+            end
+        end
+    end
+
     # yields
     yield_res = mean(projections)[:yields]
-    Plots.heatmap(τₙ, 1:horizon, yield_res[1:horizon, :], xlabel="maturity (months)", ylabel="horizon (months)", c=:Blues) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control.pdf")
+    Plots.heatmap(τₙ, 1:horizon, yield_res[1:horizon, :], xlabel="maturity (months)", ylabel="horizon (months)", c=:Blues) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj3D_yield$idx_case,control=$is_control,level=$is_level.pdf")
 
     p = []
     for i in [2, 7, 18]
@@ -459,7 +490,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:yields][1:horizon, i], fillrange=quantile(projections, 0.975)[:yields][1:horizon, i], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control,level=$is_level.pdf")
 
     # EH & TP
     EHTP_res = [mean(projections)[:yields][:, [7, 13]] - mean(projections)[:TP][:, 2:3] mean(projections)[:TP][:, 4]]
@@ -494,7 +525,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, EHTP_res[1:horizon, i], fillrange=[quantile(EHTP_res_dist[:, j], 0.975) for j in axes(EHTP_res_dist, 2)][1:horizon], labels="", c=colorant"#4682B4", alpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EHTP$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_EHTP$idx_case,control=$is_control,level=$is_level.pdf")
 
     # macros
     p = []
@@ -507,7 +538,7 @@ function scenario_graphs(idx_case, is_control::Bool; τₙ, macros)
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][1:horizon, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][1:horizon, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="", size=(600, 600)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], layout=(3, 3), xlabel="", size=(600, 600)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control,level=$is_level.pdf")
 
 end
 
@@ -527,7 +558,7 @@ else
 
     graphs(; medium_τ, macros, yields, tuned, saved_θ, saved_TP, fits, reduced_θ)
 
-    for i in 1:2, j = [true, false]
-        scenario_graphs(i, j; τₙ, macros)
+    for i in 1:2, j = [true, false], k = [true, false]
+        scenario_graphs(i, j, k; τₙ, macros)
     end
 end
