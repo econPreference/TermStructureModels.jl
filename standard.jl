@@ -536,7 +536,7 @@ function scenario_graphs(idx_case, is_control::Bool, is_level::Bool; τₙ, macr
         Plots.plot!(ind_p, 1:horizon, mean(projections)[:factors][1:horizon, dimQ()+ind_macro], fillrange=quantile(projections, 0.84)[:factors][1:horizon, dimQ()+ind_macro], c=colorant"#4682B4", label="", fillalpha=0.6)
         push!(p, ind_p)
     end
-    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], layout=(4, 3), xlabel="", size=(600, 800)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control,level=$is_level.pdf")
+    Plots.plot(p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], layout=(3, 4), xlabel="", size=(800, 600)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_macro$idx_case,control=$is_control,level=$is_level.pdf")
 
 end
 
