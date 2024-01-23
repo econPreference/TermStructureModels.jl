@@ -2,11 +2,11 @@ using Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 Pkg.precompile()
-using GDTSM, ProgressMeter, StatsBase, Dates
-using CSV, DataFrames, LinearAlgebra, Gadfly, XLSX
-using Cairo, Fontconfig, Colors, LaTeXStrings, Distributions, ColorSchemes
-import Plots, JLD2
-import StatsPlots: @df
+using GDTSM
+using ProgressMeter, StatsBase, LinearAlgebra, Distributions # the things in the module
+using CSV, Dates, DataFrames, Gadfly, XLSX, Cairo, Fontconfig, Colors, LaTeXStrings, ColorSchemes # the things not in the module
+import Plots, JLD2 # the things not in the module
+import StatsPlots: @df # the things not in the module
 
 ## Data setting
 upper_p = 18
@@ -491,14 +491,14 @@ function scenario_graphs(idx_case, is_control::Bool, is_level::Bool; τₙ, macr
     Plots.plot(p[1], p[2], p[3], layout=(1, 3), xlabel="", size=(600, 200)) |> x -> Plots.pdf(x, "/Users/preference/Library/CloudStorage/Dropbox/Working Paper/Prior_for_GDTSM/slide/proj_yield$idx_case,control=$is_control,level=$is_level.pdf")
 
     # EH & TP
-    EHTP_res = [mean(projections)[:yields][:, [7, 13]] - mean(projections)[:TP][:, 2:3] mean(projections)[:TP][:, 4]]
+    EHTP_res = [mean(projections)[:yields][:, [7, 18]] - mean(projections)[:TP][:, [2, 4]] mean(projections)[:TP][:, 4]]
     EH_res_dist_24 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
     for i in axes(EH_res_dist_24, 1)
         EH_res_dist_24[i, :] = projections[:yields][i][:, 7] - projections[:TP][i][:, 2]
     end
-    EH_res_dist_60 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
-    for i in axes(EH_res_dist_60, 1)
-        EH_res_dist_60[i, :] = projections[:yields][i][:, 13] - projections[:TP][i][:, 3]
+    EH_res_dist_120 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
+    for i in axes(EH_res_dist_120, 1)
+        EH_res_dist_120[i, :] = projections[:yields][i][:, 18] - projections[:TP][i][:, 4]
     end
     TP_res_dist_120 = Matrix{Float64}(undef, length(projections), size(EHTP_res, 1))
     for i in axes(TP_res_dist_120, 1)
@@ -511,8 +511,8 @@ function scenario_graphs(idx_case, is_control::Bool, is_level::Bool; τₙ, macr
             EHTP_res_dist = deepcopy(EH_res_dist_24)
             ind_name = "EH(τ = 24)"
         elseif i == 2
-            EHTP_res_dist = deepcopy(EH_res_dist_60)
-            ind_name = "EH(τ = 60)"
+            EHTP_res_dist = deepcopy(EH_res_dist_120)
+            ind_name = "EH(τ = 120)"
         else
             EHTP_res_dist = deepcopy(TP_res_dist_120)
             ind_name = "TP(τ = 120)"
