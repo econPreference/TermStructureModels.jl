@@ -5,3 +5,4 @@
 Manifest.toml
 .DS_Store
 *.jld2
+.vscode/

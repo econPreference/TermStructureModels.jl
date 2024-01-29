@@ -45,7 +45,7 @@ end
 """
 function _unconditional_forecasts(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
-    ## Construct GDTSM parameters
+    ## Construct TSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
     ϕ0 = C \ ϕ0 # reduced form parameters
     KₚF = ϕ0[:, 1]
@@ -110,7 +110,7 @@ end
 """
 function _conditional_forecasts(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
-    ## Construct GDTSM parameters
+    ## Construct TSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
     ϕ0 = C \ ϕ0 # reduced form parameters
     KₚF = ϕ0[:, 1]
@@ -350,7 +350,7 @@ end
 """
 function _scenario_analysis(S, τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
-    ## Construct GDTSM parameters
+    ## Construct TSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
     ϕ0 = C \ ϕ0 # reduced form parameters
     KₚF = ϕ0[:, 1]
@@ -517,7 +517,7 @@ end
 """
 function _scenario_analysis_unconditional(τ, horizon, yields, macros, τₙ; κQ, kQ_infty, ϕ, σ²FF, Σₒ, mean_macros, data_scale)
 
-    ## Construct GDTSM parameters
+    ## Construct TSM parameters
     ϕ0, C = ϕ_2_ϕ₀_C(; ϕ)
     ϕ0 = C \ ϕ0 # reduced form parameters
     KₚF = ϕ0[:, 1]

@@ -1,4 +1,4 @@
-module GDTSM
+module TermStructureModels
 
 using Base: @kwdef
 using LinearAlgebra, Statistics, Distributions, SpecialFunctions, CovarianceMatrices, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
@@ -149,7 +149,7 @@ It contains a result of the scenario analysis, the conditional prediction for yi
 end
 
 include("utilities.jl") # utility functions
-include("theoreticals.jl") # Theoretical results in GDTSM
+include("theoreticals.jl") # Theoretical results
 include("prior.jl") # Contains prior distributions of statistical parameters
 include("EB_marginal.jl") # Calculate the marginal likelihood of the transition VAR equation.
 include("empiricals.jl") # Other statistical results not related to prior, posteior, and the marginal likelihood
@@ -172,7 +172,7 @@ export
     ϕ_2_ϕ₀_C,
     calibrate_μϕ_const,
 
-    # GDTSM.jl
+    # TermStructureModels.jl
     Hyperparameter,
     PosteriorSample,
     Parameter,
