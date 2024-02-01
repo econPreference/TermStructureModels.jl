@@ -2,7 +2,7 @@
 
 **NOTE. As I am currently in the job market, the completion of the documentation has been delayed. I will finish the work in February. Thanks.**
 
-#### Documentation: [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://QuantEcon.github.io//QuantEcon.jl/latest)
+#### Documentation: [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://econpreference.github.io/TermStructureModels.jl/dev/)
 
 [![Build Status](https://github.com/econPreference/GDTSM.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/econPreference/GDTSM.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
