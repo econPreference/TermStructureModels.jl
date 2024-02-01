@@ -29,7 +29,7 @@ ProgressMeter = "1.9.0"
 Roots = "2.1.1"
 SpecialFunctions = "2.3.1"
 StatsBase = "0.33.21"
-Statistics "1.10.0"
+Statistics = "1.10.0"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
