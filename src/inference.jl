@@ -149,7 +149,7 @@ This is a posterior distribution sampler.
 """
 function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperparameter; medium_τ=collect(30:2:48), init_param=[], ψ=[], ψ0=[], γ_bar=[], medium_τ_pr=[], μkQ_infty=0, σkQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
-    (; p, q, ν0, Ω0, μϕ_const) = tuned
+    p, q, ν0, Ω0, μϕ_const = tuned.p, tuned.q, tuned.ν0, tuned.Ω0, tuned.μϕ_const
     N = size(yields, 2) # of maturities
     dQ = dimQ()
     if isempty(macros)
@@ -167,7 +167,7 @@ function posterior_sampler(yields, macros, τₙ, ρ, iteration, tuned::Hyperpar
     end
 
     if typeof(init_param) == Parameter
-        (; κQ, kQ_infty, ϕ, σ²FF, Σₒ, γ) = init_param
+        κQ, kQ_infty, ϕ, σ²FF, Σₒ, γ = init_param.κQ, init_param.kQ_infty, init_param.ϕ, init_param.σ²FF, init_param.Σₒ, init_param.γ
     else
         ## initial parameters ##
         κQ = 0.0609
