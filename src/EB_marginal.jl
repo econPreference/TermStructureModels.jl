@@ -9,7 +9,7 @@ This file calculates a value of our marginal likelihood. Only the transition equ
 """
 function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
 
-    (; p, ν0, Ω0, q, μϕ_const) = tuned
+    p, ν0, Ω0, q, μϕ_const = tuned.p, tuned.ν0, tuned.Ω0, tuned.q, tuned.μϕ_const
 
     prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
     dP = length(Ω0)
