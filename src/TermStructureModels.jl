@@ -1,7 +1,7 @@
 module TermStructureModels
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, CovarianceMatrices, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
 
@@ -187,7 +187,7 @@ export
     tuning_hyperparameter,
     AR_res_var,
     generative,
-    # ineff_factor,
+    ineff_factor,
     posterior_sampler,
 
     # priors.jl

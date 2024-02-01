@@ -252,66 +252,66 @@ function generative(T, dP, τₙ, p, noise::Float64; κQ, kQ_infty, KₚXF, Gₚ
     return yields, XF[:, 1:dQ], XF[:, (dQ+1):end]
 end
 
-# """
-#     ineff_factor(saved_θ)
-# It returns inefficiency factors of each parameter
-# # Input
-# - `Vector{Parameter}` from posterior_sampler
-# # Output
-# - Estimated inefficiency factors are in Tuple(`κQ`, `kQ_infty`, `γ`, `Σₒ`, `σ²FF`, `ϕ`). For example, if you want to load an inefficiency factor of `ϕ`, you can use `Output.ϕ`.
-# - If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.ϕ[1,1]` can be weird. So you should ignore it.
-# """
-# function ineff_factor(saved_θ)
+"""
+    ineff_factor(saved_θ)
+It returns inefficiency factors of each parameter
+# Input
+- `Vector{Parameter}` from posterior_sampler
+# Output
+- Estimated inefficiency factors are in Tuple(`κQ`, `kQ_infty`, `γ`, `Σₒ`, `σ²FF`, `ϕ`). For example, if you want to load an inefficiency factor of `ϕ`, you can use `Output.ϕ`.
+- If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.ϕ[1,1]` can be weird. So you should ignore it.
+"""
+function ineff_factor(saved_θ)
 
-#     iteration = length(saved_θ)
+    iteration = length(saved_θ)
 
-#     init_κQ = saved_θ[:κQ][1]
-#     init_kQ_infty = saved_θ[:kQ_infty][1]
-#     init_ϕ = saved_θ[:ϕ][1] |> vec
-#     init_σ²FF = saved_θ[:σ²FF][1]
-#     init_Σₒ = saved_θ[:Σₒ][1]
-#     init_γ = saved_θ[:γ][1]
+    init_κQ = saved_θ[:κQ][1]
+    init_kQ_infty = saved_θ[:kQ_infty][1]
+    init_ϕ = saved_θ[:ϕ][1] |> vec
+    init_σ²FF = saved_θ[:σ²FF][1]
+    init_Σₒ = saved_θ[:Σₒ][1]
+    init_γ = saved_θ[:γ][1]
 
-#     initial_θ = [init_κQ; init_kQ_infty; init_γ; init_Σₒ; init_σ²FF; init_ϕ]
-#     vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
-#     vec_saved_θ[1, :] = initial_θ
-#     prog = Progress(iteration - 1; dt=5, desc="ineff_factor...")
-#     Threads.@threads for iter in 2:iteration
-#         κQ = saved_θ[:κQ][iter]
-#         kQ_infty = saved_θ[:kQ_infty][iter]
-#         ϕ = saved_θ[:ϕ][iter] |> vec
-#         σ²FF = saved_θ[:σ²FF][iter]
-#         Σₒ = saved_θ[:Σₒ][iter]
-#         γ = saved_θ[:γ][iter]
+    initial_θ = [init_κQ; init_kQ_infty; init_γ; init_Σₒ; init_σ²FF; init_ϕ]
+    vec_saved_θ = Matrix{Float64}(undef, iteration, length(initial_θ))
+    vec_saved_θ[1, :] = initial_θ
+    prog = Progress(iteration - 1; dt=5, desc="ineff_factor...")
+    Threads.@threads for iter in 2:iteration
+        κQ = saved_θ[:κQ][iter]
+        kQ_infty = saved_θ[:kQ_infty][iter]
+        ϕ = saved_θ[:ϕ][iter] |> vec
+        σ²FF = saved_θ[:σ²FF][iter]
+        Σₒ = saved_θ[:Σₒ][iter]
+        γ = saved_θ[:γ][iter]
 
-#         vec_saved_θ[iter, :] = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
-#         next!(prog)
-#     end
-#     finish!(prog)
+        vec_saved_θ[iter, :] = [κQ; kQ_infty; γ; Σₒ; σ²FF; ϕ]
+        next!(prog)
+    end
+    finish!(prog)
 
-#     ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
-#     kernel = QuadraticSpectralKernel{Andrews}()
-#     prog = Progress(size(vec_saved_θ, 2); dt=5, desc="ineff_factor...")
-#     Threads.@threads for i in axes(vec_saved_θ, 2)
-#         object = Matrix{Float64}(undef, iteration, 1)
-#         object[:] = vec_saved_θ[:, i]
-#         bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
-#         ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
-#         next!(prog)
-#     end
-#     finish!(prog)
+    ineff = Vector{Float64}(undef, size(vec_saved_θ)[2])
+    kernel = QuadraticSpectralKernel{Andrews}()
+    prog = Progress(size(vec_saved_θ, 2); dt=5, desc="ineff_factor...")
+    Threads.@threads for i in axes(vec_saved_θ, 2)
+        object = Matrix{Float64}(undef, iteration, 1)
+        object[:] = vec_saved_θ[:, i]
+        bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
+        ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
+        next!(prog)
+    end
+    finish!(prog)
 
-#     ϕ_ineff = ineff[2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)+1:end] |> x -> reshape(x, size(saved_θ[:ϕ][1], 1), size(saved_θ[:ϕ][1], 2))
-#     dP = size(ϕ_ineff, 1)
-#     for i in 1:dP, j in i:dP
-#         ϕ_ineff[i, end-dP+j] = 0
-#     end
-#     return (;
-#         κQ=ineff[1],
-#         kQ_infty=ineff[2],
-#         γ=ineff[2+1:2+length(init_γ)],
-#         Σₒ=ineff[2+length(init_γ)+1:2+length(init_γ)+length(init_Σₒ)],
-#         σ²FF=ineff[2+length(init_γ)+length(init_Σₒ)+1:2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)],
-#         ϕ=deepcopy(ϕ_ineff)
-#     )
-# end
+    ϕ_ineff = ineff[2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)+1:end] |> x -> reshape(x, size(saved_θ[:ϕ][1], 1), size(saved_θ[:ϕ][1], 2))
+    dP = size(ϕ_ineff, 1)
+    for i in 1:dP, j in i:dP
+        ϕ_ineff[i, end-dP+j] = 0
+    end
+    return (;
+        κQ=ineff[1],
+        kQ_infty=ineff[2],
+        γ=ineff[2+1:2+length(init_γ)],
+        Σₒ=ineff[2+length(init_γ)+1:2+length(init_γ)+length(init_Σₒ)],
+        σ²FF=ineff[2+length(init_γ)+length(init_Σₒ)+1:2+length(init_γ)+length(init_Σₒ)+length(init_σ²FF)],
+        ϕ=deepcopy(ϕ_ineff)
+    )
+end
