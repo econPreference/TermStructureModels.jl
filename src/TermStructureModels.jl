@@ -187,7 +187,7 @@ export
     tuning_hyperparameter,
     AR_res_var,
     generative,
-    ineff_factor,
+    # ineff_factor,
     posterior_sampler,
 
     # priors.jl
