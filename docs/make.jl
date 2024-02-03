@@ -6,6 +6,8 @@ makedocs(
     sitename="TermStructureModels.jl",
     pages=[
         "Home" => "index.md",
+        "Estimation" => "estimation.md",
+        "Inference" => "inference.md",
         "API" => "api.md"
     ]
 )

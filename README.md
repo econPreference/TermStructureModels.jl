@@ -18,6 +18,8 @@ The **main features** of the package is that our package allows for the lag leng
 - Decomposition of a bond yield into the expectation hypothesis component and the term premium component
 - Conditional Forecasting,including Scenario Analyses, to inspect interactions between bond yields and the macroeconomy
 
+If you have any questions about the package or features you would like to see added, feel free to use the issue or discussion tabs. We also welcome theoretical questions about the term structure model or concerns during the estimation process.
+
 ## Installation
 
 Type
