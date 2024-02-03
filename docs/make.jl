@@ -5,9 +5,10 @@ makedocs(
     modules=[TermStructureModels],
     sitename="TermStructureModels.jl",
     pages=[
-        "Home" => "index.md",
+        "Overview" => "index.md",
         "Estimation" => "estimation.md",
         "Inference" => "inference.md",
+        "Forecasting" => "scenario.md",
         "API" => "api.md"
     ]
 )
