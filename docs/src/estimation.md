@@ -1,22 +1,27 @@
-### Step1. Tuning hyper-parameters
+# Step 1. Tuning hyper-parameters
 
-We have four hyper-parameters, $p$, $q$, $\nu_0$, and $\Omega_0$.
+We have five hyper-parameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.
 
-- $p$(Float64): lag of the VAR(p) in $\mathbb{P}$ -measure
-- $q$(Vector) $=$ [ $q_1$; $q_2$; $q_3$; $q_4$]: Minnesota prior
-  - Prior variances of slopes $\propto$ $q_1$/ ${lag}^{q_3}$ (for own lagged variables) or $q_2$/ ${lag}^{q_3}$ (for cross lagged variables)
-  - Prior variances of intercepts $\propto$ $q_4$
-- $\nu_0$(Float64), $\Omega_0$(Vector): Error covariance of VAR(p) $\backsim$ InverseWishart($\nu_0$, $\Omega_0$)
+- `p::Float64`: lag length of the $\mathbb{P}$-VAR(p)
+- `q::Matrix{Float64}( , 4, 2)`: Shrinkage degrees in the Minnesota prior
+- `nu0::Float64`(d.f.) and `Omega0::Vector`(scale matrix): Prior distribution of the error covariance matrix in the $\mathbb{P}$-VAR(p)
+- `mean_phi_const`: Prior mean of the intercept term in the $\mathbb{P}$-VAR(p)
 
-We have additional two hyper-parameters that can be decided more objectively.
+We recommend [`tuning_hyperparameter`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.tuning_hyperparameter-NTuple{4,%20Any}) for deciding the hyperparameters.
 
-- $\rho$(Vector): rho is a vector that has a size of size(macros,2). If $i$'th variable in macros is a growth(or level) variable, $\rho$[i] = 0(or $\approx$ 1) should be set.
-- medium_tau(Vector): Candidate maturities where the curvature factor loading is maximized. The default value is [12, 18, 24, 30, 36, 42, 48, 54, 60] (months). When you estimate quarterly or annual data, this value should be modified.
+```julia
+tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
+```
 
-Struct "HyperParameter($p$, $q$, $\nu_0$, $\Omega_0$)" contains hyper-parameter values. We have a function "tuning_hyperparameter" that generates struct "HyperParameter" in a data-driven way (Chan, 2022).
+!!! note
+Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was "Run the algorithm with sufficient `maxiter`(our defaults), and verify that it is an global optimum by plotting the objective function". It is appropriate for academic projects.
+
+    However, it is not good for practical projects. small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution
+
+If users accept our default values, the function simplifies, that is
 
 ```juila
-tuned = tuning_hyperparameter(yields, macros, rho)
+tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 ```
 
 When using the function, T by N matrix "yields" and T by M matrix "macros" should contain initial observations ($t$ = 0, -1, -2, $\cdots$).
@@ -35,7 +40,7 @@ PCs, OCs, Wₚ, Wₒ = PCA(yields, p; rescaling=true)
 
 The function uses eigenVectors of cov(yields[p+1:end,:]) to transform yields[1:end, :] to PCs. When rescaling = true, standard deviations of all PCs are normalized to an average of standard deviations of yields. Here, PCs and OCs are the first three and remaining principal components, respectively. Also, PCs[t, :] = Wₚ $\times$ yields[t, :] and OCs[t, :] = Wₒ $\times$ yields[t, :] hold.
 
-### Step 2. sampling the posterior distribution of GDTSM
+# Step 2. sampling the posterior distribution of GDTSM
 
 ```juila
 saved_params, acceptPr_C_varFF, acceptPr_ηψ = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::HyperParameter; sparsity=false, medium_tau=12 * [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5], init_param=[])
