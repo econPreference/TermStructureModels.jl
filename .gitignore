@@ -7,3 +7,4 @@ Manifest.toml
 *.jld2
 .vscode/
 docs/build/
+docs/src/notations.lyx

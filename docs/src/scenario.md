@@ -1,10 +1,10 @@
 ## Scenario Analysis and unconditional forecasts
 
 ```juila
-prediction = scenario_sampler(S::Scenario, τ, horizon, saved_θ, yields, macros, τₙ)
+prediction = scenario_sampler(S::Scenario, τ, horizon, saved_params, yields, macros, tau_n)
 ```
 
-The function generates (un)conditional forecasts using our model. We use the Kalman filter to make conditional filtered forecasts (Bańbura, Giannone, and Lenza, 2015), and then we use Kim and Nelson (1999) to make smoothed posterior samples of the conditional forecasts. "S" is a conditioned scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "τₙ", "yields", and "macros" are the things that were inputs of function "posterior sampler". "saved_θ" is an output of function "posterior sampler". The output is Vector{Forecast}.
+The function generates (un)conditional forecasts using our model. We use the Kalman filter to make conditional filtered forecasts (Bańbura, Giannone, and Lenza, 2015), and then we use Kim and Nelson (1999) to make smoothed posterior samples of the conditional forecasts. "S" is a conditioned scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "tau*n", "yields", and "macros" are the things that were inputs of function "posterior sampler". "saved*θ" is an output of function "posterior sampler". The output is Vector{Forecast}.
 
 Struct Scenario has two elements, "combinations" and "values". Meaning of the struct can be found by help? command. Examples of making struct "Scenario" are as follows.
 

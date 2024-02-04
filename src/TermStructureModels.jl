@@ -9,16 +9,16 @@ import Statistics: mean, median, std, var, quantile
     @kwdef struct Hyperparameter
 - `p::Int`
 - `q::Matrix`
-- `ν0`
-- `Ω0::Vector`
-- `μϕ_const::Vector = zeros(length(Ω0))`: It is a prior mean of a constant term in our VAR.
+- `nu0`
+- `Omega0::Vector`
+- `mean_phi_const::Vector = zeros(length(Omega0))`: It is a prior mean of a constant term in our VAR.
 """
 @kwdef struct Hyperparameter
     p::Int
     q::Matrix
-    ν0
-    Ω0::Vector
-    μϕ_const::Vector = zeros(length(Ω0))
+    nu0
+    Omega0::Vector
+    mean_phi_const::Vector = zeros(length(Omega0))
 end
 
 """
@@ -30,44 +30,44 @@ abstract type PosteriorSample end
 """
     @kwdef struct Parameter <: PosteriorSample
 It contains statistical parameters of the model that are sampled from function `posterior_sampler`.
-- `κQ::Float64`
+- `kappaQ::Float64`
 - `kQ_infty::Float64`
-- `ϕ::Matrix{Float64}`
-- `σ²FF::Vector{Float64}`
-- `Σₒ::Vector{Float64}`
-- `γ::Vector{Float64}`
+- `phi::Matrix{Float64}`
+- `varFF::Vector{Float64}`
+- `SigmaO::Vector{Float64}`
+- `gamma::Vector{Float64}`
 """
 @kwdef struct Parameter <: PosteriorSample
-    κQ::Float64
+    kappaQ::Float64
     kQ_infty::Float64
-    ϕ::Matrix{Float64}
-    σ²FF::Vector{Float64}
-    Σₒ::Vector{Float64}
-    γ::Vector{Float64}
+    phi::Matrix{Float64}
+    varFF::Vector{Float64}
+    SigmaO::Vector{Float64}
+    gamma::Vector{Float64}
 end
 
 """
     @kwdef struct ReducedForm <: PosteriorSample
-It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `λP` and `ΛPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
-- `κQ`
+It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `lambdaP` and `LambdaPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
+- `kappaQ`
 - `kQ_infty`
-- `KₚF`
-- `GₚFF`
-- `ΩFF::Matrix`
-- `Σₒ::Vector`
-- `λP`
-- `ΛPF`
+- `KPF`
+- `GPFF`
+- `OmegaFF::Matrix`
+- `SigmaO::Vector`
+- `lambdaP`
+- `LambdaPF`
 - `mpr::Matrix(`market prices of risks`, T, dP)`
 """
 @kwdef struct ReducedForm <: PosteriorSample
-    κQ
+    kappaQ
     kQ_infty
-    KₚF
-    GₚFF
-    ΩFF::Matrix
-    Σₒ::Vector
-    λP
-    ΛPF
+    KPF
+    GPFF
+    OmegaFF::Matrix
+    SigmaO::Vector
+    lambdaP
+    LambdaPF
     mpr::Matrix
 end
 
@@ -75,21 +75,21 @@ end
     @kwdef struct LatentSpace <: PosteriorSample 
 When the model goes to the JSZ latent factor space, the statistical parameters in struct Parameter are also transformed. This struct contains the transformed parameters. Specifically, the transformation is `latents[t,:] = T0P_ + inv(T1X)*PCs[t,:]`. 
 
-In the latent factor space, the transition equation is `data[t,:] = KₚXF + GₚXFXF*vec(data[t-1:-1:t-p,:]') + MvNormal(O,ΩXFXF)`, where `data = [latent macros]`.
+In the latent factor space, the transition equation is `data[t,:] = KPXF + GPXFXF*vec(data[t-1:-1:t-p,:]') + MvNormal(O,OmegaXFXF)`, where `data = [latent macros]`.
 - `latents::Matrix`
-- `κQ`
+- `kappaQ`
 - `kQ_infty`
-- `KₚXF::Vector`
-- `GₚXFXF::Matrix`
-- `ΩXFXF::Matrix`
+- `KPXF::Vector`
+- `GPXFXF::Matrix`
+- `OmegaXFXF::Matrix`
 """
 @kwdef struct LatentSpace <: PosteriorSample
     latents::Matrix
-    κQ
+    kappaQ
     kQ_infty
-    KₚXF::Vector
-    GₚXFXF::Matrix
-    ΩXFXF::Matrix
+    KPXF::Vector
+    GPXFXF::Matrix
+    OmegaXFXF::Matrix
 end
 
 """
@@ -167,10 +167,10 @@ export
     isstationary,
     erase_nonstationary_param,
     LDL,
-    ϕ_σ²FF_2_ΩFF,
+    phi_varFF_2_OmegaFF,
     reducedform,
-    ϕ_2_ϕ₀_C,
-    calibrate_μϕ_const,
+    phi_2_phi₀_C,
+    calibrate_mean_phi_const,
 
     # TermStructureModels.jl
     Hyperparameter,
@@ -191,7 +191,7 @@ export
     posterior_sampler,
 
     # priors.jl
-    prior_κQ,
+    prior_kappaQ,
     dcurvature_dτ,
 
     # scenario.jl

@@ -4,7 +4,7 @@ Our Package has the below functions,
 
 - [Statistical Inference](https://econpreference.github.io/TermStructureModels.jl/dev/inference/)
   - [Parameters](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Inference-for-Parameters)
-  - [Yield Curve Interpolation](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Yield-Curve-Interpolation)]
+  - [Yield Curve Interpolation](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Yield-Curve-Interpolation)
   - [Term Premiums](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Term-Premiums)
 - [Forecasting](https://econpreference.github.io/TermStructureModels.jl/dev/scenario)
   - [Conditional Forecasting without scenarios(Baseline Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Baseline-Forecasts)

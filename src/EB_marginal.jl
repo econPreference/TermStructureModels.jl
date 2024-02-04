@@ -1,18 +1,18 @@
 """
-    log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
+    log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, medium_tau_pr, fix_const_PC1)
 This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
 # Input
 - tuned is a point where the marginal likelihood is evaluated. 	
-- `ψ0` and `ψ` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[ψ0 ψ][i,j]` is corresponds to `ϕ[i,j]`. 
+- `ψ0` and `ψ` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[ψ0 ψ][i,j]` is corresponds to `phi[i,j]`. 
 # Output
 - the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[], ψ0=[], medium_τ, medium_τ_pr, fix_const_PC1)
+function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, medium_tau_pr, fix_const_PC1)
 
-    p, ν0, Ω0, q, μϕ_const = tuned.p, tuned.ν0, tuned.Ω0, tuned.q, tuned.μϕ_const
+    p, nu0, Omega0, q, mean_phi_const = tuned.p, tuned.nu0, tuned.Omega0, tuned.q, tuned.mean_phi_const
 
-    prior_κQ_ = prior_κQ(medium_τ, medium_τ_pr)
-    dP = length(Ω0)
+    prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
+    dP = length(Omega0)
 
     if isempty(ψ)
         ψ = ones(dP, dP * p)
@@ -21,29 +21,29 @@ function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[]
         ψ0 = ones(dP)
     end
 
-    yϕ, Xϕ = yϕ_Xϕ(PCs, macros, p)
-    T = size(yϕ, 1)
-    prior_ϕ0_ = prior_ϕ0(μϕ_const, ρ, prior_κQ_, τₙ, Wₚ; ψ0, ψ, q, ν0, Ω0, fix_const_PC1)
-    prior_C_ = prior_C(; Ω0)
-    prior_ϕ = hcat(prior_ϕ0_, prior_C_)
-    m = mean.(prior_ϕ)
-    V = var.(prior_ϕ)
+    yphi, Xphi = yphi_Xphi(PCs, macros, p)
+    T = size(yphi, 1)
+    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
+    prior_C_ = prior_C(; Omega0)
+    prior_phi = hcat(prior_phi0_, prior_C_)
+    m = mean.(prior_phi)
+    V = var.(prior_phi)
 
     log_marginal_ = -log(2π)
     log_marginal_ *= (T * dP) / 2
     for i in 1:dP
-        νᵢ = ν(i, dP; ν0)
-        Sᵢ = S(i; Ω0)
+        νᵢ = ν(i, dP; nu0)
+        Sᵢ = S(i; Omega0)
         Vᵢ = V[i, 1:(end-dP+i-1)]
-        Kϕᵢ = Kϕ(i, V, Xϕ, dP)
-        Sᵢ_hat = S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
-        logdet_Kϕᵢ = logdet(Kϕᵢ)
-        if Sᵢ_hat < 0 || isinf(logdet_Kϕᵢ)
+        Kphiᵢ = Kphi(i, V, Xphi, dP)
+        Sᵢ_hat = S_hat(i, m, V, yphi, Xphi, dP; Omega0)
+        logdet_Kphiᵢ = logdet(Kphiᵢ)
+        if Sᵢ_hat < 0 || isinf(logdet_Kphiᵢ)
             return -Inf
         end
 
         log_marginalᵢ = sum(log.(Vᵢ))
-        log_marginalᵢ += logdet_Kϕᵢ
+        log_marginalᵢ += logdet_Kphiᵢ
         log_marginalᵢ /= -2
         log_marginalᵢ += loggamma(νᵢ + 0.5T)
         log_marginalᵢ += νᵢ * log(Sᵢ)
@@ -57,54 +57,54 @@ function log_marginal(PCs, macros, ρ, tuned::Hyperparameter, τₙ, Wₚ; ψ=[]
 end
 
 """
-    ν(i, dP; ν0)
+    ν(i, dP; nu0)
 """
-function ν(i, dP; ν0)
-    return (ν0 + i - dP) / 2
+function ν(i, dP; nu0)
+    return (nu0 + i - dP) / 2
 end
 
 """
-    S(i; Ω0)
+    S(i; Omega0)
 """
-function S(i; Ω0)
-    return Ω0[i] / 2
+function S(i; Omega0)
+    return Omega0[i] / 2
 end
 
 """
-    Kϕ(i, V, Xϕ, dP)
+    Kphi(i, V, Xphi, dP)
 """
-function Kϕ(i, V, Xϕ, dP)
-    Xϕᵢ = Xϕ[:, 1:(end-dP+i-1)]
+function Kphi(i, V, Xphi, dP)
+    Xphiᵢ = Xphi[:, 1:(end-dP+i-1)]
     Vᵢ = V[i, 1:(end-dP+i-1)]
-    return diagm(1 ./ Vᵢ) + Xϕᵢ'Xϕᵢ
+    return diagm(1 ./ Vᵢ) + Xphiᵢ'Xphiᵢ
 end
 
 """
-    ϕ_hat(i, m, V, yϕ, Xϕ, dP)
+    phi_hat(i, m, V, yphi, Xphi, dP)
 """
-function ϕ_hat(i, m, V, yϕ, Xϕ, dP)
-    Kϕᵢ = Kϕ(i, V, Xϕ, dP)
-    Xϕᵢ = Xϕ[:, 1:(end-dP+i-1)]
-    yϕᵢ = yϕ[:, i]
+function phi_hat(i, m, V, yphi, Xphi, dP)
+    Kphiᵢ = Kphi(i, V, Xphi, dP)
+    Xphiᵢ = Xphi[:, 1:(end-dP+i-1)]
+    yphiᵢ = yphi[:, i]
     mᵢ = m[i, 1:(end-dP+i-1)]
     Vᵢ = V[i, 1:(end-dP+i-1)]
 
-    return Kϕᵢ \ (diagm(1 ./ Vᵢ) * mᵢ + Xϕᵢ'yϕᵢ)
+    return Kphiᵢ \ (diagm(1 ./ Vᵢ) * mᵢ + Xphiᵢ'yphiᵢ)
 end
 
 """
-    S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
+    S_hat(i, m, V, yphi, Xphi, dP; Omega0)
 """
-function S_hat(i, m, V, yϕ, Xϕ, dP; Ω0)
+function S_hat(i, m, V, yphi, Xphi, dP; Omega0)
 
-    yϕᵢ = yϕ[:, i]
+    yphiᵢ = yphi[:, i]
     mᵢ = m[i, 1:(end-dP+i-1)]
     Vᵢ = V[i, 1:(end-dP+i-1)]
-    Kϕᵢ = Kϕ(i, V, Xϕ, dP)
-    ϕᵢ_hat = ϕ_hat(i, m, V, yϕ, Xϕ, dP)
+    Kphiᵢ = Kphi(i, V, Xphi, dP)
+    phiᵢ_hat = phi_hat(i, m, V, yphi, Xphi, dP)
 
-    Sᵢ_hat = S(i; Ω0)
-    Sᵢ_hat += (yϕᵢ'yϕᵢ + mᵢ' * diagm(1 ./ Vᵢ) * mᵢ - ϕᵢ_hat' * Kϕᵢ * ϕᵢ_hat) / 2
+    Sᵢ_hat = S(i; Omega0)
+    Sᵢ_hat += (yphiᵢ'yphiᵢ + mᵢ' * diagm(1 ./ Vᵢ) * mᵢ - phiᵢ_hat' * Kphiᵢ * phiᵢ_hat) / 2
 
     return Sᵢ_hat
 end
