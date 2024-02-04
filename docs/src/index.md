@@ -12,7 +12,7 @@ Our Package has the below functions,
 
 To use such functions, [an estimation of the model](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/) must first be conducted. That is, use [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.posterior_sampler-Tuple{Any,%20Any,%20Any,%20Any,%20Any,%20Hyperparameter}) to obtain posterior samples of parameters. The output of the function has a form of `Vector{Parameter}(posterior, iteration)`. This output is used for the above functions(Statistical inference and Forecasting). For details, refer to the corresponding pages.
 
-Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organizes which notation in the paper corresponds to the variable in our package.
+Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organizes which notation in the paper corresponds to the variable in our package. [The example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros.ipynb) used for our paper is in the repo.
 
 !!! warning "Units of Data"
 
