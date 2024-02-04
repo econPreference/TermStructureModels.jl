@@ -11,3 +11,5 @@ Our Package has the below functions,
   - [Scenario Analysis](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Scenario-Analysis)
 
 To use such functions, [an estimation of the model](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/) must first be conducted. That is, use [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.posterior_sampler-Tuple{Any,%20Any,%20Any,%20Any,%20Any,%20Hyperparameter}) to obtain posterior samples of parameters. The output of the function has a form of `Vector{Parameter}(posterior, iteration)`. This output is used for the above functions(Statistical inference and Forecasting). For details, refer to the corresponding pages.
+
+The meanings of objects and variables can be found in [Section notation](https://econpreference.github.io/TermStructureModels.jl/dev/notations/).
