@@ -13,10 +13,11 @@ We recommend [`tuning_hyperparameter`](https://econpreference.github.io/TermStru
 tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
 ```
 
-!!! note
-Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was "Run the algorithm with sufficient `maxiter`(our defaults), and verify that it is an global optimum by plotting the objective function". It is appropriate for academic projects.
+!!! note "Computational length of the optimization"
 
-    However, it is not good for practical projects. small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution
+    Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was "Run the algorithm with sufficient `maxiter`(our defaults), and verify that it is an global optimum by plotting the objective function". It is appropriate for academic projects.
+
+    However, it is not good for practical projects. small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution does not need to be the best form. Set `maxiter` based on your computational resources.
 
 If users accept our default values, the function simplifies, that is
 
