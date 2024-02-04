@@ -1,4 +1,4 @@
-## Inference
+## Inference for Parameters
 
 To call posterior samples of objects in structs ("Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast"), use [:name]. For example, for output "saved_θ" of function "posterior sampler",
 
