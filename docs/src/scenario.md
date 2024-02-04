@@ -1,4 +1,6 @@
-## Scenario Analysis and unconditional forecasts
+# Forecasting
+
+## Baseline Forecasts
 
 ```juila
 prediction = scenario_sampler(S::Scenario, τ, horizon, saved_params, yields, macros, tau_n)
@@ -32,3 +34,5 @@ S = Scenario(combinations=comb, values=values)
 ```
 
 Here, **both "combinations" and "values" should be type Array{Float64}**. Also, "horizon" should not be smaller than size(values, 2).
+
+## Scenario Analysis

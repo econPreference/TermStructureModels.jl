@@ -1,65 +1,79 @@
+## Extract Posterior Samples of Specific Parameters
+
+When users execute some functions, the output is `Vector{<:PosteriorSample}`. That is, some outputs are
+
+- Vector{Parameter}
+- Vector{ReducedForm}
+- Vector{LatentSpace}
+- Vector{YieldCurve}
+- Vector{TermPremium}
+- Vector{Forecast}
+
+In this case, you can call posterior samples of a specific parameter by using [`getindex`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#Base.getindex-Tuple{Vector{var%22#s13%22}%20where%20var%22#s13%22%3C:PosteriorSample,%20Symbol}). For example, if we want to get posterior samples of `phi`, do
+
+```juila
+samples_phi = saved_params[:phi]
+```
+
+for `saved_params::Vector{Parameter}`, the output of `posterior_sampler`. Then, samples_phi is a vector, and `samples_phi[i]` is the i-th posterior sample of `phi`. Note that `samples_phi[i]` is a matrix in this case.(Julialang allows Vector to have Array elements.)
+
+## Descriptive Statistics of the Posterior Distributions
+
+We extend `mean`, `var`, `std`, `median`, and `quantile` from [Statistics.jl](https://github.com/JuliaStats/Statistics.jl) to `Vector{<:PosteriorSample}`. `Vector{<:PosteriorSample}` includes
+
+- Vector{Parameter}
+- Vector{ReducedForm}
+- Vector{LatentSpace}
+- Vector{YieldCurve}
+- Vector{TermPremium}
+- Vector{Forecast}
+
+For example, the posterior mean of `phi` can be calculated by
+
+```juila
+mean_phi = mean(saved_params)[:phi]
+```
+
+`mean_phi[i,j]` is the posterior mean of the entry in the i-th row and j-th column of `phi`. Outputs of all functions(`mean`, `var`, `std`, `median`, and `quantile`) have the same shapes as their corresponding parameters. `quantile` needs the second input. For example, in the case of
+
+```juila
+q_phi = quantile(saved_params, 0.4)[:phi]
+```
+
+40% of posterior samples for phi[i,j] are less than `q_phi[i,j]`.
+
+!!! tip
+To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Page [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct`.
+
 ## Inference for Parameters
 
-To call posterior samples of objects in structs ("Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast"), use [:name]. For example, for output "saved_params" of function "posterior sampler",
+You can get posterior samples of term structure model parameters using [`reducedform`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.reducedform-NTuple{4,%20Any}).
 
-```juila
-samples = saved_params[:kappaQ]
-samples[i] # i'th posterior sample of kappaQ
+```julia
+reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 ```
 
-The variable names in structs "Parameter", "ReducedForm", and "LatentSpace" represent
+`yields` is a T by N matrix, and T is the length of the time period. N is the number of maturities in data. `tau_n` is a N-Vector that contains maturities in data. For example, if there are two maturities, 3 and 24 months, in a monthly term structure model, `tau_n=[3; 24]`. `macros` is a T by (dP-dQ) matrix in which each column is an individual macroeconomic variable.
 
-- kappaQ: $\kappa^{\mathbb{Q}}$,
-- kQ*infty: $k^{\mathbb{Q}}*{\infty}$,
-- phi: { $\phi_{i}$; $i$ $=$ $1$, $\cdots$, ${d}_{\mathbb{P}}$ },
-- varFF: { $\sigma^2_{\mathcal{FF},i}$ ; $i$ $=$ $1$, $\cdots$, $d_\mathbb{P}$ },
-- ηψ: $\eta_{\psi}$,
-- ψ: $d_\mathbb{P}$ by ${p}{\cdot}$ $d_{\mathbb{P}}$ Matrix, [[ $\psi_{1,i,j}$ ] $\cdots$ [ $\psi_{p,i,j}$ ] ]
-- ψ0: { $\psi_{0,i}$ : $i=1$, $\cdots$, $d_\mathbb{P}$ }
-- SigmaO: $\Sigma_{\mathcal{O}}$
-- gamma: { $\gamma_i$ : $i=1$, $\cdots$, N - $d_\mathbb{Q}$ }
-- KPF: $K^\mathbb{P}_\mathcal{F}$
-- GPFF: [ $G^P_{\mathcal{FF},1}$ $\cdots$ $G^P_{\mathcal{FF},p}$ ]
-- OmegaFF: $\Omega_\mathcal{FF}$
-- lambdaP: $\lambda_\mathcal{P}$
-- LambdaPF: [[$\Lambda_{\mathcal{PP},1}$, $\Lambda_{\mathcal{P}M,1}$] $\cdots$ [ $\Lambda_{\mathcal{PP},p}$, $\Lambda_{\mathcal{P}M,p}$]]
-- KPXF: $K^\mathbb{P}_F$
-- GPXFXF: [ $G^P_{FF,1}$ $\cdots$ $G^P_{FF,p}$ ]
-- OmegaXFXF: $\Omega_{FF}$
+!!! note "Reason Why we have to run `reducedform` in addition to `posterior_sampler`"
 
-in our paper. Parameters in "ReducedForm" and "LatentSpace" can be deduced by using functions "reducedform" and "latentspace", respectively. "ReducedForm" contains the reduced form VAR(p) parameters. "LatentSpace" contains parameters when our model is expressed in terms of latent factor $X_t$
+    We estimate the $\mathbb{P}$-VAR by transforming it into a recursive VAR form. Therefore, `Parameter`, the output of `posterior_sampler`, contains parameters from the recursive VAR. In contrast, `ReducedForm`, the output of `reducedform`, contains parameters in the original reduced-form $\mathbb{P}$-VAR.
 
-We support mean(), var(), std(), median(), quantile() in Statistics.jl. So, for example, when we need a posterior mean,
+## Yield Curve Interpolation
+
+We first have to transform the parameter space from the principal component space to the latent factor space. It is done by [`latentspace`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.latentspace-Tuple{Any,%20Any,%20Any}). And then, use [`fitted_YieldCurve`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.fitted_YieldCurve-Tuple{Any,%20Vector{LatentSpace}}) to get fitted yields on the yield curve. Specifically,
 
 ```juila
-mean(saved_params)[:kQ_infty]
+saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200)
+fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 ```
 
-gives the corresponding posterior mean of kQ_infty. All functions, [:name], $\cdots$, quantile(), can be run on six structs, which are "Parameter", "ReducedForm" "LatentSpace", "YieldCurve", "TermPremium", and "Forecast".
+`τ0` is a Vector containing the maturities for which we want to calculate fitted yields through interpolation.
 
-## Structs in the packages
+## Term Premiums
 
-To see names of objects in the structs, run, for example,
+[`term_premium`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.term_premium-NTuple{5,%20Any}) calculate the term premium of `τ`-maturity bond. `τ` should be a scalar.
 
 ```juila
-help?>YieldCurve
+saved_TP = term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
 ```
-
-We have eight structs, which are **HyperParameter**, **Parameter**, **ReducedForm**, **LatentSpace**, **YieldCurve**, **TermPremium**, **Scenario**, and **Forecast**. It also provides details of the structs.
-
-## Yield curve interpolation
-
-```juila
-fitted = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace})
-```
-
-To derive the fitted yield curve, you first derive "saved_latent_params" from function "latentspace". τ0 is a vector that contains maturities of interest. The output is Vector{"YieldCurve"}.
-
-## Term premium
-
-```juila
-saved_TP = term_premium(τ, tau_n, saved_params::Vector{Parameter}, yields, macros)
-```
-
-The function calculates term premium estimates of maturity τ (months). Here, τ does not need to be the one in tau*n. "tau_n", "yields", and "macros" are the things that were inputs of function "posterior sampler".
-"saved*θ" is the output of function "posterior sampler". Output "saved_TP" is Vector{TermPremium}.
