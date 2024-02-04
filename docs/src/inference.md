@@ -43,7 +43,8 @@ q_phi = quantile(saved_params, 0.4)[:phi]
 40% of posterior samples for phi[i,j] are less than `q_phi[i,j]`.
 
 !!! tip
-To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Page [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct`.
+
+    To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Page [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct`.
 
 ## Inference for Parameters
 
