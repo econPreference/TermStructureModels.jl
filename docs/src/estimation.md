@@ -46,3 +46,23 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 `iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
 
 Output `saved_params` is a Vector that has a length of `iteration`. Each entry is struct `Parameter`. `acceptPrMH` is dQ-Vector, and i-th entry shows the HM acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
+
+## Diagnostics for MCMC
+
+We believe in the efficiency of our algorithm, so users do not need to be overly concerned about the convergence of the posterior samples. In our opinion, sampling 6,000 posterior samples and erase the first 1,000 samples as burn-in would be enough.
+
+We provide [a measure](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.ineff_factor-Tuple{Any}) to gauge the efficiency of the algorithm, that is
+
+```julia
+ineff = ineff_factor(saved_params)
+```
+
+`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object in the tuple has the same shape as its corresponding parameter. If an inefficiency factor is high, it indicates poor sampling efficiency for the parameter located at the same position.
+
+You can calculate the maximum inefficiency factor by
+
+```julia
+max_ineff = (ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum) |> maximum
+```
+
+Dividing the total number of posterior samples by `max_ineff` allows for the calculation of the effective number of posterior samples, taking into account the efficiency of the sampler. For example, let's say `max_ineff = 10`. Then, if 6,000 posterior samples are drawn and the first 1,000 samples are erased as burn-in, the remaining 5,000 posterior samples have the same efficiency as using 500 i.i.d samples, calculated as `(6000-1000)/max_ineff`.
