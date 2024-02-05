@@ -30,7 +30,16 @@ or
 projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
 ```
 
-`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](@ref)
+`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](@ref).
+
+Users can use the same `yields`, `tau_n` and `macros` they employed when executing `posterior_sampler`. If one wishes to compute conditional forecasts using observations up to a certain point, they can simply use the `yields` and `macros` from the initial period up to that point. However, parameter uncertainty is incorporated independently of `yields` and `macros` through `saved_params`.
+
+If you use demeaned macro data, option `mean_macros` is useful. This option allows for the calculation of conditional forecasts for the non-demeaned macro variables. An input for `mean_macros` is calculated by
+
+```julia
+    mean_macros = mean(macros, dims=1)[1, :]
+```
+
 `S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
 
 ## Baseline Forecast
