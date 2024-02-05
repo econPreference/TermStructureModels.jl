@@ -1,38 +1,56 @@
 # Forecasting
 
-## Baseline Forecasts
+We have two kinds of forecasts.
 
-```juila
-prediction = scenario_sampler(S::Scenario, τ, horizon, saved_params, yields, macros, tau_n)
+1. Baseline Forecast
+2. Scenario Analysis (or Scenario Forecast)
+
+All of two forecasts are conditional forecasts, because they are based on information in data. The difference is that the scenario forecast assumes additional scenarios that describe future paths of some variables.
+
+On the other hand, we have two kinds of estimates of forecasts.
+
+1. Posterior Distribution of Forecasts
+   - In other words, Posterior Distribution of "future observation|past observation, scenario"
+   - Function: [`conditional_forecasts`](@ref)
+2. Posterior Distribution of expected future values of variables
+   - In other words, Posterior Distribution of "E[future obs|past obs, scenario, parameters]"
+   - Function: [`scenario_analysis`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.scenario_analysis-Tuple{Vector{T}%20where%20T,%20Any,%20Any,%20Any,%20Any,%20Any,%20Any})
+
+The first one is the full-Bayesian version of forecasts, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when the policymaker makes decisions based on the expected path of the future economy. **We recommend the second version.**
+
+The required inputs and the type of the output are the same between the two functions.
+
+```julia
+projections = conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
 ```
 
-The function generates (un)conditional forecasts using our model. We use the Kalman filter to make conditional filtered forecasts (Bańbura, Giannone, and Lenza, 2015), and then we use Kim and Nelson (1999) to make smoothed posterior samples of the conditional forecasts. "S" is a conditioned scenario, and yields, risk factors, and a term premium of maturity "τ" are forecasted. "horizon" is a forecasting horizon. "tau*n", "yields", and "macros" are the things that were inputs of function "posterior sampler". "saved*θ" is an output of function "posterior sampler". The output is Vector{Forecast}.
+or
 
-Struct Scenario has two elements, "combinations" and "values". Meaning of the struct can be found by help? command. Examples of making struct "Scenario" are as follows.
+```julia
+projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+```
 
-```juila
-# Case 1. Unconditional Forecasts
+`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.posterior_sampler-Tuple{Any,%20Any,%20Any,%20Any,%20Any,%20Hyperparameter})
+`S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
+
+## Baseline Forecast
+
 S = []
 
-# Case 2. Scenario with one conditioned variable and time length 2
-comb = zeros(1, size([yields macros], 2))
-comb[1, 1] = 1.0 # one month yield is selected as a conditioned variable
-values = [3.0] # Scenario: one month yield at time T+1 is 3.0
-S = Scenario(combinations=comb, values=values)
+## Scenario Forecast
 
-# Case 3. Scenario with two conditioned combinations and time length 3
 comb = zeros(2, size([yields macros], 2), 3)
 values = zeros(2, 3)
 for t in 1:3 # for simplicity, we just assume the same scenario for time = T+1, T+2, T+3. Users can freely assume different scenarios for each time T+t.
-  comb[1, 1, t] = 1.0 # one month yield is selected as a conditioned variable in the first combination
-  comb[2, 20, t] = 0.5
-  comb[2, 21, t] = 0.5 # the average of 20th and 21st observables is selected as a second conditioned combination
-  values[1,t] = 3.0 # one month yield at time T+t is 3.0
-  values[2,t] = 0.0 # the average value is zero.
+comb[1, 1, t] = 1.0 # one month yield is selected as a conditioned variable in the first combination
+comb[2, 20, t] = 0.5
+comb[2, 21, t] = 0.5 # the average of 20th and 21st observables is selected as a second conditioned combination
+values[1,t] = 3.0 # one month yield at time T+t is 3.0
+values[2,t] = 0.0 # the average value is zero.
 end
 S = Scenario(combinations=comb, values=values)
+
 ```
 
 Here, **both "combinations" and "values" should be type Array{Float64}**. Also, "horizon" should not be smaller than size(values, 2).
-
-## Scenario Analysis
+```

@@ -11,11 +11,11 @@ When users execute some functions, the output is `Vector{<:PosteriorSample}`. Th
 
 In this case, you can call posterior samples of a specific parameter by using [`getindex`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#Base.getindex-Tuple{Vector{var%22#s13%22}%20where%20var%22#s13%22%3C:PosteriorSample,%20Symbol}). For example, if we want to get posterior samples of `phi`, do
 
-```juila
+```julia
 samples_phi = saved_params[:phi]
 ```
 
-for `saved_params::Vector{Parameter}`, the output of `posterior_sampler`. Then, samples_phi is a vector, and `samples_phi[i]` is the i-th posterior sample of `phi`. Note that `samples_phi[i]` is a matrix in this case.(Julialang allows Vector to have Array elements.)
+for `saved_params::Vector{Parameter}`, the output of `posterior_sampler`. Then, `samples_phi` is a vector, and `samples_phi[i]` is the i-th posterior sample of `phi`. Note that `samples_phi[i]` is a matrix in this case.(Julialang allows Vector to have Array elements.)
 
 ## Descriptive Statistics of the Posterior Distributions
 
@@ -30,13 +30,13 @@ We extend `mean`, `var`, `std`, `median`, and `quantile` from [Statistics.jl](ht
 
 For example, the posterior mean of `phi` can be calculated by
 
-```juila
+```julia
 mean_phi = mean(saved_params)[:phi]
 ```
 
 `mean_phi[i,j]` is the posterior mean of the entry in the i-th row and j-th column of `phi`. Outputs of all functions(`mean`, `var`, `std`, `median`, and `quantile`) have the same shapes as their corresponding parameters. `quantile` needs the second input. For example, in the case of
 
-```juila
+```julia
 q_phi = quantile(saved_params, 0.4)[:phi]
 ```
 
@@ -54,7 +54,7 @@ You can get posterior samples of term structure model parameters using [`reduced
 reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 ```
 
-`yields` is a T by N matrix, and T is the length of the time period. N is the number of maturities in data. `tau_n` is a N-Vector that contains maturities in data. For example, if there are two maturities, 3 and 24 months, in a monthly term structure model, `tau_n=[3; 24]`. `macros` is a T by (dP-dQ) matrix in which each column is an individual macroeconomic variable.
+`yields` is a `T` by `N` matrix, and `T` is the length of the time period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains maturities in data. For example, if there are two maturities, 3 and 24 months, in a monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable.
 
 !!! note "Reason Why we have to run `reducedform` in addition to `posterior_sampler`"
 
@@ -64,7 +64,7 @@ reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=120
 
 We first have to transform the parameter space from the principal component space to the latent factor space. It is done by [`latentspace`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.latentspace-Tuple{Any,%20Any,%20Any}). And then, use [`fitted_YieldCurve`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.fitted_YieldCurve-Tuple{Any,%20Vector{LatentSpace}}) to get fitted yields on the yield curve. Specifically,
 
-```juila
+```julia
 saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200)
 fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 ```
@@ -75,6 +75,6 @@ fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace};
 
 [`term_premium`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.term_premium-NTuple{5,%20Any}) calculate the term premium of `τ`-maturity bond. `τ` should be a scalar.
 
-```juila
+```julia
 saved_TP = term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
 ```

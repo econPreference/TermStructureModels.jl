@@ -5,7 +5,8 @@ scenarios, a result of the posterior sampler, and data
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
     - If we need an unconditional prediction, `S = []`.
     - If you are conditionaing a scenario, I assume S = Vector{Scenario}.
-- `τ` is a vector of maturities that term premiums of interest has.
+-  `τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i.
+    - If `τ` is set to `[]`, the term premium is not forecasted. 
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
@@ -14,7 +15,7 @@ scenarios, a result of the posterior sampler, and data
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
 """
-function conditional_forecasts(S, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="conditional_forecasts...")
