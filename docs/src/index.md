@@ -18,25 +18,25 @@ Users are encouraged to read the two text boxes below.
 
 !!! warning "Units of Data"
 
-    Theoretical term structure models typically describe bond yields as decimals per one time period. However, yield data is typically presented in percent per annum. One way to address this issue is by transforming the data into yields in decimal form per one time period.
+    Theoretical term structure models typically describe bond yields as decimals per one time period. However, yield data is typically presented in percent per annum. Therefore, you have to address the issue by using the option `data_scale`. `data_scale` represents the scale of the data. Specifically,
 
-    **Our recommendation** is to use the option `data_scale`. `data_scale` represents the scale of the data. Specifically,
+    ```julia
+    `yields_in_data` = `data_scale`*`theoretical_yields_in_the_model`
+    ```
 
-    yields in data = `data_scale`*theoretical yields in the model
-
-    holds. For example, suppose we have monthly yield data in percent per annum. If we use a monthly term structure model, `data_scale=1200`. The default value of `data_scale` is 1200.
+    holds. For example, suppose we have monthly yield data in percent per annum. If we use a monthly term structure model, `data_scale=1200`. **The default value of `data_scale` is 1200 for all functions.**
 
     Functions that have option `data_scale` are as follows:
-    - `tuning_hyperparameter`
-    - `posterior_sampler`
-    - `term_premium`
-    - `conditional_forecasts`
-    - `scenario_analysis`
-    - `latentspace`
-    - `reducedform`
-    - `fitted_YieldCurve`
-    - `generative`
-    - `calibrate_mean_phi_const`
+    - [`tuning_hyperparameter`](@ref)
+    - [`posterior_sampler`](@ref)
+    - [`term_premium`](@ref)
+    - [`conditional_forecasts`](@ref)
+    - [`scenario_analysis`](@ref)
+    - [`latentspace`](@ref)
+    - [`reducedform`](@ref)
+    - [`fitted_YieldCurve`](@ref)
+    - [`generative`](@ref)
+    - [`calibrate_mean_phi_const`](@ref)
 
 !!! tip "Normalization of Data"
 
