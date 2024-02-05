@@ -2,8 +2,8 @@
 
 We have two kinds of forecasts.
 
-1. Baseline Forecast
-2. Scenario Analysis (or Scenario Forecast)
+1. [Baseline Forecast](@ref)
+2. Scenario Analysis (or [Scenario Forecast](@ref))
 
 All of two forecasts are conditional forecasts, because they are based on information in data. The difference is that the scenario forecast assumes additional scenarios that describe future paths of some variables.
 
@@ -58,18 +58,30 @@ It sets a scenario to an empty set, so the package calculate baseline forecasts.
 
 ## Scenario Forecast
 
-comb = zeros(2, size([yields macros], 2), 3)
-values = zeros(2, 3)
-for t in 1:3 # for simplicity, we just assume the same scenario for time = T+1, T+2, T+3. Users can freely assume different scenarios for each time T+t.
-comb[1, 1, t] = 1.0 # one month yield is selected as a conditioned variable in the first combination
-comb[2, 20, t] = 0.5
-comb[2, 21, t] = 0.5 # the average of 20th and 21st observables is selected as a second conditioned combination
-values[1,t] = 3.0 # one month yield at time T+t is 3.0
-values[2,t] = 0.0 # the average value is zero.
-end
-S = Scenario(combinations=comb, values=values)
+`S` should be `Vector{Scenario}`. `S` can be initialized by
 
+```julia
+S = Vector{Scenario}(undef, len)
 ```
 
-Here, **both "combinations" and "values" should be type Array{Float64}**. Also, "horizon" should not be smaller than size(values, 2).
+`len` is the length of `S`. For example, if Scenario `S` is assumed for the next 5 time periods, `len=5`.
+
+`S[i]` represents the scenario for future variables at time `T+i`, where `T` refers to the time of the last observation in `macros` and `yields`. The type of `S[i]` is `Scenario`, and struct `Scenario` has two fields: `combinations::Matrix` and `values::Vector`. The fields in `S[i]` say that
+
+```julia
+S[i].combination*[yields[T+i,:]; macros[T+i, :]] == S[i].values
+```
+
+holds at time `T+i`. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
+
+The two fields can be set using a content of scenarios at time `T+i`. Suppose that the content of the scenarios at time `T+i` is
+
+```julia
+combs*[yields[T+i,:]; macros[T+i, :]] == vals
+```
+
+Then, users can assign the content to `S[i]` by executing
+
+```julia
+S[i] = Scenario(combinations=combs, values=vals)
 ```
