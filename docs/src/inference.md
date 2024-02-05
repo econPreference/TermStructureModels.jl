@@ -17,6 +17,10 @@ samples_phi = saved_params[:phi]
 
 for `saved_params::Vector{Parameter}`, the output of `posterior_sampler`. Then, `samples_phi` is a vector, and `samples_phi[i]` is the i-th posterior sample of `phi`. Note that `samples_phi[i]` is a matrix in this case.(Julialang allows Vector to have Array elements.)
 
+!!! tip
+
+    To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Page [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct`.
+
 ## Descriptive Statistics of the Posterior Distributions
 
 We extend `mean`, `var`, `std`, `median`, and `quantile` from [Statistics.jl](https://github.com/JuliaStats/Statistics.jl) to `Vector{<:PosteriorSample}`. `Vector{<:PosteriorSample}` includes
@@ -41,10 +45,6 @@ q_phi = quantile(saved_params, 0.4)[:phi]
 ```
 
 40% of posterior samples for phi[i,j] are less than `q_phi[i,j]`.
-
-!!! tip
-
-    To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Page [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct`.
 
 ## Inference for Parameters
 
