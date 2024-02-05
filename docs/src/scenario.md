@@ -14,7 +14,7 @@ On the other hand, we have two kinds of estimates of forecasts.
    - Function: [`conditional_forecasts`](@ref)
 2. Posterior Distribution of expected future values of variables
    - In other words, Posterior Distribution of "E[future obs|past obs, scenario, parameters]"
-   - Function: [`scenario_analysis`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.scenario_analysis-Tuple{Vector{T}%20where%20T,%20Any,%20Any,%20Any,%20Any,%20Any,%20Any})
+   - Function: [`scenario_analysis`](@ref)
 
 The first one is the full-Bayesian version of forecasts, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when the policymaker makes decisions based on the expected path of the future economy. **We recommend the second version.**
 
@@ -30,7 +30,7 @@ or
 projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
 ```
 
-`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.posterior_sampler-Tuple{Any,%20Any,%20Any,%20Any,%20Any,%20Hyperparameter})
+`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](@ref)
 `S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
 
 ## Baseline Forecast

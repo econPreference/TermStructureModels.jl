@@ -7,7 +7,7 @@ We have five hyperparameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.
 - `nu0::Float64`(d.f.) and `Omega0::Vector`(scale matrix): Prior distribution of the error covariance matrix in the $\mathbb{P}$-VAR(p)
 - `mean_phi_const`: Prior mean of the intercept term in the $\mathbb{P}$-VAR(p)
 
-We recommend [`tuning_hyperparameter`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.tuning_hyperparameter-NTuple{4,%20Any}) for deciding the hyperparameters.
+We recommend [`tuning_hyperparameter`](@ref) for deciding the hyperparameters.
 
 ```julia
 tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
@@ -31,7 +31,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
-In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.posterior_sampler-Tuple{Any,%20Any,%20Any,%20Any,%20Any,%20Hyperparameter}) uses it for the estimation.
+In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
 
 ```julia
 saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
@@ -51,7 +51,7 @@ Output `saved_params` is a Vector that has a length of `iteration`. Each entry i
 
 We believe in the efficiency of our algorithm, so users do not need to be overly concerned about the convergence of the posterior samples. In our opinion, sampling 6,000 posterior samples and erase the first 1,000 samples as burn-in would be enough.
 
-We provide [a measure](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.ineff_factor-Tuple{Any}) to gauge the efficiency of the algorithm, that is
+We provide [a measure](@ref) to gauge the efficiency of the algorithm, that is
 
 ```julia
 ineff = ineff_factor(saved_params)

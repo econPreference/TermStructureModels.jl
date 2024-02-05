@@ -9,7 +9,7 @@ When users execute some functions, the output is `Vector{<:PosteriorSample}`. Th
 - Vector{TermPremium}
 - Vector{Forecast}
 
-In this case, you can call posterior samples of a specific parameter by using [`getindex`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#Base.getindex-Tuple{Vector{var%22#s13%22}%20where%20var%22#s13%22%3C:PosteriorSample,%20Symbol}). For example, if we want to get posterior samples of `phi`, do
+In this case, you can call posterior samples of a specific parameter by using [`getindex`](@ref). For example, if we want to get posterior samples of `phi`, do
 
 ```julia
 samples_phi = saved_params[:phi]
@@ -48,7 +48,7 @@ q_phi = quantile(saved_params, 0.4)[:phi]
 
 ## Inference for Parameters
 
-You can get posterior samples of term structure model parameters using [`reducedform`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.reducedform-NTuple{4,%20Any}).
+You can get posterior samples of term structure model parameters using [`reducedform`](@ref).
 
 ```julia
 reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
@@ -62,7 +62,7 @@ reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=120
 
 ## Yield Curve Interpolation
 
-We first have to transform the parameter space from the principal component space to the latent factor space. It is done by [`latentspace`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.latentspace-Tuple{Any,%20Any,%20Any}). And then, use [`fitted_YieldCurve`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.fitted_YieldCurve-Tuple{Any,%20Vector{LatentSpace}}) to get fitted yields on the yield curve. Specifically,
+We first have to transform the parameter space from the principal component space to the latent factor space. It is done by [`latentspace`](@ref). And then, use [`fitted_YieldCurve`](@ref) to get fitted yields on the yield curve. Specifically,
 
 ```julia
 saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200)
@@ -73,7 +73,7 @@ fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace};
 
 ## Term Premiums
 
-[`term_premium`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.term_premium-NTuple{5,%20Any}) calculate the term premium of `τ`-maturity bond. `τ` should be a scalar.
+[`term_premium`](@ref) calculate the term premium of `τ`-maturity bond. `τ` should be a scalar.
 
 ```julia
 saved_TP = term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
