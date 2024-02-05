@@ -10,7 +10,21 @@ We have five hyperparameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.
 We recommend [`tuning_hyperparameter`](@ref) for deciding the hyperparameters.
 
 ```julia
-tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
+tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
+                                        populationsize=50,
+                                        maxiter=10_000,
+                                        medium_tau=collect(24:3:48),
+                                        upper_q=[1 1; 1 1; 10 10; 100 100],
+                                        mean_kQ_infty=0,
+                                        std_kQ_infty=0.1,
+                                        upper_nu0=[],
+                                        mean_phi_const=[],
+                                        fix_const_PC1=false,
+                                        upper_p=18,
+                                        mean_phi_const_PC1=[],
+                                        data_scale=1200,
+                                        medium_tau_pr=[],
+                                        init_nu0=[])
 ```
 
 Note that the default upper bound of `p` is `upper_p=18`. `tuned::Hyperparameter` is the one we need for the estimation.
@@ -34,7 +48,17 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
 
 ```julia
-saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter;
+                                            medium_tau=collect(24:3:48),
+                                            init_param=[],
+                                            ψ=[],
+                                            ψ0=[],
+                                            gamma_bar=[],
+                                            medium_tau_pr=[],
+                                            mean_kQ_infty=0,
+                                            std_kQ_infty=0.1,
+                                            fix_const_PC1=false,
+                                            data_scale=1200)
 ```
 
 If users changed the default values in Step 1, the corresponding default values in the above function also should be changed. If users use our defaults, the function simplifies to

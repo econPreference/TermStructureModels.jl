@@ -21,13 +21,17 @@ The first one is the full-Bayesian version of forecasts, so it is mathematically
 The required inputs and the type of the output are the same between the two functions.
 
 ```julia
-projections = conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+projections = conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
+                                    mean_macros::Vector=[],
+                                    data_scale=1200)
 ```
 
 or
 
 ```julia
-projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
+                                mean_macros::Vector=[],
+                                data_scale=1200)
 ```
 
 `τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](@ref).
@@ -44,7 +48,13 @@ If you use demeaned macro data, option `mean_macros` is useful. This option allo
 
 ## Baseline Forecast
 
+Do
+
+```julia
 S = []
+```
+
+It sets a scenario to an empty set, so the package calculate baseline forecasts.
 
 ## Scenario Forecast
 
