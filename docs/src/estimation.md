@@ -29,10 +29,6 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
     However, it is not good for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution does not need to be the best form. Set `maxiter` based on your computational resources.
 
-!!! tip "Normalization of Data"
-
-    Our package demeans the principal components, which are risk factors in the bond market. Therefore, we recommend using macro data after demeaning it.
-
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
 In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.

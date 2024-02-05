@@ -14,6 +14,8 @@ To use such functions, [an estimation of the model](https://econpreference.githu
 
 Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organizes which notation in the paper corresponds to the variable in our package. [The example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros.ipynb) used for our paper is in the repo.
 
+Users are encouraged to read the two text boxes below.
+
 !!! warning "Units of Data"
 
     Theoretical term structure models typically describe bond yields as decimals per one time period. However, yield data is typically presented in percent per annum. One way to address this issue is by transforming the data into yields in decimal form per one time period.
@@ -35,3 +37,7 @@ Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abst
     - `fitted_YieldCurve`
     - `generative`
     - `calibrate_mean_phi_const`
+
+!!! tip "Normalization of Data"
+
+    Our package demeans the principal components, which are risk factors in the bond market. Therefore, we recommend using macro data after demeaning it. Of course, it's not necessary to use demeaned macro variables.
