@@ -6,7 +6,7 @@
 
 _TermStructureModels.jl_ is a `Julia` package to estimate the term structure of interest rates. We currently provide an Gaussian affine term structure model that satisfies the No-Arbitrage condition.
 
-Our model is three-factor JSZ(Joslin, Singleton, and Zhu, 2011) model constrained by the AFNS(Christensen, Diebold, and Rudebusch, 2011) restriction. [Our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628) provides theoretical descriptions of our model.
+Our model is three-factor JSZ[(Joslin, Singleton, and Zhu, 2011)](https://academic.oup.com/rfs/article-abstract/24/3/926/1590594) model constrained by the AFNS[(Christensen, Diebold, and Rudebusch, 2011)](https://www.sciencedirect.com/science/article/pii/S0304407611000388) restriction. [Our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628) provides theoretical descriptions of our model.
 
 The **main features** of the package is that our package allows for the lag length of the VAR system in the Physical measure to extend beyond one. Additionally, it permits the inclusion of numerous macroeconomic variables within the Physical measure in the form of unspanned risk. For instance, in our study, within the term-structure model that incorporates 28 macroeconomic variables, we set the lag length to 17.
 
