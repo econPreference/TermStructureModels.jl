@@ -41,7 +41,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
     Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was "Run the algorithm with sufficient `maxiter`(our defaults), and verify that it is an global optimum by plotting the objective function". It is appropriate for academic projects.
 
-    However, it is not good for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution does not need to be the best form. Set `maxiter` based on your computational resources.
+    However, it is not good for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution does not have to be optimal, and in fact, many Bayesian projects do not use the best prior distribution. What's crucial is avoiding bad prior distributions. As the optimization process lengthens, the likelihood of setting a bad prior decreases. Set `maxiter` based on your computational resources.
 
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
