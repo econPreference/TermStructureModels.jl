@@ -29,7 +29,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
 
 Note that the default upper bound of `p` is `upper_p=18`. `tuned::Hyperparameter` is the one we need for the estimation.
 
-If users accept our default values, the function simplifies, that is
+If users accept our default values, the function is simplified, that is
 
 ```julia
 tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
