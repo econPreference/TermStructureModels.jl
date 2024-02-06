@@ -43,6 +43,12 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
     However, it is not good for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution does not have to be optimal, and in fact, many Bayesian projects do not use the best prior distribution. What's crucial is avoiding bad prior distributions. As the optimization process lengthens, the likelihood of setting a bad prior decreases. Set `maxiter` based on your computational resources.
 
+!!! note "The range of data over which the marginal likelihood is calculated"
+
+    In Bayesian methodology, models are compared through the marginal likelihood. The most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
+
+    For instance, let's say we have `data` with the number of rows being 100. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` is used as initial values. `tuning_hyperparameter` automatically reflects this fact by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
+
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
 In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
@@ -70,6 +76,22 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 `iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
 
 Output `saved_params` is a Vector that has a length of `iteration`. Each entry is struct `Parameter`. `acceptPrMH` is dQ-Vector, and i-th entry shows the HM acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
+
+After users get posterior samples, they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
+
+```julia
+saved_params = saved_params[burnin+1:end]
+```
+
+Also, users might want to erase posterior samples that do not satisfies the stationary condition. It can be done by [`erase_nonstationary_param`](@ref).
+
+```julia
+saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
+```
+
+!!! warning "Reduction in the number of posterior samples"
+
+    The vector length of `saved_params` decreases during the burn-in process and `erase_nonstationary_param`. Note that this leads to a gap between `iteration` and `length(saved_params)`.
 
 ## Diagnostics for MCMC
 

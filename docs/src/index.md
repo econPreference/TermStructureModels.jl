@@ -14,7 +14,7 @@ To use such functions, [an estimation of the model](https://econpreference.githu
 
 Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organizes which notation in the paper corresponds to the variable in our package. [The example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros.ipynb) used for our paper is in the repo.
 
-**Users are encouraged to read the two text boxes below.**
+**Users are encouraged to read the two text boxes below.** Also, refer to [the example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros.ipynb).
 
 !!! warning "Units of Data"
 

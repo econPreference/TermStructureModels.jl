@@ -41,7 +41,7 @@ Users can use the same `yields`, `tau_n` and `macros` they employed when executi
 If you use demeaned macro data, option `mean_macros` is useful. This option allows for the calculation of conditional forecasts for the non-demeaned macro variables. An input for `mean_macros` is calculated by
 
 ```julia
-    mean_macros = mean(macros, dims=1)[1, :]
+mean_macros = mean(macros, dims=1)[1, :]
 ```
 
 `S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
