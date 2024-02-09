@@ -78,7 +78,7 @@ S = Vector{Scenario}(undef, len)
 S[i].combination*[yields[T+i,:]; macros[T+i, :]] == S[i].values
 ```
 
-`[yields[T+i,:]; macros[T+i, :]]` is a predicted value that is not observed. Scenario forecasts are calculated assuming that the above equation holds at time `T+i`, based on `S[i]` set by users. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
+`[yields[T+i,:]; macros[T+i, :]]` is a predicted variable that is not observed. Scenario forecasts are calculated assuming that the above equation holds at time `T+i`, based on `S[i]` set by users. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
 
 Setting the two fields of `S[i]` is straightforward. Suppose that the content of the scenarios at time `T+i` is
 
