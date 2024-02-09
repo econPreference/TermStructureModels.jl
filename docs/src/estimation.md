@@ -8,7 +8,7 @@ We have five hyperparameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.
 
 - `p::Float64`: lag length of the $\mathbb{P}$-VAR(p)
 - `q::Matrix{Float64}( , 4, 2)`: Shrinkage degrees in the Minnesota prior
-- `nu0::Float64`(d.f.) and `Omega0::Vector`(scale matrix): Prior distribution of the error covariance matrix in the $\mathbb{P}$-VAR(p)
+- `nu0::Float64`(d.f.) and `Omega0::Vector`(diagonals of the scale matrix): Prior distribution of the error covariance matrix in the $\mathbb{P}$-VAR(p)
 - `mean_phi_const`: Prior mean of the intercept term in the $\mathbb{P}$-VAR(p)
 
 We recommend [`tuning_hyperparameter`](@ref) for deciding the hyperparameters.
@@ -31,7 +31,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
                                         init_nu0=[])
 ```
 
-Note that the default upper bound of `p` is `upper_p=18`. `tuned::Hyperparameter` is the one we need for the estimation.
+Note that the default upper bound of `p` is `upper_p=18`. The object that needs to be obtained in Step 1 is `tuned::Hyperparameter`.
 
 If users accept our default values, the function is simplified, that is
 
@@ -39,17 +39,17 @@ If users accept our default values, the function is simplified, that is
 tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 ```
 
-`yields` is a `T` by `N` matrix, and `T` is the length of the time period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains maturities in data. For example, if there are two maturities, 3 and 24 months, in a monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, the i-th entry in `rho` is `1` if i-th macro variable is in level, or it is set to 0 if the variable is differenced.
+`yields` is a `T` by `N` matrix, and `T` is the length of the sample period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains bond maturities in data. For example, if there are two maturities, 3 and 24 months, in a monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in level, or it is set to 0 if the macro variable is differenced.
 
-!!! note "Computational length of the optimization"
+!!! tip "Computational Time of the Optimization"
 
-    Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was "Run the algorithm with sufficient `maxiter`(our defaults), and verify that it is an global optimum by plotting the objective function". It is appropriate for academic projects.
+    Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function. It is appropriate for academic projects.
 
-    However, it is not good for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. The prior distribution does not have to be optimal, and in fact, many Bayesian projects do not use the best prior distribution. What's crucial is avoiding bad prior distributions. As the optimization process lengthens, the likelihood of setting a bad prior decreases. Set `maxiter` based on your computational resources.
+    However, this approach may not be optimal for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. An optimal prior distribution is not always necessary; in fact, many Bayesian projects do not utilize the best prior distribution. What's crucial is avoiding bad prior distributions. As the optimization process lengthens, the likelihood of setting a bad prior decreases. It's advisable to set `maxiter` in alignment with your available computational resources.
 
-!!! note "The range of data over which the marginal likelihood is calculated"
+!!! note "Range of Data over which the Marginal Likelihood is Calculated"
 
-    In Bayesian methodology, models are compared through the marginal likelihood. The most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
+    In Bayesian methodology, the standard criterion of the model comparison is the marginal likelihood. When we compare models using the marginal likelihood, the most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
 
     For instance, let's say we have `data` with the number of rows being 100. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` is used as initial values. `tuning_hyperparameter` automatically reflects this fact by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
 
@@ -71,7 +71,7 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
                                             data_scale=1200)
 ```
 
-If users changed the default values in Step 1, the corresponding default values in the above function also should be changed. If users use our defaults, the function simplifies to
+If users changed the default values in Step 1, the corresponding default values in the above function also should be changed. If users use our default values, the function simplifies to
 
 ```julia
 saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter)
@@ -79,9 +79,9 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 
 `iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
 
-Output `saved_params` is a Vector that has a length of `iteration`. Each entry is struct `Parameter`. `acceptPrMH` is dQ-Vector, and i-th entry shows the HM acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
+`saved_params` is a Vector that has a length of `iteration`. Each entry is struct `Parameter`. `acceptPrMH` is dQ-Vector, and the i-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
 
-After users get posterior samples, they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
+After users get posterior samples(`saved_params`), they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
 
 ```julia
 saved_params = saved_params[burnin+1:end]
@@ -93,9 +93,9 @@ Also, users might want to erase posterior samples that do not satisfies the stat
 saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
 ```
 
-!!! warning "Reduction in the number of posterior samples"
+!!! warning "Reduction in the Number of Posterior Samples"
 
-    The vector length of `saved_params` decreases during the burn-in process and `erase_nonstationary_param`. Note that this leads to a gap between `iteration` and `length(saved_params)`.
+    The vector length of `saved_params` decreases after the burn-in process and `erase_nonstationary_param`. Note that this leads to a gap between `iteration` and `length(saved_params)`.
 
 ## Diagnostics for MCMC
 
@@ -107,7 +107,7 @@ We provide [a measure](@ref) to gauge the efficiency of the algorithm, that is
 ineff = ineff_factor(saved_params)
 ```
 
-`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object in the tuple has the same shape as its corresponding parameter. If an inefficiency factor is high, it indicates poor sampling efficiency for the parameter located at the same position.
+`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object in the tuple has the same shape as its corresponding parameter. The entries of the `Array` within the `Tuple` represent the inefficiency factors of the corresponding parameters. If an inefficiency factor is high, it indicates poor sampling efficiency of the parameter located at the same position.
 
 You can calculate the maximum inefficiency factor by
 
@@ -115,4 +115,4 @@ You can calculate the maximum inefficiency factor by
 max_ineff = (ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum) |> maximum
 ```
 
-Dividing the total number of posterior samples by `max_ineff` allows for the calculation of the effective number of posterior samples, taking into account the efficiency of the sampler. For example, let's say `max_ineff = 10`. Then, if 6,000 posterior samples are drawn and the first 1,000 samples are erased as burn-in, the remaining 5,000 posterior samples have the same efficiency as using 500 i.i.d samples, calculated as `(6000-1000)/max_ineff`. For reference, in [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628), the maximum inefficiency factor was `2.38`.
+The value obtained by dividing the number of posterior samples by `max_ineff` is the effective number of posterior samples, taking into account the efficiency of the sampler. For example, let's say `max_ineff = 10`. Then, if 6,000 posterior samples are drawn and the first 1,000 samples are erased as burn-in, the remaining 5,000 posterior samples have the same efficiency as using 500 i.i.d samples, calculated as `(6000-1000)/max_ineff`. For reference, in [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628), the maximum inefficiency factor was `2.38`.

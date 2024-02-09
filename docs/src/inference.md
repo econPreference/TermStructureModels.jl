@@ -58,7 +58,7 @@ reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=120
 
 `yields` is a `T` by `N` matrix, and `T` is the length of the time period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains maturities in data. For example, if there are two maturities, 3 and 24 months, in a monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable.
 
-!!! note "Reason Why we have to run `reducedform` in addition to `posterior_sampler`"
+!!! note "Reason Why We have to Run `reducedform` in addition to `posterior_sampler`"
 
     We estimate the $\mathbb{P}$-VAR by transforming it into a recursive VAR form. Therefore, `Parameter`, the output of `posterior_sampler`, contains parameters from the recursive VAR. In contrast, `ReducedForm`, the output of `reducedform`, contains parameters in the original reduced-form $\mathbb{P}$-VAR.
 
