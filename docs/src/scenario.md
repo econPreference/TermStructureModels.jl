@@ -2,8 +2,8 @@
 
 We have two kinds of forecasts.
 
-1. [Baseline Forecast](@ref)
-2. Scenario Analysis (or [Scenario Forecast](@ref))
+1. [Baseline Forecasts](@ref)
+2. Scenario Analysis (or [Scenario Forecasts](@ref))
 
 All of two forecasts are conditional forecasts, because they are based on information in data. The difference is that the scenario forecast assumes additional scenarios that describe future paths of some variables.
 

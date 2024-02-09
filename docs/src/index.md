@@ -7,8 +7,8 @@
   - [Yield Curve Interpolation](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Yield-Curve-Interpolation)
   - [Term Premiums](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Term-Premiums)
 - [Forecasting](https://econpreference.github.io/TermStructureModels.jl/dev/scenario)
-  - [Conditional Forecasting without scenarios (Baseline Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Baseline-Forecast)
-  - [Scenario Analysis (Scenario Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Scenario-Forecast)
+  - [Conditional Forecasting without scenarios (Baseline Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Baseline-Forecasts)
+  - [Scenario Analysis (Scenario Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Scenario-Forecasts)
 
 To use the above functions, [an estimation of the model](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/) must first be conducted. That is, use [`posterior_sampler`](@ref) to obtain posterior samples of parameters. The posterior samples are used for the above functions (Statistical inference and Forecasting). For details, refer to the corresponding pages.
 
