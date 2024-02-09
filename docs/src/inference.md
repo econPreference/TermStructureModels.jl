@@ -1,3 +1,5 @@
+# Statistical Inference
+
 ## Extract Posterior Samples of Specific Parameters
 
 When users execute some functions, the output is `Vector{<:PosteriorSample}`. That is, some outputs are

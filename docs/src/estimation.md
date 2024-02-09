@@ -1,3 +1,7 @@
+# Estimation
+
+To estimate the model, the following two steps must be undertaken.
+
 ## Step 1. Tuning Hyperparameters
 
 We have five hyperparameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.

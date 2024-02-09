@@ -46,7 +46,7 @@ mean_macros = mean(macros, dims=1)[1, :]
 
 `S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
 
-## Baseline Forecast
+## Baseline Forecasts
 
 Do
 
@@ -56,7 +56,7 @@ S = []
 
 It sets a scenario to an empty set, so the package calculate baseline forecasts.
 
-## Scenario Forecast
+## Scenario Forecasts
 
 `S` should be `Vector{Scenario}`. `S` can be initialized by
 
