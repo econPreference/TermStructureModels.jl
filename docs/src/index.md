@@ -1,6 +1,6 @@
 # TermStructureModels.jl
 
-[TermStructureModels.jl](https://github.com/econPreference/TermStructureModels.jl) has the below functions,
+[TermStructureModels.jl](https://github.com/econPreference/TermStructureModels.jl) has the below functions.
 
 - [Statistical Inference](https://econpreference.github.io/TermStructureModels.jl/dev/inference/)
   - [Parameters](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Inference-for-Parameters)
