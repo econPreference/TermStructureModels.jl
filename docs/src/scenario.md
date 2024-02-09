@@ -18,7 +18,7 @@ Baseline forecasts and scenario forecasts can be represented either as the poste
 
 In this summary, for baseline forecasts, the scenario is the empty set.
 
-The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when users make decisions based on the expected path of future variables. **We recommend the second version (`scenario_analysis`).**
+The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when users make decisions based on the expected path of future variables. **We recommend the second version** (`scenario_analysis`).
 
 The required inputs and the type of the output are the same between `conditional_forecasts` and `scenario_analysis`. That is,
 
