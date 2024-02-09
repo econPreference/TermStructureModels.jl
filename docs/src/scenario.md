@@ -10,7 +10,7 @@ All of two forecasts are conditional forecasts, because they are based on inform
 Baseline forecasts and scenario forecasts can be represented either as the posterior distribution of predicted objects or as the posterior distribution of conditional expectations of predicted objects. To summarize:
 
 1. Posterior Distribution of Predicted Objects
-   - In other words, Distribution of "future object" conditional on past observations and the scenario
+   - In other words, Distribution of future objects conditional on past observations and the scenario
    - Function: [`conditional_forecasts`](@ref)
 2. Posterior Distribution of Conditional Expectations of Predicted Objects
    - In other words, Posterior Distribution of "E[future object|past obs, scenario, parameters]"
@@ -18,7 +18,7 @@ Baseline forecasts and scenario forecasts can be represented either as the poste
 
 In this summary, for baseline forecasts, the scenario is the empty set.
 
-The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when the policymaker makes decisions based on the expected path of the future economy. **We recommend the second version.**
+The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when users make decisions based on the expected path of future variables. **We recommend the second version (`scenario_analysis`).**
 
 The required inputs and the type of the output are the same between `conditional_forecasts` and `scenario_analysis`. That is,
 
@@ -36,7 +36,7 @@ projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, ma
                                 data_scale=1200)
 ```
 
-`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](@ref).
+`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each `i`. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](@ref).
 
 Users can use the same `yields`, `tau_n` and `macros` they employed when executing `posterior_sampler`. If one wishes to compute conditional forecasts using observations up to a certain point, they can simply use `yields` and `macros` from the initial period up to that point. However, parameter uncertainty is incorporated independently of `yields` and `macros` through `saved_params`.
 
@@ -48,7 +48,7 @@ mean_macros = mean(raw_macros_data, dims=1)[1, :]
 
 !!! warning "Option `mean_macros`"
 
-    If the macro variables are not demeaned, ignore option `mean_macros`.
+    If macro variables are not demeaned, ignore option `mean_macros`.
 
 `S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
 
@@ -78,7 +78,7 @@ S = Vector{Scenario}(undef, len)
 S[i].combination*[yields[T+i,:]; macros[T+i, :]] == S[i].values
 ```
 
-`[yields[T+i,:]; macros[T+i, :]]` is predicted values that are not observed. The scenario forecast of `[yields[T+i,:]; macros[T+i, :]]` is calculated assuming that the above equation holds at time `T+i`, based on`S[i]` set by the user. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
+`[yields[T+i,:]; macros[T+i, :]]` is a predicted value that is not observed. Scenario forecasts are calculated assuming that the above equation holds at time `T+i`, based on `S[i]` set by users. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
 
 Setting the two fields of `S[i]` is straightforward. Suppose that the content of the scenarios at time `T+i` is
 
