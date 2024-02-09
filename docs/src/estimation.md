@@ -101,7 +101,7 @@ saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
 
 We believe in the efficiency of our algorithm, so users do not need to be overly concerned about the convergence of the posterior samples. In our opinion, sampling 6,000 posterior samples and erase the first 1,000 samples as burn-in would be enough.
 
-We provide [a measure](@ref) to gauge the efficiency of the algorithm, that is
+We provide [a measure](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.ineff_factor-Tuple{Any}) to gauge the efficiency of the algorithm, that is
 
 ```julia
 ineff = ineff_factor(saved_params)
