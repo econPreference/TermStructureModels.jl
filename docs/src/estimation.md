@@ -41,11 +41,11 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 `yields` is a `T` by `N` matrix, and `T` is the length of the sample period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains bond maturities in data. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in level, or it is set to 0 if the macro variable is differenced.
 
-!!! tip "Computational Time of the Optimization"
+!!! tip "Computational Cost of the Optimization"
 
-    Since we adopt the Differential Evolutionary(DE) algorithm(Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
+    Since we adopt the Differential Evolutionary(DE) algorithm (Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
 
-    The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost of optimization is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
+    The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
 
 !!! note "Range of Data over which the Marginal Likelihood is Calculated"
 
