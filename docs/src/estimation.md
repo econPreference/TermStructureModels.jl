@@ -43,9 +43,9 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 !!! tip "Computational Time of the Optimization"
 
-    Since we adopt the Differential Evolutionary algorithm, it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function. It is appropriate for academic projects.
+    Since we adopt the Differential Evolutionary(DE) algorithm(Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
 
-    However, this approach may not be optimal for practical projects. Small `populationsize` or `maxiter` may not lead to the best model, but it will find a good model. An optimal prior distribution is not always necessary; in fact, many Bayesian projects do not utilize the best prior distribution. What's crucial is avoiding bad prior distributions. As the optimization process lengthens, the likelihood of setting a bad prior decreases. It's advisable to set `maxiter` in alignment with your available computational resources.
+    The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost of optimization is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
 
 !!! note "Range of Data over which the Marginal Likelihood is Calculated"
 
