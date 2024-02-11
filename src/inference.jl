@@ -4,7 +4,9 @@
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on upper_p. For example, if upper_p = 3, yields[4:end,:] and macros[4:end,:] are the data for our dependent variable. yields[1:3,:] and macros[1:3,:] are used for setting initial observations for all lags.
-- `populationsize` and `maxiter` is a option for the optimizer.
+- `populationsize` and `maxiter` are options for the optimizer.
+    - `populationsize`: the number of candidate solutions in each generation
+    - `maxtier`: the maximum number of iterations
 - The lower bounds for `q` and `nu0` are `0` and `dP+2`. 
 - The upper bounds for `q`, `nu0` and VAR lag can be set by `upper_q`, `upper_nu0`, `upper_p`.
     - Our default option for `upper_nu0` is the time-series length of the data.
