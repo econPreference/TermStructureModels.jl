@@ -39,7 +39,7 @@ to load all functions of our package.
 
 ## Example File
 
-To better understand how to use our package, refer to [the script file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros.ipynb) used for [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628).
+To better understand how to use our package, refer to [the script file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros/LargeVAR_Yields_Macros.ipynb) used for [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628).
 
 ## Citation
 

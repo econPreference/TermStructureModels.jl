@@ -12,7 +12,7 @@
 
 To use the above functions, [an estimation of the model](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/) must first be conducted. That is, use [`posterior_sampler`](@ref) to obtain posterior samples of parameters. The posterior samples are used for the above functions (Statistical inference and Forecasting). For details, refer to the corresponding pages.
 
-Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The Notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) details how notations in the paper correspond to variables in our package. Additionally, [the example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros.ipynb) used in our paper is available in the repository.
+Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The Notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) details how notations in the paper correspond to variables in our package. Additionally, [the example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros/LargeVAR_Yields_Macros.ipynb) used in our paper is available in the repository.
 
 **Users are encouraged to read the two text boxes below.**
 
