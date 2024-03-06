@@ -278,11 +278,11 @@ end
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
-_ iteration is the number of prior samples.
+- `iteration` is the number of prior samples.
 - `τ::scalar` is a maturity for calculating the constant part in the term premium.
     - If τ is empty, the function does not sampling the prior distribution of the constant part in the term premium.
 # Output(2)
-prior_λₚ, prior_TP
+`prior_λₚ`, `prior_TP`
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
