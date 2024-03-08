@@ -2,14 +2,14 @@
 
 ## Extract Posterior Samples of Specific Parameters
 
-When users execute some functions, the output is `Vector{<:PosteriorSample}`. That is, some outputs are
+When users execute some functions, the output is Vector{<:[PosteriorSample](@ref)}. That is, some outputs are
 
-- Vector{Parameter}
-- Vector{ReducedForm}
-- Vector{LatentSpace}
-- Vector{YieldCurve}
-- Vector{TermPremium}
-- Vector{Forecast}
+- Vector{[Parameter](@ref)}
+- Vector{[ReducedForm](@ref)}
+- Vector{[LatentSpace](@ref)}
+- Vector{[YieldCurve](@ref)}
+- Vector{[TermPremium](@ref)}
+- Vector{[Forecast](@ref)}
 
 In this case, you can call posterior samples of a specific parameter by using [`getindex`](@ref). For example, if we want to get posterior samples of `phi`, run
 
@@ -21,14 +21,14 @@ for `saved_params::Vector{Parameter}`, the output of [`posterior_sampler`](https
 
 ## Descriptive Statistics of the Posterior Distributions
 
-We extend `mean`, `var`, `std`, `median`, and `quantile` from [Statistics.jl](https://github.com/JuliaStats/Statistics.jl) to `Vector{<:PosteriorSample}`. `Vector{<:PosteriorSample}` includes
+We extend [`mean`](@ref), [`var`](@ref), [`std`](@ref), [`median`](@ref), and [`quantile`](@ref) from [Statistics.jl](https://github.com/JuliaStats/Statistics.jl) to Vector{<:[PosteriorSample](@ref)}. Vector{<:[PosteriorSample](@ref)} includes
 
-- Vector{Parameter}
-- Vector{ReducedForm}
-- Vector{LatentSpace}
-- Vector{YieldCurve}
-- Vector{TermPremium}
-- Vector{Forecast}
+- Vector{[Parameter](@ref)}
+- Vector{[ReducedForm](@ref)}
+- Vector{[LatentSpace](@ref)}
+- Vector{[YieldCurve](@ref)}
+- Vector{[TermPremium](@ref)}
+- Vector{[Forecast](@ref)}
 
 Therefore, these five functions can be conveniently used to calculate descriptive statistics of the posterior distribution, such as the posterior mean or posterior variance. For example, the posterior mean of `phi` can be calculated by
 
