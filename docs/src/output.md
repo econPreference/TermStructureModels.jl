@@ -39,4 +39,4 @@ q_phi = quantile(saved_params, 0.4)[:phi]
 
 !!! tip
 
-    To get posterior samples or posterior descriptive statistics of a specific object, we need to know which `struct` contains the object as a field. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the object.
+    To get posterior samples or posterior descriptive statistics of a specific object, we need to know which `struct` contains the object as a field. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organizes which structs contain the object.
