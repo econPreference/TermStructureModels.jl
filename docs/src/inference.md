@@ -14,6 +14,8 @@ reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=120
 
     We estimate the $\mathbb{P}$-VAR by transforming it into a recursive VAR form. Therefore, `Parameter`, the output of `posterior_sampler`, contains parameters in the recursive VAR. In contrast, `ReducedForm`, the output of `reducedform`, contains parameters in the original reduced-form $\mathbb{P}$-VAR.
 
+Each entry in `reduced_params::Vector{ReducedForm}` is a joint posterior sample of the parameters.
+
 ## Yield Curve Interpolation
 
 We first have to transform the parameter space from the principal component space to the latent factor space. It is done by [`latentspace`](@ref). And then, use [`fitted_YieldCurve`](@ref) to get fitted yields. Specifically,
@@ -23,7 +25,7 @@ saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200)
 fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 ```
 
-`τ0` is a Vector containing the maturities for which we want to calculate fitted yields through interpolation.
+`τ0` is a Vector containing the maturities for which we want to calculate fitted yields through interpolation. `fitted_yields::Vector{YieldCurve}` contains the results of the interpolation.
 
 ## Term Premiums
 
@@ -32,3 +34,5 @@ fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace};
 ```julia
 saved_TP = term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
 ```
+
+`saved_TP::Vector{TermPremium}` contains the results of the term premium calculations.

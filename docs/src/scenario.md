@@ -36,7 +36,7 @@ projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, ma
                                 data_scale=1200)
 ```
 
-`τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each `i`. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).
+`projections::Vector{Forecast}` contains the results of the forecasting. `τ` is a vector, and the term premium of `τ[i]`-bond is forecasted for each `i`. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).
 
 Users can use the same `yields`, `tau_n` and `macros` they employed when executing `posterior_sampler`. If one wishes to compute conditional forecasts using observations up to a certain point, they can simply use `yields` and `macros` from the initial period up to that point. However, parameter uncertainty is incorporated independently of `yields` and `macros` through `saved_params`.
 

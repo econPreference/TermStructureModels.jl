@@ -31,7 +31,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
                                         init_nu0=[])
 ```
 
-Note that the default upper bound of `p` is `upper_p=18`. The object that needs to be obtained in Step 1 is `tuned::Hyperparameter`.
+Note that the default upper bound of `p` is `upper_p=18`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
 
 If users accept our default values, the function is simplified, that is
 
@@ -83,7 +83,7 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 
 `iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
 
-`saved_params` is a Vector that has a length of `iteration`. Each entry is struct `Parameter`. `acceptPrMH` is dQ-Vector, and the i-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
+`saved_params::Vector{Parameter}` has a length of `iteration` and each entry is a posterior sample. `acceptPrMH` is dQ-Vector, and the i-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
 
 After users get posterior samples(`saved_params`), they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
 
@@ -96,6 +96,8 @@ Also, users might want to erase posterior samples that do not satisfies the stat
 ```julia
 saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
 ```
+
+All entries in the above `saved_params::Vector{Parameter}` are posterior samples that satisfy the stationary condition.
 
 !!! warning "Reduction in the Number of Posterior Samples"
 
