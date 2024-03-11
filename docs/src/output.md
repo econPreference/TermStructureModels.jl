@@ -11,7 +11,7 @@ When users execute some functions, the output is [`Vector{<:PosteriorSample}`](h
 
 Each entry of the above vectors is a posterior sample and takes the form of a `struct`, which is one of the following: `Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`. The above six `struct` have their unique fields. See [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation) to see what fields each `struct` contains. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) explains the specific meanings of the fields.
 
-## Extract Posterior Samples of fields
+## Extract Posterior Samples of the fields
 
 `Vector{<:PosteriorSample}` contains posterior samples of the fields of the corresponding `struct`. You can call posterior samples of a specific field by using [`getindex`](@ref). For example, if we want to get posterior samples of `phi` in `Parameter`, run
 
@@ -39,4 +39,4 @@ q_phi = quantile(saved_params, 0.4)[:phi]
 
 !!! tip
 
-    To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct` in [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation).
+    To get posterior samples or posterior descriptive statistics of a specific object, we need to know which `struct` contains the object as a field. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the object.
