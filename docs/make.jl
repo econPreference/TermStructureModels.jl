@@ -8,8 +8,9 @@ makedocs(
         "Overview" => "index.md",
         "Notations" => "notations.md",
         "Estimation" => "estimation.md",
-        "Inference" => "inference.md",
+        "Statistical Inference" => "inference.md",
         "Forecasting" => "scenario.md",
+        "Utilization of the Output" => "output.md",
         "API" => "api.md"
     ]
 )
