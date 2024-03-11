@@ -9,7 +9,7 @@ When users execute some functions, the output is [`Vector{<:PosteriorSample}`](h
 - [`Vector{TermPremium}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.TermPremium): output of [`term_premium`](@ref)
 - [`Vector{Forecast}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.Forecast): outputs of [`conditional_forecasts`](@ref) and [`scenario_analysis`](@ref)
 
-Each entry of the above vectors is a posterior sample and has the form of a `struct`(`Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`). The above six `struct` have their unique fields. See [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation) to see what fields each `struct` contains.
+Each entry of the above vectors is a posterior sample and takes the form of a `struct`, which is one of the following: `Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`. The above six `struct` have their unique fields. See [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation) to see what fields each `struct` contains. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) explains the specific meanings of the fields.
 
 ## Extract Posterior Samples of fields
 
@@ -23,9 +23,7 @@ for `saved_params::Vector{Parameter}`. Then, `samples_phi` is a vector, and `sam
 
 ## Descriptive Statistics of the Posterior Distributions
 
-We extend [`mean`](@ref), [`var`](@ref), [`std`](@ref), [`median`](@ref), and [`quantile`](@ref) from [Statistics.jl](https://github.com/JuliaStats/Statistics.jl) to [`Vector{<:PosteriorSample}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.PosteriorSample).
-
-Therefore, these five functions can be conveniently used to calculate descriptive statistics of the posterior distribution, such as the posterior mean or posterior variance. For example, the posterior mean of `phi` can be calculated by
+We extend [`mean`](@ref), [`var`](@ref), [`std`](@ref), [`median`](@ref), and [`quantile`](@ref) from [Statistics.jl](https://github.com/JuliaStats/Statistics.jl) to [`Vector{<:PosteriorSample}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.PosteriorSample). These five functions can be conveniently used to calculate descriptive statistics of the posterior distribution, such as the posterior mean or posterior variance. For example, the posterior mean of `phi` can be calculated by
 
 ```julia
 mean_phi = mean(saved_params)[:phi]
@@ -41,4 +39,4 @@ q_phi = quantile(saved_params, 0.4)[:phi]
 
 !!! tip
 
-    To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Page [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct` in [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation).
+    To get posterior samples or posterior descriptive statistics of a specific parameter, we need to know which `struct` contains the parameter. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) organize which structs contain the parameter. Also, refer to the documentation of each `struct` in [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation).
