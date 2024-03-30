@@ -256,7 +256,7 @@ end
 
 """
     ineff_factor(saved_params)
-It returns inefficiency factors of each parameter
+It returns inefficiency factors of each parameter.
 # Input
 - `Vector{Parameter}` from `posterior_sampler`
 # Output
@@ -320,7 +320,7 @@ It calculates the long-run variance of `v` using the quadratic spectral window w
 # Input
 - Time-series Vector `v`
 # Output
-- Estimated 2*π*h(0) of v, where h(x) is the spectral density of v at x
+- Estimated 2*π*h(0) of `v`, where h(x) is the spectral density of `v` at x.
 """
 function longvar(v)
 
