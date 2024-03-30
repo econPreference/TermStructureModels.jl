@@ -292,13 +292,9 @@ function ineff_factor(saved_params)
     finish!(prog)
 
     ineff = Vector{Float64}(undef, size(vec_saved_params)[2])
-    kernel = QuadraticSpectralKernel{Andrews}()
     prog = Progress(size(vec_saved_params, 2); dt=5, desc="ineff_factor...")
     Threads.@threads for i in axes(vec_saved_params, 2)
-        object = Matrix{Float64}(undef, iteration, 1)
-        object[:] = vec_saved_params[:, i]
-        bw = CovarianceMatrices.optimalbandwidth(kernel, object, prewhite=false)
-        ineff[i] = Matrix(lrvar(QuadraticSpectralKernel(bw), object, scale=iteration / (iteration - 1)) / var(object))[1]
+        ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
         next!(prog)
     end
     finish!(prog)
@@ -316,4 +312,53 @@ function ineff_factor(saved_params)
         varFF=ineff[2+length(init_gamma)+length(init_SigmaO)+1:2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
         phi=deepcopy(phi_ineff)
     )
+end
+
+"""
+    longvar(v)
+It calculates the long-run variance of `v` using the quadratic spectral window with selection of bandwidth of Andrews(1991). We use the AR(1) approximation.
+# Input
+- Time-series Vector `v`
+# Output
+- Estimated 2*π*h(0) of v, where h(x) is the spectral density of v at x
+"""
+function longvar(v)
+
+    v .-= mean(v)
+    T = size(v)[1]
+
+    gamma = zeros(T)
+    for j = 0:T-1
+        gamma[j+1] = (1 / T) * v[j+1:T]'v[1:T-j]
+    end
+
+    vh = v[2:T]
+    vl = v[1:T-1]
+    r = (vl'vh) / (vl'vl)
+    rho = deepcopy(r)
+    e = vh - vl * r
+    sig = (e'e) / T
+
+    numerator = 4 * (rho^2) * (sig^2) / ((1 - rho)^8)
+    denominator = (sig^2) / ((1 - rho)^4)
+
+    alpha = numerator / denominator
+    m = 1.3221 * (alpha * T)^(1 / 5)
+
+    ## Applying QS window
+
+    S = gamma[1]
+    for ind = 1:T-1
+        d = 6 * pi * (ind / m) / 5
+        w = 3 * (sin(d) / d - cos(d)) / (d^2)
+        S = S + w * gamma[ind+1]
+    end
+    for ind = 1:T-1
+        d = 6 * pi * (-ind / m) / 5
+        w = 3 * (sin(d) / d - cos(d)) / (d^2)
+        S = S + w * gamma[ind+1]
+    end
+
+    return S * (T / (T - 1))
+
 end

@@ -1,7 +1,7 @@
 module TermStructureModels
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, CovarianceMatrices, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
 
