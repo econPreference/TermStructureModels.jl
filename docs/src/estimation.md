@@ -113,7 +113,7 @@ We provide [a measure](https://econpreference.github.io/TermStructureModels.jl/d
 ineff = ineff_factor(saved_params)
 ```
 
-`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object in the tuple has the same shape as its corresponding parameter. The entries of the `Array` within the `Tuple` represent the inefficiency factors of the corresponding parameters. If an inefficiency factor is high, it indicates poor sampling efficiency of the parameter located at the same position.
+`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object in the tuple has the same shape as its corresponding parameter. The entries of the `Array` in the `Tuple` represent the inefficiency factors of the corresponding parameters. If an inefficiency factor is high, it indicates poor sampling efficiency of the parameter located at the same position.
 
 You can calculate the maximum inefficiency factor by
 
