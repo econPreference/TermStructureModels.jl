@@ -43,7 +43,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 !!! note "Yield-Only Model"
 
-    Users may want to use yield-only models in which `macros` is an empty set. In such instances, set `macros = []` for all functions.
+    Users may want to use yield-only models in which `macros` is an empty set. In such instances, set `macros = []` and `rho = []` for all functions.
 
 !!! tip "Computational Cost of the Optimization"
 
