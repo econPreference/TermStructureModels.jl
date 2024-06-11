@@ -37,7 +37,7 @@ function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[
         Vᵢ = V[i, 1:(end-dP+i-1)]
         Kphiᵢ = Kphi(i, V, Xphi, dP)
         Sᵢ_hat = S_hat(i, m, V, yphi, Xphi, dP; Omega0)
-        logdet_Kphiᵢ = logdet(Kphiᵢ)
+        logdet_Kphiᵢ = cholesky(Kphiᵢ).L |> Matrix |> diag |> x -> log.(x) |> x -> 2 * sum(x)
         if Sᵢ_hat < 0 || isinf(logdet_Kphiᵢ)
             return -Inf
         end
