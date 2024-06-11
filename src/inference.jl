@@ -22,7 +22,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false)
 
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
@@ -40,7 +40,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
-    if isempty(mean_phi_const)
+    if isempty(mean_phi_const) && is_strong_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(mean_phi_const, 2)
             mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, medium_tau_pr)[1] |> x -> mean(x, dims=1)[1, :]
@@ -58,6 +58,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
             println(" ")
         end
+    elseif isempty(mean_phi_const) && !is_strong_EH
+        mean_phi_const = zeros(dP, upper_p)
     end
     starting = (lx + ux) ./ 2
     starting[end] = 1
