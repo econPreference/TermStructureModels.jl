@@ -28,7 +28,8 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
                                         mean_phi_const_PC1=[],
                                         data_scale=1200,
                                         medium_tau_pr=[],
-                                        init_nu0=[])
+                                        init_nu0=[],
+                                        is_strong_EH=false)
 ```
 
 Note that the default upper bound of `p` is `upper_p=18`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
@@ -56,6 +57,10 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
     In Bayesian methodology, the standard criterion of the model comparison is the marginal likelihood. When we compare models using the marginal likelihood, the most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
 
     For instance, let's say we have `data` with the number of rows being 100. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` is used as initial values. `tuning_hyperparameter` automatically reflects this fact by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
+
+!!! note "Prior Belief about the Expectation Hypothesis"
+
+    Our algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the strong form of EH, where the term premium is zero, set `is_strong_EH=true`. However, note that using this option may take some initial time to numerically set the prior distribution.
 
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
