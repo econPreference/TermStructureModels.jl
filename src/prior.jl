@@ -212,3 +212,130 @@ function prior_gamma(yields, p)
 
     return 1 / mean(res_var)
 end
+
+function prior_phi0_2C(mean_phi_const, rho::Vector, prior_kappaQ1_, tau_n1, Wₚ1, prior_kappaQ2_, tau_n2, Wₚ2; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
+
+    dP, dPp = size(ψ) # dimension & #{regressors}
+    p = Int(dPp / dP) # the number of lags
+    phi0 = Matrix{Any}(undef, dP, dPp + 1)
+    dQ = dimQ() # reduced dimension of yields
+
+    kappaQ_candidate1 = support(prior_kappaQ1_)
+    kappaQ_prob1 = probs(prior_kappaQ1_)
+    GQ_XX_mean1 = zeros(dQ, dQ)
+    for i in eachindex(kappaQ_candidate1)
+        kappaQ = kappaQ_candidate1[i]
+        bτ_ = bτ(tau_n1[end]; kappaQ)
+        Bₓ_ = Bₓ(bτ_, tau_n1)
+        T1X_ = T1X(Bₓ_, Wₚ1)
+        GQ_XX_mean1 += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob1[i]
+    end
+
+    kappaQ_candidate2 = support(prior_kappaQ2_)
+    kappaQ_prob2 = probs(prior_kappaQ2_)
+    GQ_XX_mean2 = zeros(dQ, dQ)
+    for i in eachindex(kappaQ_candidate2)
+        kappaQ = kappaQ_candidate2[i]
+        bτ_ = bτ(tau_n2[end]; kappaQ)
+        Bₓ_ = Bₓ(bτ_, tau_n2)
+        T1X_ = T1X(Bₓ_, Wₚ2)
+        GQ_XX_mean2 += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob2[i]
+    end
+
+    for i in 1:dQ
+        if i == 1 && fix_const_PC1
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * 1e-10))
+        else
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * q[6, 1]))
+        end
+        for l = 1:1
+            for j in 1:dQ
+                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean1[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+            end
+            for j in (dQ+1):dP
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+            end
+        end
+        for l = 2:p
+            for j in 1:dP
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+            end
+        end
+    end
+    for i in dQ+1:2dQ
+        if i == 1 && fix_const_PC1
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * 1e-10))
+        else
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * q[4, 1]))
+        end
+        for l = 1:1
+            for j in 1:dQ
+                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+            end
+            for j in (dQ+1):dP
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+            end
+        end
+        for l = 2:p
+            for j in 1:dP
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+            end
+        end
+    end
+    for i in (2dQ+1):dP
+        phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * q[4, 2]))
+        for l = 1:p
+            for j in 1:dP
+                if i == j && l == 1
+                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                else
+                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                end
+            end
+        end
+    end
+
+    return phi0
+end
+
+function Minnesota_2C(l, i, j; q, nu0, Omega0)
+
+    dP = length(Omega0) # dimension
+
+    if i <= dimQ()
+        if j <= dimQ()
+            if i == j
+                Minn_var = q[1, 1]
+            else
+                Minn_var = q[1, 1] * q[4, 1]
+            end
+        elseif j <= 2dimQ()
+            Minn_var = q[1, 2]
+        else
+            Minn_var = q[1, 3]
+        end
+        Minn_var /= l^q[3, 1]
+        Minn_var *= nu0 - dP - 1
+        Minn_var /= Omega0[j]
+    elseif i <= 2 * dimQ()
+        if i == j
+            Minn_var = q[1, 2]
+        else
+            Minn_var = q[2, 2]
+        end
+        Minn_var /= l^q[3, 2]
+        Minn_var *= nu0 - dP - 1
+        Minn_var /= Omega0[j]
+    else
+        if i == j
+            Minn_var = q[1, 2]
+        else
+            Minn_var = q[2, 2]
+        end
+        Minn_var /= l^q[3, 2]
+        Minn_var *= nu0 - dP - 1
+        Minn_var /= Omega0[j]
+    end
+
+    return Minn_var
+end
