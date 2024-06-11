@@ -18,11 +18,12 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 - `mean_phi_const[:,i]` is a prior mean for the VAR(`i`) constant. Therefore `mean_phi_const` is a matrix only in this function. In other functions, `mean_phi_const` is a vector for the orthogonalized VAR system with your selected lag.
 - When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
 # Output(2)
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_pure_EH=false)
 
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
@@ -40,7 +41,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
-    if isempty(mean_phi_const) && is_strong_EH
+    if isempty(mean_phi_const) && is_pure_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(mean_phi_const, 2)
             mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, medium_tau_pr)[1] |> x -> mean(x, dims=1)[1, :]
@@ -58,7 +59,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
             println(" ")
         end
-    elseif isempty(mean_phi_const) && !is_strong_EH
+    elseif isempty(mean_phi_const) && !is_pure_EH
         mean_phi_const = zeros(dP, upper_p)
     end
     starting = (lx + ux) ./ 2
