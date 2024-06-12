@@ -15,7 +15,7 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
         dQ = length(kappaQ)
     end
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0, dQ)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; dQ)
     bτ_ = bτ(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -231,7 +231,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
     end
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; dQ)
     if isempty(macros)
         factors = deepcopy(PCs)
     else
@@ -307,7 +307,7 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     else
         dQ = length(medium_tau_pr)
     end
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; dQ)
 
     if isempty(macros)
         factors = deepcopy(PCs)

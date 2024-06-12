@@ -79,7 +79,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         nu0 = input[9] + dP + 1
         p = Int(input[10])
 
-        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p, dQ)
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; dQ)
         if isempty(macros)
             factors = deepcopy(PCs)
         else
@@ -111,7 +111,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     nu0 = best_candidate(opt)[9] + dP + 1
     p = best_candidate(opt)[10] |> Int
 
-    PCs = PCA(yields[(upper_p-p)+1:end, :], p, dQ)[1]
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p; dQ)[1]
     if isempty(macros)
         factors = deepcopy(PCs)
     else
@@ -174,7 +174,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         dP = dQ + size(macros, 2)
     end
 
-    Wₚ = PCA(yields, p, dQ)[3]
+    Wₚ = PCA(yields, p; dQ)[3]
     prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
     if isempty(gamma_bar)
         gamma_bar = prior_gamma(yields, p, dQ)

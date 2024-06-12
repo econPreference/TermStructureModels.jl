@@ -64,7 +64,7 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
         dQ = length(kappaQ)
     end
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -137,7 +137,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     end
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -386,7 +386,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     p = Int(size(GPFF, 2) / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -556,7 +556,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
 
     if isempty(mean_macros)

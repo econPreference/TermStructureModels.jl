@@ -17,7 +17,7 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
 
     N = length(tau_n) # of maturities
     T = size(yields, 1) # length of dependent variables
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0, dQ)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; dQ)
 
     bτ_ = bτ(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
@@ -128,7 +128,7 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
     end
     dP = size(ψ, 1)
     p = Int(size(ψ)[2] / dP)
-    PCs, ~, Wₚ = PCA(yields, p, dQ)
+    PCs, ~, Wₚ = PCA(yields, p; dQ)
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
@@ -205,7 +205,7 @@ function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale
     end
     N = length(tau_n)
     T = size(yields, 1)
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0, dQ)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; dQ)
 
     bτ_ = bτ(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)

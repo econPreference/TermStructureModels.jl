@@ -212,7 +212,7 @@ There is a hierarchcal structure in the measurement equation. The prior means of
 function prior_gamma(yields, p, dQ)
     yields = yields[p+1:end, :]
 
-    PCs, OCs = PCA(yields, 0, dQ)
+    PCs, OCs = PCA(yields, 0; dQ)
     T = size(OCs, 1)
 
     res_var = Vector{Float64}(undef, size(OCs, 2))

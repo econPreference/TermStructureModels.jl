@@ -277,7 +277,7 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         dQ = length(saved_params[:kappaQ][1])
     end
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; dQ)
 
     prog = Progress(iteration; dt=5, desc="term_premium...")
     Threads.@threads for iter in 1:iteration
@@ -368,7 +368,7 @@ function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data
     end
     dM = dP - dQ # of macro variables
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; dQ)
 
     # statistical Parameters
     bτ_ = bτ(tau_n[end]; kappaQ)
