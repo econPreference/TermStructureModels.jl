@@ -24,7 +24,11 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
     a1 = zeros(tau_n[end])
     for τ in 2:tau_n[end]
         a0[τ] = a0[τ-1] - jensens_inequality(τ, bτ_, T1X_; ΩPP, data_scale)
-        a1[τ] = a1[τ-1] + (τ - 1)
+        if length(kappaQ) > 1
+            a1[τ] = a1[τ-1] + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])
+        else
+            a1[τ] = a1[τ-1] + (τ - 1)
+        end
     end
     A0_kQ_infty = a0[tau_n] ./ tau_n
     A1_kQ_infty = a1[tau_n] ./ tau_n
@@ -71,7 +75,28 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+    post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+"""
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+
+    kappaQ_candidate = support(prior_kappaQ_)
+
+    kern = Vector{Float64}(undef, length(kappaQ_candidate)) # Posterior kernel
+
+    for i in eachindex(kappaQ_candidate)
+        # likelihood of the measurement eq
+        kern[i] = loglik_mea(yields, tau_n; kappaQ=kappaQ_candidate[i], kQ_infty, phi, varFF, SigmaO, data_scale)
+    end
+
+    kern .-= maximum(kern)
+    Pr = exp.(kern)
+    Pr ./= sum(Pr)
+
+    return DiscreteNonParametric(kappaQ_candidate, Pr)
+end
+
+"""
+    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, dQ=[])
 Full-conditional posterior sampler for `phi` and `varFF` 
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -80,9 +105,11 @@ Full-conditional posterior sampler for `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, dQ=[])
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dP = size(ψ, 1)
     p = Int(size(ψ)[2] / dP)
     PCs, ~, Wₚ = PCA(yields, p)
@@ -147,15 +174,17 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 end
 
 """
-    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
+    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, dQ=[])
 Posterior sampler for the measurement errors
 # Output
 - `Vector{Dist}(IG, N-dQ)`
 """
-function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
+function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, dQ=[])
     yields = yields[p+1:end, :]
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     N = length(tau_n)
     T = size(yields, 1)
     PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)

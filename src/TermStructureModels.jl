@@ -30,7 +30,7 @@ abstract type PosteriorSample end
 """
     @kwdef struct Parameter <: PosteriorSample
 It contains statistical parameters of the model that are sampled from function `posterior_sampler`.
-- `kappaQ::Float64`
+- `kappaQ`
 - `kQ_infty::Float64`
 - `phi::Matrix{Float64}`
 - `varFF::Vector{Float64}`
@@ -38,7 +38,7 @@ It contains statistical parameters of the model that are sampled from function `
 - `gamma::Vector{Float64}`
 """
 @kwdef struct Parameter <: PosteriorSample
-    kappaQ::Float64
+    kappaQ
     kQ_infty::Float64
     phi::Matrix{Float64}
     varFF::Vector{Float64}

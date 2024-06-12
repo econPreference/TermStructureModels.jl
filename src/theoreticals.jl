@@ -7,9 +7,12 @@
 - slope matrix of the Q-conditional mean of `X`
 """
 function GQ_XX(; kappaQ)
-    X = [1 0 0
-        0 exp(-kappaQ) 1
-        0 0 exp(-kappaQ)]
+    if typeof(kappaQ) == Float64
+        X = [1 0 0
+            0 exp(-kappaQ) 1
+            0 0 exp(-kappaQ)]
+    else
+        X = diagm(kappaQ)
     return X
 end
 
@@ -17,22 +20,20 @@ end
     dimQ()
 It returns the dimension of Q-dynamics.
 """
-function dimQ(input=[])
-    if isempty(input)
-        return 3
-    else
-        return length(input) - 1
-    end
+function dimQ()
+    return 3
 end
 
 """
-    bτ(N; kappaQ)
+    bτ(N; kappaQ, dQ=[])
 It solves the difference equation for `bτ`.
 # Output
 - for maturity `i`, `bτ[:, i]` is a vector of factor loadings.
 """
-function bτ(N; kappaQ)
-    dQ = dimQ()
+function bτ(N; kappaQ, dQ=[])
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     GQ_XX_ = GQ_XX(; kappaQ)
     ι = ones(dQ)
 
@@ -163,7 +164,7 @@ function Bₚ(Bₓ_, T1X_, Wₒ)
 end
 
 """
-    _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
+    _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale, dQ=[])
 This function calculates a term premium for maturity `τ`. 
 # Input
 - `data_scale::scalar` = In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
@@ -175,7 +176,7 @@ This function calculates a term premium for maturity `τ`.
 - `jensen`: Jensen's Ineqaulity part in `TP`
 - Output excludes the time period for the initial observations.  
 """
-function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
+function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale, dQ=[])
 
     T1P_ = inv(T1X_)
     # Jensen's Ineqaulity term
@@ -186,7 +187,9 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
     jensen /= -τ
 
     # Constant term
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     KQ_X = zeros(dQ)
     KQ_X[1] = deepcopy(kQ_infty)
     KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
@@ -236,7 +239,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
 end
 
 """
-    term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+    term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200, dQ=[])
 This function generates posterior samples of the term premiums.
 # Input 
 - maturity of interest `τ` for Calculating `TP`
@@ -245,12 +248,14 @@ This function generates posterior samples of the term premiums.
 - `Vector{TermPremium}(, iteration)`
 - Outputs exclude initial observations.
 """
-function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200, dQ=[])
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -326,7 +331,7 @@ function latentspace(saved_params, yields, tau_n; data_scale=1200)
 end
 
 """
-    PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
+    PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, dQ=[])
 Notation `XF` is for the latent factor space and notation `F` is for the PC state space.
 # Input
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
@@ -334,10 +339,12 @@ Notation `XF` is for the latent factor space and notation `F` is for the PC stat
 `latent`, `kappaQ`, `kQ_infty`, `KPXF`, `GPXFXF`, `OmegaXFXF`
 - latent factors contain initial observations.
 """
-function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
+function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, dQ=[])
 
     dP = size(OmegaFF, 1)
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dM = dP - dQ # of macro variables
     p = Int(size(GPFF, 2) / dP)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -385,7 +392,7 @@ function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data
 end
 
 """
-    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
+    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, dQ=[])
 It generates a fitted yield curve.
 # Input
 - `τ0` is a set of maturities of interest. `τ0` does not need to be the same as the one used for the estimation.
@@ -394,9 +401,11 @@ It generates a fitted yield curve.
 - `Vector{YieldCurve}(,`# of iteration`)`
 - `yields` and `latents` contain initial observations.
 """
-function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
+function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, dQ=[])
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     iteration = length(saved_latent_params)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="fitted_YieldCurve...")
@@ -428,7 +437,7 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
 end
 
 """
-    PCA(yields, p, proxies=[]; rescaling=false)
+    PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
 It derives the principal components from `yields`.
 # Input
 - `yields[p+1:end, :]` is used to construct the affine transformation, and then all `yields[:,:]` are transformed into the principal components.
@@ -442,9 +451,11 @@ It derives the principal components from `yields`.
 - `mean_PCs`: the mean of `PCs` before demeaned.
 - `PCs` are demeaned.
 """
-function PCA(yields, p, proxies=[]; rescaling=false)
+function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     ## z-score case
     # std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
     # std_yields ./= std(yields[p+1:end, :], dims=1)

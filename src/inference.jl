@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false, dQ=[])
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -22,13 +22,15 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false, dQ=[])
 
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
     end
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     if isempty(macros)
         dP = deepcopy(dQ)
     else
@@ -142,7 +144,7 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, dQ=[])
 This is a posterior distribution sampler.
 # Input
 - `iteration`: # of posterior samples
@@ -151,11 +153,13 @@ This is a posterior distribution sampler.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, dQ=[])
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     if isempty(macros)
         dP = deepcopy(dQ)
     else
@@ -216,7 +220,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 end
 
 """
-    generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
+    generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200, dQ=[])
 This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
 # Input: 
 - noise = variance of the measurement errors
@@ -226,9 +230,11 @@ This function generate a simulation data given parameters. Note that all paramet
 - `latents = Matrix{Float64}(obs,T,dimQ())`
 - `macros = Matrix{Float64}(obs,T,dP - dimQ())`
 """
-function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
+function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200, dQ=[])
     N = length(tau_n) # of observed maturities
-    dQ = dimQ() # of latent factors
+    if isempty(dQ)
+        dQ = dimQ() # of latent factors
+    end
 
     # Generating factors XF, where latents & macros ∈ XF
     XF = randn(p, dP)
@@ -362,122 +368,5 @@ function longvar(v)
     end
 
     return S * (T / (T - 1))
-
-end
-
-"""
-    tuning_hyperparameter_2C(yields1, yields2, macros, tau_n1, tau_n2, rho; populationsize=50, maxiter=10_000, medium_tau1=collect(24:3:48), medium_tau2=collect(24:3:48), upper_q=[1 1 1; 1 1 1; 1 1 1; 10 10 10; 100 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC11=[], mean_phi_const_PC12=[], data_scale=1200, medium_tau_pr1=[], medium_tau_pr2=[], init_nu0=[], is_strong_EH=false)
-"""
-function tuning_hyperparameter_2C(yields1, yields2, macros, tau_n1, tau_n2, rho; populationsize=50, maxiter=10_000, medium_tau1=collect(24:3:48), medium_tau2=collect(24:3:48), upper_q=[1 1 1; 1 1 1; 1 1 1; 1 1 1; 10 10 10; 100 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC11=[], mean_phi_const_PC12=[], data_scale=1200, medium_tau_pr1=[], medium_tau_pr2=[], init_nu0=[], is_strong_EH=false)
-
-    if isempty(upper_nu0) == true
-        upper_nu0 = size(yields1, 1)
-    end
-
-    dQ = dimQ()
-    if isempty(macros)
-        dP = 2dQ
-    else
-        dP = 2dQ + size(macros, 2)
-    end
-    if isempty(medium_tau_pr1)
-        medium_tau_pr1 = length(medium_tau1) |> x -> ones(x) / x
-    end
-    if isempty(medium_tau_pr2)
-        medium_tau_pr2 = length(medium_tau2) |> x -> ones(x) / x
-    end
-
-    lx = zeros(6, 3) |> vec |> x -> [x; 1; 1]
-    ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
-    if isempty(mean_phi_const) && is_strong_EH
-        mean_phi_const = zeros(dP, upper_p)
-        for i in axes(mean_phi_const, 2)
-            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields1[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n1, i; medium_tau1, iteration=10_000, data_scale, medium_tau_pr1)[1] |> x -> mean(x, dims=1)[1, :]
-            if !isempty(mean_phi_const_PC11)
-                mean_phi_const_PCs = [mean_phi_const_PC11, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
-            end
-            mean_phi_const[1:dQ, i] = [mean_phi_const_PCs; zeros(size(macros, 2))]
-
-            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields1[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n1, i; medium_tau1, mean_phi_const_PCs, iteration=10_000, data_scale, medium_tau_pr1, τ=120)[2]
-            println("For lag $i(country 1), mean_phi_const[1:dQ] is $mean_phi_const_PCs ,")
-            println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
-            println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
-            println(" ")
-
-            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields2[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n2, i; medium_tau2, iteration=10_000, data_scale, medium_tau_pr2)[1] |> x -> mean(x, dims=1)[1, :]
-            if !isempty(mean_phi_const_PC12)
-                mean_phi_const_PCs = [mean_phi_const_PC12, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
-            end
-            mean_phi_const[dQ+1:2dQ, i] = mean_phi_const_PCs
-
-            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields2[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n2, i; medium_tau2, mean_phi_const_PCs, iteration=10_000, data_scale, medium_tau_pr2, τ=120)[2]
-            println("For lag $i(country 2), mean_phi_const[dQ+1:2dQ] is $mean_phi_const_PCs ,")
-            println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
-            println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
-            println(" ")
-        end
-    elseif isempty(mean_phi_const) && !is_strong_EH
-        mean_phi_const = zeros(dP, upper_p)
-    end
-    starting = (lx + ux) ./ 2
-    starting[end] = 1
-
-    function negative_log_marginal(input)
-
-        # parameters
-        q = [input[1] input[7] input[13]
-            input[2] input[8] input[14]
-            input[3] input[9] input[15]
-            input[4] input[10] input[16]
-            input[5] input[11] input[17]
-            input[6] input[12] input[18]]
-        nu0 = input[19] + dP + 1
-        p = Int(input[20])
-
-        PCs1, ~, Wₚ1 = PCA(yields1[(upper_p-p)+1:end, :], p)
-        PCs2, ~, Wₚ2 = PCA(yields2[(upper_p-p)+1:end, :], p)
-        if isempty(macros)
-            factors = [PCs1 PCs2]
-        else
-            factors = [PCs1 PCs2 macros[(upper_p-p)+1:end, :]]
-        end
-        Omega0 = Vector{Float64}(undef, dP)
-        for i in eachindex(Omega0)
-            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[16]
-        end
-
-        tuned = Hyperparameter(p=deepcopy(p), q=deepcopy(q), nu0=deepcopy(nu0), Omega0=deepcopy(Omega0), mean_phi_const=deepcopy(mean_phi_const[:, p]))
-        if isempty(macros)
-            return -log_marginal_2C(factors, macros, rho, tuned, tau_n1, tau_n2, Wₚ1, Wₚ2; medium_tau1, medium_tau_pr1, medium_tau2, medium_tau_pr2, fix_const_PC1)
-        else
-            return -log_marginal_2C(factors[:, 1:2dQ], factors[:, 2dQ+1:end], rho, tuned, tau_n1, tau_n2, Wₚ1, Wₚ2; medium_tau1, medium_tau_pr1, medium_tau2, medium_tau_pr2, fix_const_PC1)
-        end
-
-        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
-
-    end
-
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
-    opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), nu0 = $(best_candidate(x)[9] + dP + 1)"))
-
-    q = [best_candidate(opt)[1] best_candidate(opt)[5]
-        best_candidate(opt)[2] best_candidate(opt)[6]
-        best_candidate(opt)[3] best_candidate(opt)[7]
-        best_candidate(opt)[4] best_candidate(opt)[8]]
-    nu0 = best_candidate(opt)[9] + dP + 1
-    p = best_candidate(opt)[10] |> Int
-
-    PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
-    if isempty(macros)
-        factors = deepcopy(PCs)
-    else
-        factors = [PCs macros[(upper_p-p)+1:end, :]]
-    end
-    Omega0 = Vector{Float64}(undef, dP)
-    for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
-    end
-
-    return Hyperparameter(p=deepcopy(p), q=deepcopy(q), nu0=deepcopy(nu0), Omega0=deepcopy(Omega0), mean_phi_const=deepcopy(mean_phi_const[:, p])), opt
 
 end

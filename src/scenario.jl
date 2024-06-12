@@ -42,9 +42,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
 end
 
 """
-    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 """
-function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -54,7 +54,9 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dP = size(OmegaFF, 1)
     p = Int(size(GPFF, 2) / dP)
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
@@ -107,9 +109,9 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
 end
 
 """
-    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 """
-function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -119,7 +121,9 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
@@ -347,9 +351,9 @@ end
 
 
 """
-    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 """
-function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -359,7 +363,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
@@ -514,9 +520,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 """
-function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -526,7 +532,9 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
