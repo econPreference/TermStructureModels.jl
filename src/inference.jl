@@ -184,7 +184,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
-        if medium_tau_pr[1] <: Real
+        if typeof(medium_tau_pr[1]) <: Real
             kappaQ = 0.0609
         else
             kappaQ = 0.9 * ones(dQ)
@@ -211,7 +211,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
-        if medium_tau_pr[1] <: Real
+        if typeof(medium_tau_pr[1]) <: Real
             kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
         else
             kappaQ = post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
