@@ -7,18 +7,19 @@
 - slope matrix of the Q-conditional mean of `X`
 """
 function GQ_XX(; kappaQ)
-    if typeof(kappaQ) == Float64
+    if length(kappaQ) == 1
         X = [1 0 0
             0 exp(-kappaQ) 1
             0 0 exp(-kappaQ)]
     else
         X = diagm(kappaQ)
+    end
     return X
 end
 
 """
     dimQ()
-It returns the dimension of Q-dynamics.
+It returns the dimension of Q-dynamics under the standard ATSM.
 """
 function dimQ()
     return 3
@@ -87,10 +88,10 @@ function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale, kappaQ)
     a = zeros(N)
     T1X_ = T1X(Bₓ(bτ_, tau_n), Wₚ)
     for i in 2:N
-        if length(kappaQ) == 1 
+        if length(kappaQ) == 1
             a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (i - 1) * kQ_infty
         else
-            a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1]) * kQ_infty
+            a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + ((1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])) * kQ_infty
         end
     end
 
@@ -104,10 +105,10 @@ function aτ(N, bτ_; kQ_infty, ΩXX, data_scale, kappaQ)
         J = bτ_[:, i-1]' * J * bτ_[:, i-1]
         J /= data_scale
 
-        if length(kappaQ) == 1 
+        if length(kappaQ) == 1
             a[i] = a[i-1] - J + (i - 1) * kQ_infty
         else
-            a[i] = a[i-1] - J + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1]) * kQ_infty
+            a[i] = a[i-1] - J + ((1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])) * kQ_infty
         end
     end
 

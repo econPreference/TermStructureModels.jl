@@ -21,7 +21,7 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
 
-    ΩPP = phi_varFF_2_ΩPP(; phi, varFF)
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
@@ -299,6 +299,9 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 """
 function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
 
+    if isempty(medium_tau_pr)
+        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    end
     if typeof(medium_tau_pr[1]) <: Real
         dQ = dimQ()
     else
@@ -316,12 +319,8 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     for i in eachindex(OmegaFF_mean)
         OmegaFF_mean[i] = AR_res_var(factors[:, i], p)[1]
     end
-
     if isempty(mean_phi_const_PCs)
         mean_phi_const_PCs = zeros(dQ)
-    end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
     end
 
     prior_TP = Vector{Float64}(undef, iteration)

@@ -23,7 +23,7 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
-    ΩPP = phi_varFF_2_ΩPP(; phi, varFF)
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
 
     a0 = zeros(tau_n[end])
     a1 = zeros(tau_n[end])

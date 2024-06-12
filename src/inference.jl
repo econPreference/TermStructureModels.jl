@@ -27,6 +27,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
     end
+    if isempty(medium_tau_pr)
+        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    end
 
     if typeof(medium_tau_pr[1]) <: Real
         dQ = dimQ()
@@ -38,9 +41,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     else
         dP = dQ + size(macros, 2)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
-    end
+
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
@@ -159,6 +160,9 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
+    if isempty(medium_tau_pr)
+        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    end
     if typeof(medium_tau_pr[1]) <: Real
         dQ = dimQ()
     else
@@ -169,9 +173,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     else
         dP = dQ + size(macros, 2)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
-    end
+
     Wₚ = PCA(yields, p, dQ)[3]
     prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
     if isempty(gamma_bar)
@@ -220,7 +222,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
         isaccept_MH += isaccept
 
-        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF), gamma, p, data_scale))
+        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale))
 
         gamma = rand.(post_gamma(; gamma_bar, SigmaO))
 
@@ -325,11 +327,11 @@ function ineff_factor(saved_params)
         phi_ineff[i, end-dP+j] = 0
     end
     return (;
-        kappaQ=ineff[1],
-        kQ_infty=ineff[2],
-        gamma=ineff[2+1:2+length(init_gamma)],
-        SigmaO=ineff[2+length(init_gamma)+1:2+length(init_gamma)+length(init_SigmaO)],
-        varFF=ineff[length(kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
+        kappaQ=ineff[1:length(init_kappaQ)],
+        kQ_infty=ineff[length(init_kappaQ)+1],
+        gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
+        SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
+        varFF=ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
         phi=deepcopy(phi_ineff)
     )
 end
