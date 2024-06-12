@@ -25,14 +25,16 @@ function dimQ()
 end
 
 """
-    bτ(N; kappaQ, dQ=[])
+    bτ(N; kappaQ)
 It solves the difference equation for `bτ`.
 # Output
 - for maturity `i`, `bτ[:, i]` is a vector of factor loadings.
 """
-function bτ(N; kappaQ, dQ=[])
-    if isempty(dQ)
+function bτ(N; kappaQ)
+    if length(kappaQ) == 1
         dQ = dimQ()
+    else
+        dQ = length(kappaQ)
     end
     GQ_XX_ = GQ_XX(; kappaQ)
     ι = ones(dQ)
@@ -80,17 +82,21 @@ The function has two methods(multiple dispatch).
 - `Vector(Float64)(aτ,N)`
 - For `i`'th maturity, `Output[i]` is the corresponding `aτ`.
 """
-function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
+function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale, kappaQ)
 
     a = zeros(N)
     T1X_ = T1X(Bₓ(bτ_, tau_n), Wₚ)
     for i in 2:N
-        a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (i - 1) * kQ_infty
+        if length(kappaQ) == 1 
+            a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (i - 1) * kQ_infty
+        else
+            a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1]) * kQ_infty
+        end
     end
 
     return a
 end
-function aτ(N, bτ_; kQ_infty, ΩXX, data_scale)
+function aτ(N, bτ_; kQ_infty, ΩXX, data_scale, kappaQ)
 
     a = zeros(N)
     for i in 2:N
@@ -98,7 +104,11 @@ function aτ(N, bτ_; kQ_infty, ΩXX, data_scale)
         J = bτ_[:, i-1]' * J * bτ_[:, i-1]
         J /= data_scale
 
-        a[i] = a[i-1] - J + (i - 1) * kQ_infty
+        if length(kappaQ) == 1 
+            a[i] = a[i-1] - J + (i - 1) * kQ_infty
+        else
+            a[i] = a[i-1] - J + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1]) * kQ_infty
+        end
     end
 
     return a
@@ -164,7 +174,7 @@ function Bₚ(Bₓ_, T1X_, Wₒ)
 end
 
 """
-    _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale, dQ=[])
+    _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
 This function calculates a term premium for maturity `τ`. 
 # Input
 - `data_scale::scalar` = In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
@@ -176,7 +186,13 @@ This function calculates a term premium for maturity `τ`.
 - `jensen`: Jensen's Ineqaulity part in `TP`
 - Output excludes the time period for the initial observations.  
 """
-function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale, dQ=[])
+function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
+
+    if length(kappaQ) == 1
+        dQ = dimQ()
+    else
+        dQ = length(kappaQ)
+    end
 
     T1P_ = inv(T1X_)
     # Jensen's Ineqaulity term
@@ -239,7 +255,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
 end
 
 """
-    term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200, dQ=[])
+    term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
 This function generates posterior samples of the term premiums.
 # Input 
 - maturity of interest `τ` for Calculating `TP`
@@ -248,17 +264,19 @@ This function generates posterior samples of the term premiums.
 - `Vector{TermPremium}(, iteration)`
 - Outputs exclude initial observations.
 """
-function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200, dQ=[])
+function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
 
-    if isempty(dQ)
-        dQ = dimQ()
-    end
     dP = size(saved_params[:phi][1], 1)
+    if length(saved_params[:kappaQ][1]) == 1
+        dQ = dimQ()
+    else
+        dQ = length(saved_params[:kappaQ][1])
+    end
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
 
     prog = Progress(iteration; dt=5, desc="term_premium...")
     Threads.@threads for iter in 1:iteration
@@ -331,7 +349,7 @@ function latentspace(saved_params, yields, tau_n; data_scale=1200)
 end
 
 """
-    PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, dQ=[])
+    PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
 Notation `XF` is for the latent factor space and notation `F` is for the PC state space.
 # Input
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
@@ -339,15 +357,17 @@ Notation `XF` is for the latent factor space and notation `F` is for the PC stat
 `latent`, `kappaQ`, `kQ_infty`, `KPXF`, `GPXFXF`, `OmegaXFXF`
 - latent factors contain initial observations.
 """
-function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, dQ=[])
+function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
 
     dP = size(OmegaFF, 1)
-    if isempty(dQ)
+    if length(kappaQ) == 1
         dQ = dimQ()
+    else
+        dQ = length(kappaQ)
     end
     dM = dP - dQ # of macro variables
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
 
     # statistical Parameters
     bτ_ = bτ(tau_n[end]; kappaQ)
@@ -392,7 +412,7 @@ function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data
 end
 
 """
-    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, dQ=[])
+    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 It generates a fitted yield curve.
 # Input
 - `τ0` is a set of maturities of interest. `τ0` does not need to be the same as the one used for the estimation.
@@ -401,10 +421,12 @@ It generates a fitted yield curve.
 - `Vector{YieldCurve}(,`# of iteration`)`
 - `yields` and `latents` contain initial observations.
 """
-function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, dQ=[])
+function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 
-    if isempty(dQ)
+    if length(saved_latent_params[:kappaQ]) == 1
         dQ = dimQ()
+    else
+        dQ = length(saved_latent_params[:kappaQ])
     end
     iteration = length(saved_latent_params)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)

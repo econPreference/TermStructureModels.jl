@@ -48,7 +48,7 @@ function prior_C(; Omega0::Vector)
 end
 
 """
-    prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1, dQ=[])
+    prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
 This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
 # Input 
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -59,13 +59,13 @@ This part derives the prior distribution for coefficients of the lagged regresso
 # Important note
 prior variance for `phi[i,:]` = `varFF[i]*var(output[i,:])`
 """
-function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1, dQ=[])
+function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
 
     dP, dPp = size(ψ) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
     phi0 = Matrix{Any}(undef, dP, dPp + 1)
 
-    if isempty(dQ)
+    if length(prior_kappaQ_) == 1
         dQ = dimQ() # reduced dimension of yields
         kappaQ_candidate = support(prior_kappaQ_)
         kappaQ_prob = probs(prior_kappaQ_)
@@ -79,7 +79,8 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
             GQ_XX_mean += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob[i]
         end
     else
-        GQ_XX_mean = prior_kappaQ_[2:end] |> x -> mean.(x) |> diagm
+        dQ = length(prior_kappaQ_)
+        GQ_XX_mean = prior_kappaQ_ |> x -> mean.(x) |> diagm
     end
 
     for i in 1:dQ
@@ -90,15 +91,15 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
         end
         for l = 1:1
             for j in 1:dQ
-                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
             for j in (dQ+1):dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
         end
         for l = 2:p
             for j in 1:dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
         end
     end
@@ -107,9 +108,9 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
-                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
                 else
-                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
                 end
             end
         end
@@ -169,15 +170,19 @@ The function derive the maximizer decay parameter `kappaQ` that maximize the cur
 """
 function prior_kappaQ(medium_tau, pr) # Default candidates are one to five years
 
-    medium_tauN = length(medium_tau) # the number of candidates
-    kappaQ_candidate = Vector{Float64}(undef, medium_tauN) # support of the prior
+    if typeof(pr[1]) <: Real
+        medium_tauN = length(medium_tau) # the number of candidates
+        kappaQ_candidate = Vector{Float64}(undef, medium_tauN) # support of the prior
 
-    for i in eachindex(medium_tau) # calculate the maximizer kappaQ
-        obj(kappaQ) = dcurvature_dτ(medium_tau[i]; kappaQ)
-        kappaQ_candidate[i] = fzero(obj, 0.001, 2)
+        for i in eachindex(medium_tau) # calculate the maximizer kappaQ
+            obj(kappaQ) = dcurvature_dτ(medium_tau[i]; kappaQ)
+            kappaQ_candidate[i] = fzero(obj, 0.001, 2)
+        end
+
+        return DiscreteNonParametric(kappaQ_candidate, pr)
+    else
+        return pr
     end
-
-    return DiscreteNonParametric(kappaQ_candidate, pr)
 
 end
 
@@ -199,15 +204,15 @@ function dcurvature_dτ(τ; kappaQ)
 end
 
 """
-    prior_gamma(yields, p)
+    prior_gamma(yields, p, dQ)
 There is a hierarchcal structure in the measurement equation. The prior means of the measurement errors are `gamma[i]` and each `gamma[i]` follows Gamma(1,`gamma_bar`) distribution. This function decides `gamma_bar` empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturities. An inverse of the average residual variances is set to `gamma_bar`.
 # Output
 - hyperparameter `gamma_bar`
 """
-function prior_gamma(yields, p)
+function prior_gamma(yields, p, dQ)
     yields = yields[p+1:end, :]
 
-    PCs, OCs = PCA(yields, 0)
+    PCs, OCs = PCA(yields, 0, dQ)
     T = size(OCs, 1)
 
     res_var = Vector{Float64}(undef, size(OCs, 2))

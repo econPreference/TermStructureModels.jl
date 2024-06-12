@@ -42,9 +42,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
 end
 
 """
-    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -58,8 +58,13 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
         dQ = dimQ()
     end
     dP = size(OmegaFF, 1)
+    if length(kappaQ) == 1
+        dQ = dimQ()
+    else
+        dQ = length(kappaQ)
+    end
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -109,9 +114,9 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
 end
 
 """
-    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -125,9 +130,14 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         dQ = dimQ()
     end
     dP = size(OmegaFF, 1)
+    if length(kappaQ) == 1
+        dQ = dimQ()
+    else
+        dQ = length(kappaQ)
+    end
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -351,9 +361,9 @@ end
 
 
 """
-    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -367,11 +377,16 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         dQ = dimQ()
     end
     dP = size(OmegaFF, 1)
+    if length(kappaQ) == 1
+        dQ = dimQ()
+    else
+        dQ = length(kappaQ)
+    end
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -520,9 +535,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale])
 """
-function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, dQ=[])
+function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -532,14 +547,16 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    if isempty(dQ)
+    if length(kappaQ) == 1
         dQ = dimQ()
+    else
+        dQ = length(kappaQ)
     end
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p, dQ)
     W = [Wₒ; Wₚ]
 
     if isempty(mean_macros)

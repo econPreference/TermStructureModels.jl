@@ -7,12 +7,17 @@
 function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale)
 
     dP = length(varFF)
+    if length(kappaQ) == 1
+        dQ = dimQ()
+    else
+        dQ = length(kappaQ)
+    end
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :]
 
     N = length(tau_n) # of maturities
     T = size(yields, 1) # length of dependent variables
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0, dQ)
 
     bτ_ = bτ(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
@@ -75,28 +80,37 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
 """
-function post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
 
-    kappaQ_candidate = support(prior_kappaQ_)
-
-    kern = Vector{Float64}(undef, length(kappaQ_candidate)) # Posterior kernel
-
-    for i in eachindex(kappaQ_candidate)
-        # likelihood of the measurement eq
-        kern[i] = loglik_mea(yields, tau_n; kappaQ=kappaQ_candidate[i], kQ_infty, phi, varFF, SigmaO, data_scale)
+    function logpost(kappaQ)
+        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+        logprior = 0.0
+        for i in eachindex(prior_kappaQ_)
+            logprior += logpdf(prior_kappaQ_[i], kappaQ)
+        end
+        return loglik + logprior
     end
 
-    kern .-= maximum(kern)
-    Pr = exp.(kern)
-    Pr ./= sum(Pr)
+    # Construct the proposal distribution
+    kappaQ_mode = optimize(x -> -logpost(x), zeros(length(prior_kappaQ_)), ones(length(prior_kappaQ_)), 0.9ones(length(prior_kappaQ_)), Fminbox(LBFGS())) |> Optim.minimizer
+    kappaQ_hess = hessian(x -> -logpost(x), kappaQ_mode) |> inv
+    proposal_dist = MvNormal(kappaQ_mode, kappaQ_hess)
 
-    return DiscreteNonParametric(kappaQ_candidate, Pr)
+    # AR step
+    kappaQ_prop = rand(proposal_dist)
+    log_MHPr = min(0.0, logpost(kappaQ_prop) + logpdf(proposal_dist, kappaQ) - logpost(kappaQ) - logpdf(proposal_dist, kappaQ_prop))
+
+    if log(rand()) < log_MHPr
+        return kappaQ_prop
+    else
+        return kappaQ
+    end
 end
 
 """
-    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, dQ=[])
+    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 Full-conditional posterior sampler for `phi` and `varFF` 
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -105,14 +119,16 @@ Full-conditional posterior sampler for `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, dQ=[])
+function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 
-    if isempty(dQ)
+    if length(kappaQ) == 1
         dQ = dimQ()
+    else
+        dQ = length(kappaQ)
     end
     dP = size(ψ, 1)
     p = Int(size(ψ)[2] / dP)
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ = PCA(yields, p, dQ)
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
@@ -174,20 +190,22 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 end
 
 """
-    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, dQ=[])
+    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
 Posterior sampler for the measurement errors
 # Output
 - `Vector{Dist}(IG, N-dQ)`
 """
-function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, dQ=[])
+function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
     yields = yields[p+1:end, :]
 
-    if isempty(dQ)
+    if length(kappaQ) == 1
         dQ = dimQ()
+    else
+        dQ = length(kappaQ)
     end
     N = length(tau_n)
     T = size(yields, 1)
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0, dQ)
 
     bτ_ = bτ(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)

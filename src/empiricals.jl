@@ -9,8 +9,13 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
     dP = length(varFF)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :] #excludes initial observations
+    if length(kappaQ) == 1
+        dQ = dimQ()
+    else
+        dQ = length(kappaQ)
+    end
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0, dQ)
     bτ_ = bτ(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -210,21 +215,23 @@ function erase_nonstationary_param(saved_params)
 end
 
 """
-    reducedform(saved_params, yields, macros, tau_n; data_scale=1200, dQ=[])
+    reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 It converts posterior samples in terms of the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
-function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, dQ=[])
+function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 
-    if isempty(dQ)
+    if length(saved_params[:kappaQ]) == 1
         dQ = dimQ()
+    else
+        dQ = length(saved_params[:kappaQ])
     end
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
     if isempty(macros)
         factors = deepcopy(PCs)
     else
@@ -278,7 +285,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, dQ=[]
 end
 
 """
-    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[], dQ=[])
+    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
@@ -290,12 +297,14 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
-function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[], dQ=[])
+function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
 
-    if isempty(dQ)
+    if typeof(medium_tau_pr[1]) <: Real
         dQ = dimQ()
+    else
+        dQ = length(medium_tau_pr)
     end
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p, dQ)
 
     if isempty(macros)
         factors = deepcopy(PCs)

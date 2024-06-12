@@ -11,11 +11,7 @@ function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[
 
     p, nu0, Omega0, q, mean_phi_const = tuned.p, tuned.nu0, tuned.Omega0, tuned.q, tuned.mean_phi_const
 
-    if !medium_tau
-        prior_kappaQ_ = [medium_tau; medium_tau_pr]
-    else
-        prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
-    end
+    prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
     dP = length(Omega0)
 
     if isempty(ψ)
