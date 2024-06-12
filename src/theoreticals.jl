@@ -17,8 +17,12 @@ end
     dimQ()
 It returns the dimension of Q-dynamics.
 """
-function dimQ()
-    return 3
+function dimQ(input=[])
+    if isempty(input)
+        return 3
+    else
+        return length(input) - 1
+    end
 end
 
 """

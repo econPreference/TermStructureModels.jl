@@ -64,18 +64,23 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
     dP, dPp = size(ψ) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
     phi0 = Matrix{Any}(undef, dP, dPp + 1)
-    dQ = dimQ() # reduced dimension of yields
 
-    kappaQ_candidate = support(prior_kappaQ_)
-    kappaQ_prob = probs(prior_kappaQ_)
-    GQ_XX_mean = zeros(dQ, dQ)
+    if !prior_kappaQ_[1]
+        dQ = dimQ(prior_kappaQ_) # reduced dimension of yields
+        GQ_XX_mean = prior_kappaQ_[2:end] |> x -> mean.(x) |> diagm
+    else
+        dQ = dimQ() # reduced dimension of yields
+        kappaQ_candidate = support(prior_kappaQ_)
+        kappaQ_prob = probs(prior_kappaQ_)
+        GQ_XX_mean = zeros(dQ, dQ)
 
-    for i in eachindex(kappaQ_candidate)
-        kappaQ = kappaQ_candidate[i]
-        bτ_ = bτ(tau_n[end]; kappaQ)
-        Bₓ_ = Bₓ(bτ_, tau_n)
-        T1X_ = T1X(Bₓ_, Wₚ)
-        GQ_XX_mean += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob[i]
+        for i in eachindex(kappaQ_candidate)
+            kappaQ = kappaQ_candidate[i]
+            bτ_ = bτ(tau_n[end]; kappaQ)
+            Bₓ_ = Bₓ(bτ_, tau_n)
+            T1X_ = T1X(Bₓ_, Wₚ)
+            GQ_XX_mean += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob[i]
+        end
     end
 
     for i in 1:dQ

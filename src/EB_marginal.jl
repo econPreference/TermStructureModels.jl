@@ -11,7 +11,11 @@ function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[
 
     p, nu0, Omega0, q, mean_phi_const = tuned.p, tuned.nu0, tuned.Omega0, tuned.q, tuned.mean_phi_const
 
-    prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
+    if !medium_tau
+        prior_kappaQ_ = [medium_tau; medium_tau_pr]
+    else
+        prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
+    end
     dP = length(Omega0)
 
     if isempty(ψ)
@@ -107,57 +111,4 @@ function S_hat(i, m, V, yphi, Xphi, dP; Omega0)
     Sᵢ_hat += (yphiᵢ'yphiᵢ + mᵢ' * diagm(1 ./ Vᵢ) * mᵢ - phiᵢ_hat' * Kphiᵢ * phiᵢ_hat) / 2
 
     return Sᵢ_hat
-end
-
-"""
-    log_marginal_2C(PCs, macros, rho, tuned::Hyperparameter, tau_n1, tau_n2, Wₚ1, Wₚ2; ψ=[], ψ0=[], medium_tau1, medium_tau_pr1, medium_tau2, medium_tau_pr2, fix_const_PC1)
-"""
-function log_marginal_2C(PCs, macros, rho, tuned::Hyperparameter, tau_n1, tau_n2, Wₚ1, Wₚ2; ψ=[], ψ0=[], medium_tau1, medium_tau_pr1, medium_tau2, medium_tau_pr2, fix_const_PC1)
-
-    p, nu0, Omega0, q, mean_phi_const = tuned.p, tuned.nu0, tuned.Omega0, tuned.q, tuned.mean_phi_const
-
-    prior_kappaQ1_ = prior_kappaQ(medium_tau1, medium_tau_pr1)
-    prior_kappaQ2_ = prior_kappaQ(medium_tau2, medium_tau_pr2)
-    dP = length(Omega0)
-
-    if isempty(ψ)
-        ψ = ones(dP, dP * p)
-    end
-    if isempty(ψ0)
-        ψ0 = ones(dP)
-    end
-
-    yphi, Xphi = yphi_Xphi(PCs, macros, p)
-    T = size(yphi, 1)
-    prior_phi0_ = prior_phi0_2C(mean_phi_const, rho, prior_kappaQ1_, tau_n1, Wₚ1, prior_kappaQ2_, tau_n2, Wₚ2; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
-    prior_C_ = prior_C(; Omega0)
-    prior_phi = hcat(prior_phi0_, prior_C_)
-    m = mean.(prior_phi)
-    V = var.(prior_phi)
-
-    log_marginal_ = -log(2π)
-    log_marginal_ *= (T * dP) / 2
-    for i in 1:dP
-        νᵢ = ν(i, dP; nu0)
-        Sᵢ = S(i; Omega0)
-        Vᵢ = V[i, 1:(end-dP+i-1)]
-        Kphiᵢ = Kphi(i, V, Xphi, dP)
-        Sᵢ_hat = S_hat(i, m, V, yphi, Xphi, dP; Omega0)
-        logdet_Kphiᵢ = cholesky(Kphiᵢ).L |> Matrix |> diag |> x -> log.(x) |> x -> 2 * sum(x)
-        if Sᵢ_hat < 0 || isinf(logdet_Kphiᵢ)
-            return -Inf
-        end
-
-        log_marginalᵢ = sum(log.(Vᵢ))
-        log_marginalᵢ += logdet_Kphiᵢ
-        log_marginalᵢ /= -2
-        log_marginalᵢ += loggamma(νᵢ + 0.5T)
-        log_marginalᵢ += νᵢ * log(Sᵢ)
-        log_marginalᵢ -= loggamma(νᵢ)
-        log_marginalᵢ -= (νᵢ + 0.5T) * log(Sᵢ_hat)
-
-        log_marginal_ += log_marginalᵢ
-    end
-
-    return log_marginal_
 end
