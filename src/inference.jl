@@ -187,7 +187,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         if typeof(medium_tau_pr[1]) <: Real
             kappaQ = 0.0609
         else
-            kappaQ = 0.9 * ones(dQ)
+            kappaQ = [0.99, 0.95, 0.9]
         end
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
@@ -206,6 +206,30 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(ψ0)
         ψ0 = ones(dP)
     end
+    if !(typeof(medium_tau_pr[1]) <: Real)
+        function logpost(x)
+            kappaQ = [x[1]; x[1] + x[2]; x[1] + x[2] + x[3]]
+
+            loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+            logprior = 0.0
+            for i in eachindex(prior_kappaQ_)
+                logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
+            end
+            return loglik + logprior
+        end
+
+        # Construct the proposal distribution
+        x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
+        x_mode = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1)], [0.99; 0 * ones(length(kappaQ) - 1)], x, Fminbox(LBFGS()), Optim.Options(show_trace=true, time_limit=10)) |> Optim.minimizer
+        @show [x_mode[1]; x_mode[1] + x_mode[2]; x_mode[1] + x_mode[2] + x_mode[3]]
+        x_hess = hessian(x -> -logpost(x), x_mode)
+        @show inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
+        if !isposdef(inv_x_hess)
+            C, V = eigen(inv_x_hess)
+            C = max.(eps(), C) |> diagm
+            @show inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
+        end
+    end
 
     isaccept_MH = zeros(dQ)
     saved_params = Vector{Parameter}(undef, iteration)
@@ -214,7 +238,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         if typeof(medium_tau_pr[1]) <: Real
             kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
         else
-            kappaQ = post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+            kappaQ = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
         end
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))

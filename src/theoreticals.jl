@@ -83,21 +83,20 @@ The function has two methods(multiple dispatch).
 - `Vector(Float64)(aτ,N)`
 - For `i`'th maturity, `Output[i]` is the corresponding `aτ`.
 """
-function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale, kappaQ)
+function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
+
+    dQ = size(ΩPP, 1)
 
     a = zeros(N)
     T1X_ = T1X(Bₓ(bτ_, tau_n), Wₚ)
     for i in 2:N
-        if length(kappaQ) == 1
-            a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (i - 1) * kQ_infty
-        else
-            a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + ((1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])) * kQ_infty
-        end
+        a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + bτ_[:, i-1]' * [kQ_infty; zeros(dQ - 1)]
     end
 
     return a
 end
-function aτ(N, bτ_; kQ_infty, ΩXX, data_scale, kappaQ)
+function aτ(N, bτ_; kQ_infty, ΩXX, data_scale)
+    dQ = size(ΩXX, 1)
 
     a = zeros(N)
     for i in 2:N
@@ -105,11 +104,7 @@ function aτ(N, bτ_; kQ_infty, ΩXX, data_scale, kappaQ)
         J = bτ_[:, i-1]' * J * bτ_[:, i-1]
         J /= data_scale
 
-        if length(kappaQ) == 1
-            a[i] = a[i-1] - J + (i - 1) * kQ_infty
-        else
-            a[i] = a[i-1] - J + ((1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])) * kQ_infty
-        end
+        a[i] = a[i-1] - J + bτ_[:, i-1]' * [kQ_infty; zeros(dQ - 1)]
     end
 
     return a

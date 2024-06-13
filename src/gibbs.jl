@@ -81,30 +81,50 @@ end
 
 """
     post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+Reparameterization:
+    kappaQ[1] = x[1] + x[2] + x[3]
+    kappaQ[2] = x[2] + x[3]
+    kappaQ[3] = x[3]
+Jacobian:
+    [1 1 1
+    0 1 1
+    0 0 1]
+The determinant = 1
 """
-function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
 
-    function logpost(kappaQ)
+    function logpost(x)
+        kappaQ = [x[1] + x[2] + x[3], x[2] + x[3], x[3]]
+        if kappaQ[1] > 0.9999
+            return -1e+6
+        end
         loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
-            logprior += logpdf(prior_kappaQ_[i], kappaQ)
+            logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
         end
         return loglik + logprior
     end
 
-    # Construct the proposal distribution
-    kappaQ_mode = optimize(x -> -logpost(x), zeros(length(prior_kappaQ_)), ones(length(prior_kappaQ_)), 0.9ones(length(prior_kappaQ_)), Fminbox(LBFGS())) |> Optim.minimizer
-    kappaQ_hess = hessian(x -> -logpost(x), kappaQ_mode) |> inv
-    proposal_dist = MvNormal(kappaQ_mode, kappaQ_hess)
-
     # AR step
-    kappaQ_prop = rand(proposal_dist)
-    log_MHPr = min(0.0, logpost(kappaQ_prop) + logpdf(proposal_dist, kappaQ) - logpost(kappaQ) - logpdf(proposal_dist, kappaQ_prop))
 
+    proposal_dist = MvNormal(x_mode, inv_x_hess)
+    is_cond = true
+    kappaQ_prop = similar(kappaQ)
+    x_prop = similar(kappaQ)
+    while is_cond
+        x_prop = rand(proposal_dist)
+        kappaQ_prop = [x_prop[1] + x_prop[2] + x_prop[3], x_prop[2] + x_prop[3], x_prop[3]]
+        if kappaQ_prop[1] < 0.9999
+            is_cond = false
+        end
+    end
+    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
     if log(rand()) < log_MHPr
+        @show "accept"
         return kappaQ_prop
     else
+        @show "Reject"
         return kappaQ
     end
 end
