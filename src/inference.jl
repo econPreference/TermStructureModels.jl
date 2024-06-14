@@ -167,7 +167,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     Wₚ = PCA(yields, p)[3]
     prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
     if isempty(gamma_bar)
-        gamma_bar = prior_gamma(yields, p)
+        gamma_bar = prior_gamma(yields, p)[1]
     end
 
     if typeof(init_param) == Parameter
@@ -362,5 +362,62 @@ function longvar(v)
     end
 
     return S * (T / (T - 1))
+
+end
+
+"""
+
+"""
+function JSZ_MLE(yields, macros, tau_n, p; data_scale=1200)
+
+    ## Extracting PCs
+    PCs = PCA(yields, p)[1]
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dP = dQ + size(macros, 2)
+    factors = [PCs yields[:, end-(dQ-dimQ()-1):end] macros]
+
+    ## VAR(p) estimation
+    Y = factors[(p+1):end, :]
+    X = ones(size(Y, 1))
+    for i in 1:p
+        X = hcat(X, factors[(p-i+1):(end-i), :])
+    end
+    PHI = (X'X) \ (X'Y)
+    res = Y - X * PHI
+    Omega = res'res / size(Y, 1)
+
+    ## Transform to the recursive VAR
+    phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
+    phi[:, 1] = PHI'[:, 1]
+    for i in 1:p
+        phi[:, 1+1+dP*(i-1):1+dP*i] = PHI'[:, 1+1+dP*(i-1):1+dP*i]
+    end
+    phi[:, end-dP+1:end] = I(dP)
+    L, D = LDL(Omega)
+    varFF = diag(D)
+    phi = L \ phi
+    phi[:, end-dP+1:end] -= I(dP)
+
+    ## Other initial parameters ##
+    kappaQ = [0.99, 0.96, 0.94]
+    kQ_infty = 0.0
+    SigmaO = prior_gamma(yields, p)[2]
+    gamma = 1 ./ fill(gamma_bar, N - dQ)
+
+    init_param = Parameter(kappaQ=deepcopy(kappaQ), kQ_infty=deepcopy(kQ_infty), phi=deepcopy(phi), varFF=deepcopy(varFF), SigmaO=deepcopy(SigmaO), gamma=deepcopy(gamma))
+
+    function total_lik(param)
+        kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = param.kappaQ, param.kQ_infty, param.phi, param.varFF, param.SigmaO, param.gamma
+
+        # the likelihood for the transition equation
+        log_lik_tran = loglik_tran(PCs, macros; phi, varFF)
+
+        # the likelihood for the measurement equation
+        log_lik_mea = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+
+        return log_lik_mea + log_lik_tran
+    end
+
+    return log_lik_mea + log_lik_tran
 
 end

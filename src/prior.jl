@@ -210,5 +210,5 @@ function prior_gamma(yields, p)
         res_var[i] = var(y - X * ((X'X) \ (X'y)))
     end
 
-    return 1 / mean(res_var)
+    return 1 / mean(res_var), res_var
 end
