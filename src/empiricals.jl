@@ -9,14 +9,10 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
     dP = length(varFF)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :] #excludes initial observations
-    if length(kappaQ) == 1
-        dQ = dimQ()
-    else
-        dQ = length(kappaQ)
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; dQ)
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
@@ -224,14 +220,10 @@ It converts posterior samples in terms of the reduced form VAR parameters.
 """
 function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 
-    if length(saved_params[:kappaQ]) == 1
-        dQ = dimQ()
-    else
-        dQ = length(saved_params[:kappaQ])
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; dQ)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     if isempty(macros)
         factors = deepcopy(PCs)
     else
@@ -255,7 +247,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
         GPFF = phi0[:, 2:end]
         OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
         aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
@@ -299,15 +291,8 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 """
 function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
 
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
-    end
-    if typeof(medium_tau_pr[1]) <: Real
-        dQ = dimQ()
-    else
-        dQ = length(medium_tau_pr)
-    end
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; dQ)
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
     if isempty(macros)
         factors = deepcopy(PCs)
@@ -319,8 +304,12 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     for i in eachindex(OmegaFF_mean)
         OmegaFF_mean[i] = AR_res_var(factors[:, i], p)[1]
     end
+
     if isempty(mean_phi_const_PCs)
         mean_phi_const_PCs = zeros(dQ)
+    end
+    if isempty(medium_tau_pr)
+        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
     end
 
     prior_TP = Vector{Float64}(undef, iteration)
@@ -334,7 +323,7 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
         kappaQ = prior_kappaQ(medium_tau, medium_tau_pr) |> rand
         kQ_infty = Normal(mean_kQ_infty, std_kQ_infty) |> rand
 
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
 

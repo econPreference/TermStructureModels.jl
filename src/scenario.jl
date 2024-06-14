@@ -54,17 +54,10 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    if isempty(dQ)
-        dQ = dimQ()
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
-    if length(kappaQ) == 1
-        dQ = dimQ()
-    else
-        dQ = length(kappaQ)
-    end
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -79,7 +72,7 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     end
     T = size(data, 1)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -126,18 +119,11 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    if isempty(dQ)
-        dQ = dimQ()
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
-    if length(kappaQ) == 1
-        dQ = dimQ()
-    else
-        dQ = length(kappaQ)
-    end
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -153,7 +139,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     T = size(data, 1)
     dh = length(S)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -373,20 +359,13 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    if isempty(dQ)
-        dQ = dimQ()
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
-    if length(kappaQ) == 1
-        dQ = dimQ()
-    else
-        dQ = length(kappaQ)
-    end
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -401,7 +380,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     end
     T = size(data, 1)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -535,7 +514,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale])
+    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
 function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
@@ -547,16 +526,12 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    if length(kappaQ) == 1
-        dQ = dimQ()
-    else
-        dQ = length(kappaQ)
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
 
     if isempty(mean_macros)
@@ -570,7 +545,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     end
     T = size(data, 1)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)

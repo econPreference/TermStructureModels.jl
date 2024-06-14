@@ -212,6 +212,7 @@ export
     median,
     std,
     var,
-    quantile
+    quantile,
+    hessian
 
 end

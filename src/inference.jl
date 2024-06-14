@@ -27,21 +27,16 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
-    end
 
-    if typeof(medium_tau_pr[1]) <: Real
-        dQ = dimQ()
-    else
-        dQ = length(medium_tau_pr)
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     if isempty(macros)
         dP = deepcopy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
-
+    if isempty(medium_tau_pr)
+        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    end
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
@@ -79,7 +74,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         nu0 = input[9] + dP + 1
         p = Int(input[10])
 
-        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; dQ)
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
         if isempty(macros)
             factors = deepcopy(PCs)
         else
@@ -111,7 +106,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     nu0 = best_candidate(opt)[9] + dP + 1
     p = best_candidate(opt)[10] |> Int
 
-    PCs = PCA(yields[(upper_p-p)+1:end, :], p; dQ)[1]
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
     if isempty(macros)
         factors = deepcopy(PCs)
     else
@@ -160,38 +155,29 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
-    end
-    if typeof(medium_tau_pr[1]) <: Real
-        dQ = dimQ()
-    else
-        dQ = length(medium_tau_pr)
-    end
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     if isempty(macros)
         dP = deepcopy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
-
-    Wₚ = PCA(yields, p; dQ)[3]
+    if isempty(medium_tau_pr)
+        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    end
+    Wₚ = PCA(yields, p)[3]
     prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
     if isempty(gamma_bar)
-        gamma_bar = prior_gamma(yields, p, dQ)
+        gamma_bar = prior_gamma(yields, p)
     end
 
     if typeof(init_param) == Parameter
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
-        if typeof(medium_tau_pr[1]) <: Real
-            kappaQ = 0.0609
-        else
-            kappaQ = [0.99, 0.95, 0.9]
-        end
+        kappaQ = 0.0609
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
         phi[1:dQ, 2:(dQ+1)] = T1X_ * GQ_XX(; kappaQ) / T1X_
@@ -206,40 +192,12 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(ψ0)
         ψ0 = ones(dP)
     end
-    if !(typeof(medium_tau_pr[1]) <: Real)
-        function logpost(x)
-            kappaQ = [x[1]; x[1] + x[2]; x[1] + x[2] + x[3]]
-
-            loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
-            logprior = 0.0
-            for i in eachindex(prior_kappaQ_)
-                logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
-            end
-            return loglik + logprior
-        end
-
-        # Construct the proposal distribution
-        x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-        x_mode = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1)], [0.99; 0 * ones(length(kappaQ) - 1)], x, Fminbox(LBFGS()), Optim.Options(show_trace=true, time_limit=10)) |> Optim.minimizer
-        @show [x_mode[1]; x_mode[1] + x_mode[2]; x_mode[1] + x_mode[2] + x_mode[3]]
-        x_hess = hessian(x -> -logpost(x), x_mode)
-        @show inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
-        if !isposdef(inv_x_hess)
-            C, V = eigen(inv_x_hess)
-            C = max.(eps(), C) |> diagm
-            @show inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
-        end
-    end
 
     isaccept_MH = zeros(dQ)
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
-        if typeof(medium_tau_pr[1]) <: Real
-            kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
-        else
-            kappaQ = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
-        end
+        kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))
 
@@ -258,7 +216,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 end
 
 """
-    generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200, dQ=[])
+    generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
 This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
 # Input: 
 - noise = variance of the measurement errors
@@ -268,11 +226,9 @@ This function generate a simulation data given parameters. Note that all paramet
 - `latents = Matrix{Float64}(obs,T,dimQ())`
 - `macros = Matrix{Float64}(obs,T,dP - dimQ())`
 """
-function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200, dQ=[])
+function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
     N = length(tau_n) # of observed maturities
-    if isempty(dQ)
-        dQ = dimQ() # of latent factors
-    end
+    dQ = dimQ() # of latent factors
 
     # Generating factors XF, where latents & macros ∈ XF
     XF = randn(p, dP)
@@ -285,7 +241,7 @@ function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPX
     XF = XF[end-T+1:end, :]
 
     # Generating yields
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
 
     ΩXX = OmegaXFXF[1:dQ, 1:dQ]
@@ -351,11 +307,11 @@ function ineff_factor(saved_params)
         phi_ineff[i, end-dP+j] = 0
     end
     return (;
-        kappaQ=ineff[1:length(init_kappaQ)],
-        kQ_infty=ineff[length(init_kappaQ)+1],
-        gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
-        SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
-        varFF=ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
+        kappaQ=ineff[1],
+        kQ_infty=ineff[2],
+        gamma=ineff[2+1:2+length(init_gamma)],
+        SigmaO=ineff[2+length(init_gamma)+1:2+length(init_gamma)+length(init_SigmaO)],
+        varFF=ineff[2+length(init_gamma)+length(init_SigmaO)+1:2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
         phi=deepcopy(phi_ineff)
     )
 end
