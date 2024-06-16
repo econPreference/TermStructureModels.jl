@@ -131,6 +131,9 @@ function gen_scene(idx_case)
     end
 end
 
+p = 2
+est, hess, results = MLE(Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2]), tau_n, p)
+
 tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), Array(macros[:, 2:end]), tau_n, rho; std_kQ_infty, medium_tau, medium_tau_pr, maxiter=200, upper_p=4)
 p = tuned.p
 

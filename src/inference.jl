@@ -366,13 +366,14 @@ function longvar(v)
 end
 
 """
-
+MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200)
 """
-function JSZ_MLE(yields, macros, tau_n, p; data_scale=1200)
+function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200, iterations=10_000)
 
     ## Extracting PCs
     PCs = PCA(yields, p)[1]
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    N = length(tau_n)
+    dQ = dimQ() + size(yields, 2) - N
     dP = dQ + size(macros, 2)
     factors = [PCs yields[:, end-(dQ-dimQ()-1):end] macros]
 
@@ -387,37 +388,166 @@ function JSZ_MLE(yields, macros, tau_n, p; data_scale=1200)
     Omega = res'res / size(Y, 1)
 
     ## Transform to the recursive VAR
-    phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
-    phi[:, 1] = PHI'[:, 1]
+    init_phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
+    init_phi[:, 1] = PHI'[:, 1]
     for i in 1:p
-        phi[:, 1+1+dP*(i-1):1+dP*i] = PHI'[:, 1+1+dP*(i-1):1+dP*i]
+        init_phi[:, 1+dP*(i-1)+1:1+dP*i] = PHI'[:, 1+dP*(i-1)+1:1+dP*i]
     end
-    phi[:, end-dP+1:end] = I(dP)
+    init_phi[:, end-dP+1:end] = I(dP)
     L, D = LDL(Omega)
-    varFF = diag(D)
-    phi = L \ phi
-    phi[:, end-dP+1:end] -= I(dP)
+    init_varFF = diag(D)
+    init_phi = L \ init_phi
+    init_phi[:, end-dP+1:end] -= I(dP)
+    init_phi_vec = vec(init_phi[:, 1:end-dP])
+    for i in 1:dP
+        init_phi_vec = vcat(init_phi_vec, init_phi[i+1:end, end-dP+i])
+    end
 
     ## Other initial parameters ##
-    kappaQ = [0.99, 0.96, 0.94]
-    kQ_infty = 0.0
-    SigmaO = prior_gamma(yields, p)[2]
-    gamma = 1 ./ fill(gamma_bar, N - dQ)
+    init_kQ_infty = 0.0
+    init_SigmaO = prior_gamma(yields, p)[2]
 
-    init_param = Parameter(kappaQ=deepcopy(kappaQ), kQ_infty=deepcopy(kQ_infty), phi=deepcopy(phi), varFF=deepcopy(varFF), SigmaO=deepcopy(SigmaO), gamma=deepcopy(gamma))
+    init_param = [init_kappaQ; init_kQ_infty; init_phi_vec; init_varFF; init_SigmaO]
 
-    function total_lik(param)
-        kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = param.kappaQ, param.kQ_infty, param.phi, param.varFF, param.SigmaO, param.gamma
+    function total_lik(kappaQ, kQ_infty, phi, log_varFF, log_SigmaO)
+
+        varFF = exp.(log_varFF)
+        SigmaO = exp.(log_SigmaO)
+
+        if length(kappaQ) == 1
+            kappaQ = kappaQ[1]
+        elseif sort(kappaQ, rev=true) != kappaQ
+            return -Inf
+        end
+        phi0 = reshape(phi[1:dP+dP*dP*p], dP, 1 + dP * p)
+        C0 = zeros(dP, dP)
+        endpoint = dP + dP * dP * p
+        for i in 1:dP
+            C0[i+1:end, i] += phi[endpoint+1:endpoint+dP-i]
+            endpoint += dP - i
+        end
+        phi = [phi0 C0]
+        C = C0 + I(dP)
+
+        phi0 = C \ phi0
+        GPFF = phi0[:, 2:end]
+        if !isstationary(GPFF) || maximum(abs.(kappaQ)) >= 1
+            return -Inf
+        end
 
         # the likelihood for the transition equation
         log_lik_tran = loglik_tran(PCs, macros; phi, varFF)
-
         # the likelihood for the measurement equation
         log_lik_mea = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
 
         return log_lik_mea + log_lik_tran
     end
 
-    return log_lik_mea + log_lik_tran
+    negative_lik(vars) = -total_lik(vars[1:length(init_kappaQ)],
+        vars[length(init_kappaQ)+1],
+        vars[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_phi_vec)],
+        vars[length(init_kappaQ)+1+length(init_phi_vec)+1:length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)],
+        vars[length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)+1:end])
+
+    opt = optimize(negative_lik, init_param, NelderMead(), Optim.Options(show_trace=true, iterations=iterations))
+    if length(init_kappaQ) == 1
+        lower = 0.0
+        upper = 0.2
+    else
+        lower = [-1 * ones(length(init_kappaQ))
+            fill(-Inf, length(init_param) - length(init_kappaQ))]
+        upper = [1 * ones(length(init_kappaQ));
+            fill(Inf, length(init_param) - length(init_kappaQ))]
+    end
+    opt = optimize(negative_lik, opt.minimizer, LBFGS())
+    optim_results = opt.minimizer
+
+    phi_mle_vec = optim_results[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_phi_vec)]
+    phi0_mle = reshape(phi_mle_vec[1:dP+dP*dP*p], dP, 1 + dP * p)
+    C0_mle = zeros(dP, dP)
+    endpoint = dP + dP * dP * p
+    for i in 1:dP
+        C0_mle[i+1:end, i] += phi_mle_vec[endpoint+1:endpoint+dP-i]
+        endpoint += dP - i
+    end
+    phi_mle = [phi0_mle C0_mle]
+    mle_est = Parameter(kappaQ=optim_results[1:length(init_kappaQ)],
+        kQ_infty=optim_results[length(init_kappaQ)+1],
+        phi=deepcopy(phi_mle),
+        varFF=optim_results[length(init_kappaQ)+1+length(init_phi_vec)+1:length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)] |> x -> exp.(x),
+        SigmaO=optim_results[length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)+1:end] |> x -> exp.(x),
+        gamma=[0])
+
+    reduced_est = reducedform([mle_est], yields, macros, tau_n; data_scale)[1]
+    function total_lik_reduced(kappaQ, kQ_infty, PHI, Omega_upper, SigmaO)
+
+        PHI = reshape(PHI, dP, 1 + dP * p)
+        Omega = zeros(dP, dP)
+        endpoint = 0
+        for i in 1:dP
+            Omega[1:i, i] += Omega_upper[endpoint+1:endpoint+i]
+            endpoint += i
+        end
+        Omega = Symmetric(Omega)
+
+        if length(kappaQ) == 1
+            kappaQ = kappaQ[1]
+            #elseif sort(kappaQ, rev=true) != kappaQ
+            #    return -Inf
+        end
+        #if !isstationary(PHI[:, 2:end]) || minimum(SigmaO) <= 0 || maximum(abs.(kappaQ)) >= 1 || !isposdef(Omega)
+        #    return -Inf
+        #end
+
+        ## Transform to the recursive VAR
+        phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
+        phi[:, 1] = PHI[:, 1]
+        phi[:, 2:dP*p+1] = PHI[:, 2:end]
+        phi[:, end-dP+1:end] = I(dP)
+
+        L, D = LDL(Omega)
+        varFF = diag(D)
+        phi = L \ phi
+        phi[:, end-dP+1:end] -= I(dP)
+
+        # the likelihood for the transition equation
+        log_lik_tran = loglik_tran(PCs, macros; phi, varFF)
+        # the likelihood for the measurement equation
+        log_lik_mea = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+
+        return log_lik_mea + log_lik_tran
+    end
+
+    negative_lik_reduced(vars) = -total_lik_reduced(vars[1:length(init_kappaQ)],
+        vars[length(init_kappaQ)+1],
+        vars[length(init_kappaQ)+1+1:length(init_kappaQ)+1+dP*(1+dP*p)],
+        vars[length(init_kappaQ)+1+dP*(1+dP*p)+1:length(init_kappaQ)+1+dP*(1+dP*p)+Int(0.5 * dP * (dP + 1))],
+        vars[length(init_kappaQ)+1+dP*(1+dP*p)+Int(0.5 * dP * (dP + 1))+1:end])
+
+    vec_OmegaFF = []
+    for i in 1:dP
+        vec_OmegaFF = vcat(vec_OmegaFF, reduced_est.OmegaFF[1:i, i])
+    end
+    reduced_est_vec = [reduced_est.kappaQ; reduced_est.kQ_infty; reduced_est.KPF; vec(reduced_est.GPFF); vec_OmegaFF; reduced_est.SigmaO]
+    mle_var_vec = hessian(negative_lik_reduced, reduced_est_vec) |> inv |> diag
+
+    OmegaFF_var_vec = mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+1:length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+Int(0.5 * dP * (dP + 1))]
+    Omega_var = zeros(dP, dP)
+    endpoint = 0
+    for i in 1:dP
+        Omega_var[1:i, i] += OmegaFF_var_vec[endpoint+1:endpoint+i]
+        endpoint += i
+    end
+    mle_var = ReducedForm(kappaQ=mle_var_vec[1:length(init_kappaQ)],
+        kQ_infty=mle_var_vec[length(init_kappaQ)+1],
+        KPF=mle_var_vec[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(reduced_est.KPF)],
+        GPFF=mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+1:length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)] |> x -> reshape(x, dP, dP * p),
+        OmegaFF=deepcopy(Symmetric(Omega_var)),
+        SigmaO=mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+Int(0.5 * dP * (dP + 1))+1:end],
+        lambdaP=[],
+        LambdaPF=[],
+        mpr=fill(NaN, 2, 2))
+
+    return reduced_est, mle_var, opt
 
 end
