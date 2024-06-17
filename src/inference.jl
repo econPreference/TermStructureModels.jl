@@ -450,15 +450,6 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         vars[length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)+1:end])
 
     opt = optimize(negative_lik, init_param, NelderMead(), Optim.Options(show_trace=true, iterations=iterations))
-    if length(init_kappaQ) == 1
-        lower = 0.0
-        upper = 0.2
-    else
-        lower = [-1 * ones(length(init_kappaQ))
-            fill(-Inf, length(init_param) - length(init_kappaQ))]
-        upper = [1 * ones(length(init_kappaQ));
-            fill(Inf, length(init_param) - length(init_kappaQ))]
-    end
     opt = optimize(negative_lik, opt.minimizer, LBFGS())
     optim_results = opt.minimizer
 
@@ -471,7 +462,11 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         endpoint += dP - i
     end
     phi_mle = [phi0_mle C0_mle]
-    mle_est = Parameter(kappaQ=optim_results[1:length(init_kappaQ)],
+    kappaQ_mle = optim_results[1:length(init_kappaQ)]
+    if length(init_kappaQ) == 1
+        kappaQ_mle = kappaQ_mle[1]
+    end
+    mle_est = Parameter(kappaQ=kappaQ_mle,
         kQ_infty=optim_results[length(init_kappaQ)+1],
         phi=deepcopy(phi_mle),
         varFF=optim_results[length(init_kappaQ)+1+length(init_phi_vec)+1:length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)] |> x -> exp.(x),
@@ -492,12 +487,7 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
 
         if length(kappaQ) == 1
             kappaQ = kappaQ[1]
-            #elseif sort(kappaQ, rev=true) != kappaQ
-            #    return -Inf
         end
-        #if !isstationary(PHI[:, 2:end]) || minimum(SigmaO) <= 0 || maximum(abs.(kappaQ)) >= 1 || !isposdef(Omega)
-        #    return -Inf
-        #end
 
         ## Transform to the recursive VAR
         phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
@@ -531,6 +521,10 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
     reduced_est_vec = [reduced_est.kappaQ; reduced_est.kQ_infty; reduced_est.KPF; vec(reduced_est.GPFF); vec_OmegaFF; reduced_est.SigmaO]
     mle_var_vec = hessian(negative_lik_reduced, reduced_est_vec) |> inv |> diag
 
+    kappaQ_var = mle_var_vec[1:length(init_kappaQ)]
+    if length(init_kappaQ) == 1
+        kappaQ_var = kappaQ_var[1]
+    end
     OmegaFF_var_vec = mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+1:length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+Int(0.5 * dP * (dP + 1))]
     Omega_var = zeros(dP, dP)
     endpoint = 0
@@ -538,7 +532,7 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         Omega_var[1:i, i] += OmegaFF_var_vec[endpoint+1:endpoint+i]
         endpoint += i
     end
-    mle_var = ReducedForm(kappaQ=mle_var_vec[1:length(init_kappaQ)],
+    mle_var = ReducedForm(kappaQ=kappaQ_var,
         kQ_infty=mle_var_vec[length(init_kappaQ)+1],
         KPF=mle_var_vec[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(reduced_est.KPF)],
         GPFF=mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+1:length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)] |> x -> reshape(x, dP, dP * p),
@@ -548,6 +542,6 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         LambdaPF=[],
         mpr=fill(NaN, 2, 2))
 
-    return reduced_est, mle_var, opt
+    return reduced_est, mle_var, opt, mle_est
 
 end
