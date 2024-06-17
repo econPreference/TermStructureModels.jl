@@ -25,7 +25,11 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
     a1 = zeros(tau_n[end])
     for τ in 2:tau_n[end]
         a0[τ] = a0[τ-1] - jensens_inequality(τ, bτ_, T1X_; ΩPP, data_scale)
-        a1[τ] = a1[τ-1] + (τ - 1)
+        if length(kappaQ) > 1
+            a1[τ] = a1[τ-1] + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])
+        else
+            a1[τ] = a1[τ-1] + (τ - 1)
+        end
     end
     A0_kQ_infty = a0[tau_n] ./ tau_n
     A1_kQ_infty = a1[tau_n] ./ tau_n
@@ -69,6 +73,56 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
     Pr ./= sum(Pr)
 
     return DiscreteNonParametric(kappaQ_candidate, Pr)
+end
+
+"""
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+Reparameterization:
+    kappaQ[1] = x[1] + x[2] + x[3]
+    kappaQ[2] = x[2] + x[3]
+    kappaQ[3] = x[3]
+Jacobian:
+    [1 1 1
+    0 1 1
+    0 0 1]
+The determinant = 1
+"""
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+
+    function logpost(x)
+        kappaQ = [x[1] + x[2] + x[3], x[2] + x[3], x[3]]
+        if kappaQ[1] > 0.9999
+            return -1e+6
+        end
+        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+        logprior = 0.0
+        for i in eachindex(prior_kappaQ_)
+            logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
+        end
+        return loglik + logprior
+    end
+
+    # AR step
+
+    proposal_dist = MvNormal(x_mode, inv_x_hess)
+    is_cond = true
+    kappaQ_prop = similar(kappaQ)
+    x_prop = similar(kappaQ)
+    while is_cond
+        x_prop = rand(proposal_dist)
+        kappaQ_prop = [x_prop[1] + x_prop[2] + x_prop[3], x_prop[2] + x_prop[3], x_prop[3]]
+        if kappaQ_prop[1] < 0.9999
+            is_cond = false
+        end
+    end
+    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
+    if log(rand()) < log_MHPr
+        @show "accept"
+        return kappaQ_prop
+    else
+        @show "Reject"
+        return kappaQ
+    end
 end
 
 """

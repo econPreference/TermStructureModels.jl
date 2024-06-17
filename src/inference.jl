@@ -174,7 +174,11 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
-        kappaQ = 0.0609
+        if typeof(medium_tau_pr[1]) <: Real
+            kappaQ = 0.0609
+        else
+            kappaQ = [0.99, 0.95, 0.9]
+        end
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
@@ -192,12 +196,40 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(ψ0)
         ψ0 = ones(dP)
     end
+    if !(typeof(medium_tau_pr[1]) <: Real)
+        function logpost(x)
+            kappaQ = [x[1]; x[1] + x[2]; x[1] + x[2] + x[3]]
+
+            loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+            logprior = 0.0
+            for i in eachindex(prior_kappaQ_)
+                logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
+            end
+            return loglik + logprior
+        end
+
+        # Construct the proposal distribution
+        x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
+        x_mode = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1)], [0.99; 0 * ones(length(kappaQ) - 1)], x, Fminbox(LBFGS()), Optim.Options(show_trace=true, time_limit=10)) |> Optim.minimizer
+        @show [x_mode[1]; x_mode[1] + x_mode[2]; x_mode[1] + x_mode[2] + x_mode[3]]
+        x_hess = hessian(x -> -logpost(x), x_mode)
+        @show inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
+        if !isposdef(inv_x_hess)
+            C, V = eigen(inv_x_hess)
+            C = max.(eps(), C) |> diagm
+            @show inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
+        end
+    end
 
     isaccept_MH = zeros(dQ)
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
-        kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
+        if typeof(medium_tau_pr[1]) <: Real
+            kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
+        else
+            kappaQ = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+        end
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))
 
@@ -307,11 +339,11 @@ function ineff_factor(saved_params)
         phi_ineff[i, end-dP+j] = 0
     end
     return (;
-        kappaQ=ineff[1],
-        kQ_infty=ineff[2],
-        gamma=ineff[2+1:2+length(init_gamma)],
-        SigmaO=ineff[2+length(init_gamma)+1:2+length(init_gamma)+length(init_SigmaO)],
-        varFF=ineff[2+length(init_gamma)+length(init_SigmaO)+1:2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
+        kappaQ=ineff[1:length(init_kappaQ)],
+        kQ_infty=ineff[length(init_kappaQ)+1],
+        gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
+        SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
+        varFF=ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
         phi=deepcopy(phi_ineff)
     )
 end
@@ -362,186 +394,5 @@ function longvar(v)
     end
 
     return S * (T / (T - 1))
-
-end
-
-"""
-MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200)
-"""
-function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200, iterations=1_000)
-
-    ## Extracting PCs
-    PCs = PCA(yields, p)[1]
-    N = length(tau_n)
-    dQ = dimQ() + size(yields, 2) - N
-    dP = dQ + size(macros, 2)
-    factors = [PCs yields[:, end-(dQ-dimQ()-1):end] macros]
-
-    ## VAR(p) estimation
-    Y = factors[(p+1):end, :]
-    X = ones(size(Y, 1))
-    for i in 1:p
-        X = hcat(X, factors[(p-i+1):(end-i), :])
-    end
-    PHI = (X'X) \ (X'Y)
-    res = Y - X * PHI
-    Omega = res'res / size(Y, 1)
-
-    ## Transform to the recursive VAR
-    init_phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
-    init_phi[:, 1] = PHI'[:, 1]
-    for i in 1:p
-        init_phi[:, 1+dP*(i-1)+1:1+dP*i] = PHI'[:, 1+dP*(i-1)+1:1+dP*i]
-    end
-    init_phi[:, end-dP+1:end] = I(dP)
-    L, D = LDL(Omega)
-    init_varFF = diag(D)
-    init_phi = L \ init_phi
-    init_phi[:, end-dP+1:end] -= I(dP)
-    init_phi_vec = vec(init_phi[:, 1:end-dP])
-    for i in 1:dP
-        init_phi_vec = vcat(init_phi_vec, init_phi[i+1:end, end-dP+i])
-    end
-
-    ## Other initial parameters ##
-    init_kQ_infty = 0.0
-    init_SigmaO = prior_gamma(yields, p)[2]
-
-    init_param = [init_kappaQ; init_kQ_infty; init_phi_vec; init_varFF; init_SigmaO]
-
-    function total_lik(kappaQ, kQ_infty, phi, log_varFF, log_SigmaO)
-
-        varFF = exp.(log_varFF)
-        SigmaO = exp.(log_SigmaO)
-
-        if length(kappaQ) == 1
-            kappaQ = kappaQ[1]
-        elseif sort(kappaQ, rev=true) != kappaQ
-            return -1e6
-        end
-        phi0 = reshape(phi[1:dP+dP*dP*p], dP, 1 + dP * p)
-        C0 = zeros(dP, dP)
-        endpoint = dP + dP * dP * p
-        for i in 1:dP
-            C0[i+1:end, i] += phi[endpoint+1:endpoint+dP-i]
-            endpoint += dP - i
-        end
-        phi = [phi0 C0]
-        C = C0 + I(dP)
-
-        phi0 = C \ phi0
-        GPFF = phi0[:, 2:end]
-        if !isstationary(GPFF) || maximum(abs.(kappaQ)) >= 1
-            return -1e6
-        end
-
-        # the likelihood for the transition equation
-        log_lik_tran = loglik_tran(PCs, macros; phi, varFF)
-        # the likelihood for the measurement equation
-        log_lik_mea = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
-
-        return log_lik_mea + log_lik_tran
-    end
-
-    negative_lik(vars) = -total_lik(vars[1:length(init_kappaQ)],
-        vars[length(init_kappaQ)+1],
-        vars[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_phi_vec)],
-        vars[length(init_kappaQ)+1+length(init_phi_vec)+1:length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)],
-        vars[length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)+1:end])
-
-    opt = optimize(negative_lik, init_param, NelderMead(), Optim.Options(show_trace=true, iterations=iterations))
-    opt = optimize(negative_lik, opt.minimizer, LBFGS(), Optim.Options(show_trace=true))
-    optim_results = opt.minimizer
-
-    phi_mle_vec = optim_results[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_phi_vec)]
-    phi0_mle = reshape(phi_mle_vec[1:dP+dP*dP*p], dP, 1 + dP * p)
-    C0_mle = zeros(dP, dP)
-    endpoint = dP + dP * dP * p
-    for i in 1:dP
-        C0_mle[i+1:end, i] += phi_mle_vec[endpoint+1:endpoint+dP-i]
-        endpoint += dP - i
-    end
-    phi_mle = [phi0_mle C0_mle]
-    kappaQ_mle = optim_results[1:length(init_kappaQ)]
-    if length(init_kappaQ) == 1
-        kappaQ_mle = kappaQ_mle[1]
-    end
-    mle_est = Parameter(kappaQ=kappaQ_mle,
-        kQ_infty=optim_results[length(init_kappaQ)+1],
-        phi=deepcopy(phi_mle),
-        varFF=optim_results[length(init_kappaQ)+1+length(init_phi_vec)+1:length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)] |> x -> exp.(x),
-        SigmaO=optim_results[length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)+1:end] |> x -> exp.(x),
-        gamma=[0])
-
-    reduced_est = reducedform([mle_est], yields, macros, tau_n; data_scale)[1]
-    function total_lik_reduced(kappaQ, kQ_infty, PHI, Omega_upper, SigmaO)
-
-        PHI = reshape(PHI, dP, 1 + dP * p)
-        Omega = zeros(dP, dP)
-        endpoint = 0
-        for i in 1:dP
-            Omega[1:i, i] += Omega_upper[endpoint+1:endpoint+i]
-            endpoint += i
-        end
-        Omega = Symmetric(Omega)
-
-        if length(kappaQ) == 1
-            kappaQ = kappaQ[1]
-        end
-
-        ## Transform to the recursive VAR
-        phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
-        phi[:, 1] = PHI[:, 1]
-        phi[:, 2:dP*p+1] = PHI[:, 2:end]
-        phi[:, end-dP+1:end] = I(dP)
-
-        L, D = LDL(Omega)
-        varFF = diag(D)
-        phi = L \ phi
-        phi[:, end-dP+1:end] -= I(dP)
-
-        # the likelihood for the transition equation
-        log_lik_tran = loglik_tran(PCs, macros; phi, varFF)
-        # the likelihood for the measurement equation
-        log_lik_mea = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
-
-        return log_lik_mea + log_lik_tran
-    end
-
-    negative_lik_reduced(vars) = -total_lik_reduced(vars[1:length(init_kappaQ)],
-        vars[length(init_kappaQ)+1],
-        vars[length(init_kappaQ)+1+1:length(init_kappaQ)+1+dP*(1+dP*p)],
-        vars[length(init_kappaQ)+1+dP*(1+dP*p)+1:length(init_kappaQ)+1+dP*(1+dP*p)+Int(0.5 * dP * (dP + 1))],
-        vars[length(init_kappaQ)+1+dP*(1+dP*p)+Int(0.5 * dP * (dP + 1))+1:end])
-
-    vec_OmegaFF = []
-    for i in 1:dP
-        vec_OmegaFF = vcat(vec_OmegaFF, reduced_est.OmegaFF[1:i, i])
-    end
-    reduced_est_vec = [reduced_est.kappaQ; reduced_est.kQ_infty; reduced_est.KPF; vec(reduced_est.GPFF); vec_OmegaFF; reduced_est.SigmaO]
-    mle_var_vec = hessian(negative_lik_reduced, reduced_est_vec) |> inv |> diag
-
-    kappaQ_var = mle_var_vec[1:length(init_kappaQ)]
-    if length(init_kappaQ) == 1
-        kappaQ_var = kappaQ_var[1]
-    end
-    OmegaFF_var_vec = mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+1:length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+Int(0.5 * dP * (dP + 1))]
-    Omega_var = zeros(dP, dP)
-    endpoint = 0
-    for i in 1:dP
-        Omega_var[1:i, i] += OmegaFF_var_vec[endpoint+1:endpoint+i]
-        endpoint += i
-    end
-    mle_var = ReducedForm(kappaQ=kappaQ_var,
-        kQ_infty=mle_var_vec[length(init_kappaQ)+1],
-        KPF=mle_var_vec[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(reduced_est.KPF)],
-        GPFF=mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+1:length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)] |> x -> reshape(x, dP, dP * p),
-        OmegaFF=deepcopy(Symmetric(Omega_var)),
-        SigmaO=mle_var_vec[length(init_kappaQ)+1+length(reduced_est.KPF)+length(reduced_est.GPFF)+Int(0.5 * dP * (dP + 1))+1:end],
-        lambdaP=[],
-        LambdaPF=[],
-        mpr=fill(NaN, 2, 2))
-
-    return reduced_est, mle_var, opt, mle_est
 
 end

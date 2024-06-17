@@ -189,7 +189,6 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
-    MLE,
 
     # priors.jl
     prior_kappaQ,
