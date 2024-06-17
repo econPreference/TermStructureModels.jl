@@ -67,7 +67,7 @@ This function generate the dependent variable and the corresponding regressors i
 function yphi_Xphi(PCs, macros, p)
 
     if isempty(macros)
-        data = deepcopy(PCs)
+        data = copy(PCs)
     else
         data = [PCs macros]
     end
@@ -198,7 +198,7 @@ function erase_nonstationary_param(saved_params)
         GPFF = phi0[:, 2:end]
 
         if isstationary(GPFF)
-            push!(stationary_saved_params, Parameter(kappaQ=deepcopy(kappaQ), kQ_infty=deepcopy(kQ_infty), phi=deepcopy(phi), varFF=deepcopy(varFF), SigmaO=deepcopy(SigmaO), gamma=deepcopy(gamma)))
+            push!(stationary_saved_params, Parameter(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma)))
         end
         next!(prog)
     end
@@ -222,7 +222,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
     if isempty(macros)
-        factors = deepcopy(PCs)
+        factors = copy(PCs)
     else
         factors = [PCs macros]
     end
@@ -252,7 +252,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
         KQ_X = zeros(dQ)
-        KQ_X[1] = deepcopy(kQ_infty)
+        KQ_X[1] = copy(kQ_infty)
         KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
         GQPF = similar(GPFF[1:dQ, :]) |> (x -> x .= 0)
         GQPF[:, 1:dQ] = T1X_ * GQ_XX(; kappaQ) / T1X_
@@ -264,7 +264,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
             Ft = factors'[:, t:-1:t-p+1] |> vec
             mpr[t-p, :] = cholesky(OmegaFF).L \ [lambdaP + LambdaPF * Ft; zeros(dP - dQ)]
         end
-        reduced_params[iter] = ReducedForm(kappaQ=deepcopy(kappaQ), kQ_infty=deepcopy(kQ_infty), KPF=deepcopy(KPF), GPFF=deepcopy(GPFF), OmegaFF=deepcopy(OmegaFF), SigmaO=deepcopy(SigmaO), lambdaP=deepcopy(lambdaP), LambdaPF=deepcopy(LambdaPF), mpr=deepcopy(mpr))
+        reduced_params[iter] = ReducedForm(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPF=copy(KPF), GPFF=copy(GPFF), OmegaFF=copy(OmegaFF), SigmaO=copy(SigmaO), lambdaP=copy(lambdaP), LambdaPF=copy(LambdaPF), mpr=copy(mpr))
 
         next!(prog)
     end
@@ -292,7 +292,7 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
     if isempty(macros)
-        factors = deepcopy(PCs)
+        factors = copy(PCs)
     else
         factors = [PCs macros]
     end
@@ -330,10 +330,10 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
 
         # Constant term
         KQ_X = zeros(dQ)
-        KQ_X[1] = deepcopy(kQ_infty)
+        KQ_X[1] = copy(kQ_infty)
         KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
         λₚ = mean_phi_const_PCs - KQ_P
-        prior_λₚ[iter, :] = deepcopy(λₚ)
+        prior_λₚ[iter, :] = copy(λₚ)
 
         if !isempty(τ)
             # Jensen's Ineqaulity term

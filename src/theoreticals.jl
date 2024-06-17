@@ -184,7 +184,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
     # Constant term
     dQ = dimQ()
     KQ_X = zeros(dQ)
-    KQ_X[1] = deepcopy(kQ_infty)
+    KQ_X[1] = copy(kQ_infty)
     KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
     λₚ = KPF[1:dQ] - KQ_P
     const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1P_ * λₚ)
@@ -202,7 +202,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
     T1P_Λ_PF = T1P_ * Λ_PF
 
     if isempty(macros)
-        factors = deepcopy(PCs)
+        factors = copy(PCs)
     else
         factors = [PCs macros]
     end
@@ -274,7 +274,7 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
 
-        saved_TP[iter] = TermPremium(TP=deepcopy(TP[:, 1]), timevarying_TP=deepcopy(timevarying_TP), const_TP=deepcopy(const_TP), jensen=deepcopy(jensen))
+        saved_TP[iter] = TermPremium(TP=copy(TP[:, 1]), timevarying_TP=copy(timevarying_TP), const_TP=copy(const_TP), jensen=copy(jensen))
 
         next!(prog)
     end
@@ -312,7 +312,7 @@ function latentspace(saved_params, yields, tau_n; data_scale=1200)
         OmegaFF = (C \ diagm(varFF)) / C'
 
         latent, kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF = PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
-        saved_params_latent[iter] = LatentSpace(latents=deepcopy(latent), kappaQ=deepcopy(kappaQ), kQ_infty=deepcopy(kQ_infty), KPXF=deepcopy(KPXF), GPXFXF=deepcopy(GPXFXF), OmegaXFXF=deepcopy(OmegaXFXF))
+        saved_params_latent[iter] = LatentSpace(latents=copy(latent), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPXF=copy(KPXF), GPXFXF=copy(GPXFXF), OmegaXFXF=copy(OmegaXFXF))
 
         next!(prog)
     end
@@ -354,16 +354,16 @@ function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data
     OmegaXFXF[1:dQ, (dQ+1):end] = OmegaXFXF[(dQ+1):end, 1:dQ]'
     OmegaXFXF[(dQ+1):end, (dQ+1):end] = OmegaFF[(dQ+1):end, (dQ+1):end]
 
-    GPXFXF = deepcopy(GPFF)
+    GPXFXF = copy(GPFF)
     GₚXX_sum = zeros(dQ, dQ)
     GₚMX_sum = zeros(dM, dQ)
     for l in 1:p
         GₚXX_l = T1P_ * GPFF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] * T1X_
-        GPXFXF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] = deepcopy(GₚXX_l)
+        GPXFXF[1:dQ, (dP*(l-1)+1):(dP*(l-1)+dQ)] = copy(GₚXX_l)
         GₚXX_sum += GₚXX_l
 
         GₚMX_l = GPFF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] * T1X_
-        GPXFXF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] = deepcopy(GₚMX_l)
+        GPXFXF[(dQ+1):end, (dP*(l-1)+1):(dP*(l-1)+dQ)] = copy(GₚMX_l)
         GₚMX_sum += GₚMX_l
 
         GPXFXF[1:dQ, (dP*(l-1)+dQ+1):(dP*l)] = T1P_ * GPFF[1:dQ, (dP*(l-1)+dQ+1):(dP*l)]
@@ -410,10 +410,10 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
         Aₓ_ = Aₓ(aτ_, τ0)
 
         YieldCurve_[iter] = YieldCurve(
-            latents=deepcopy(latents),
-            yields=deepcopy((Aₓ_ .+ Bₓ_ * latents')' |> Matrix),
-            intercept=deepcopy(Aₓ_),
-            slope=deepcopy(Bₓ_)
+            latents=copy(latents),
+            yields=copy((Aₓ_ .+ Bₓ_ * latents')' |> Matrix),
+            intercept=copy(Aₓ_),
+            slope=copy(Bₓ_)
         )
 
         next!(prog)
