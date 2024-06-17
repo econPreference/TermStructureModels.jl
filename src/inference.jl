@@ -368,7 +368,7 @@ end
 """
 MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200)
 """
-function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200, iterations=10_000)
+function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200, iterations=1_000)
 
     ## Extracting PCs
     PCs = PCA(yields, p)[1]
@@ -417,7 +417,7 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         if length(kappaQ) == 1
             kappaQ = kappaQ[1]
         elseif sort(kappaQ, rev=true) != kappaQ
-            return -Inf
+            return -1e6
         end
         phi0 = reshape(phi[1:dP+dP*dP*p], dP, 1 + dP * p)
         C0 = zeros(dP, dP)
@@ -432,7 +432,7 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         phi0 = C \ phi0
         GPFF = phi0[:, 2:end]
         if !isstationary(GPFF) || maximum(abs.(kappaQ)) >= 1
-            return -Inf
+            return -1e6
         end
 
         # the likelihood for the transition equation
@@ -450,7 +450,7 @@ function MLE(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scal
         vars[length(init_kappaQ)+1+length(init_phi_vec)+length(init_varFF)+1:end])
 
     opt = optimize(negative_lik, init_param, NelderMead(), Optim.Options(show_trace=true, iterations=iterations))
-    opt = optimize(negative_lik, opt.minimizer, LBFGS())
+    opt = optimize(negative_lik, opt.minimizer, LBFGS(), Optim.Options(show_trace=true))
     optim_results = opt.minimizer
 
     phi_mle_vec = optim_results[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_phi_vec)]

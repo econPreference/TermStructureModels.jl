@@ -27,7 +27,7 @@ while ~isstationary(GPXFXF)
 end
 
 # Generating samples
-yields, latents, macros = generative(T, dP, tau_n, p, 0.01; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF)
+yields, latents, macros = generative(T, dP, tau_n, p, 0.0001; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF)
 
-est, var, opt, mle_est = MLE(yields, macros, tau_n, p; init_kappaQ=0.0609)
+est, var, opt, mle_est = MLE(yields, macros, tau_n, p; init_kappaQ=0.0609, iterations=20000)
 param = latentspace([mle_est], yields, tau_n; data_scale=1200)[1]
