@@ -115,14 +115,14 @@ function hessian(f, x, index=[])
     xarg = x[index]
 
     h = eps() .^ (1 / 3) * max.(abs.(xarg), 1e-2)
-    xargh = x[index] + h
-    h = xargh - x[index]
+    xargh = x[index] - h
+    h = x[index] - xargh
     ee = diagm(h)
 
     g = zeros(k)
     for i in 1:k
         xee = deepcopy(x)
-        xee[index] = xarg + ee[:, i]
+        xee[index] = xarg - ee[:, i]
         g[i] = f(xee)
     end
 
@@ -131,7 +131,7 @@ function hessian(f, x, index=[])
     for i in 1:k
         for j in 1:i
             xeeij = deepcopy(x)
-            xeeij[index] = xarg + ee[:, i] + ee[:, j]
+            xeeij[index] = xarg - ee[:, i] - ee[:, j]
 
             H[i, j] = (f(xeeij) - g[i] - g[j] + fx) / H[i, j]
             H[j, i] = deepcopy(H[i, j])

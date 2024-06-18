@@ -78,22 +78,19 @@ end
 """
     post_kappaQ2(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
 Reparameterization:
-    kappaQ[1] = x[1] + x[2] + x[3]
-    kappaQ[2] = x[2] + x[3]
-    kappaQ[3] = x[3]
+    kappaQ[1] = x[1]
+    kappaQ[2] = x[1] + x[2]
+    kappaQ[3] = x[1] + x[2] + x[3]
 Jacobian:
-    [1 1 1
-    0 1 1
-    0 0 1]
+    [1 0 0
+    1 1 0
+    1 1 1]
 The determinant = 1
 """
 function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
 
     function logpost(x)
-        kappaQ = [x[1] + x[2] + x[3], x[2] + x[3], x[3]]
-        if kappaQ[1] > 0.9999
-            return -1e+6
-        end
+        kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
         loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
@@ -103,24 +100,23 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
     end
 
     # AR step
-
     proposal_dist = MvNormal(x_mode, inv_x_hess)
+
     is_cond = true
     kappaQ_prop = similar(kappaQ)
     x_prop = similar(kappaQ)
     while is_cond
         x_prop = rand(proposal_dist)
-        kappaQ_prop = [x_prop[1] + x_prop[2] + x_prop[3], x_prop[2] + x_prop[3], x_prop[3]]
-        if kappaQ_prop[1] < 0.9999
+        kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
+        if sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0
             is_cond = false
         end
     end
+    x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
     log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
     if log(rand()) < log_MHPr
-        @show "accept"
         return kappaQ_prop
     else
-        @show "Reject"
         return kappaQ
     end
 end

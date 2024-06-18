@@ -210,14 +210,13 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
         # Construct the proposal distribution
         x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-        x_mode = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1)], [0.99; 0 * ones(length(kappaQ) - 1)], x, Fminbox(LBFGS()), Optim.Options(show_trace=true, time_limit=10)) |> Optim.minimizer
-        @show [x_mode[1]; x_mode[1] + x_mode[2]; x_mode[1] + x_mode[2] + x_mode[3]]
+        x_mode = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1)], [1; 0 * ones(length(kappaQ) - 1)], x, Fminbox(LBFGS()), Optim.Options(show_trace=true)) |> Optim.minimizer
         x_hess = hessian(x -> -logpost(x), x_mode)
-        @show inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
+        inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
         if !isposdef(inv_x_hess)
             C, V = eigen(inv_x_hess)
             C = max.(eps(), C) |> diagm
-            @show inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
+            inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
         end
     end
 
@@ -333,7 +332,7 @@ function ineff_factor(saved_params)
     end
     finish!(prog)
 
-    phi_ineff = ineff[2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)+1:end] |> x -> reshape(x, size(saved_params[:phi][1], 1), size(saved_params[:phi][1], 2))
+    phi_ineff = ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)+1:end] |> x -> reshape(x, size(saved_params[:phi][1], 1), size(saved_params[:phi][1], 2))
     dP = size(phi_ineff, 1)
     for i in 1:dP, j in i:dP
         phi_ineff[i, end-dP+j] = 0

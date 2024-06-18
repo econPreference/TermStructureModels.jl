@@ -1,9 +1,9 @@
 ## Setting
-using Pkg
+using Pkg, Revise
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 Pkg.precompile()
-using TermStructureModels, ProgressMeter, Distributions, LinearAlgebra
+using TermStructureModels, ProgressMeter, Distributions, LinearAlgebra, Distributions
 
 ## Simulating sample data
 T = 1000
@@ -29,5 +29,25 @@ end
 # Generating samples
 yields, latents, macros = generative(T, dP, tau_n, p, 0.0001; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF)
 
-est, var, opt, mle_est = MLE(yields, macros, tau_n, p; init_kappaQ=0.0609, iterations=20000)
-param = latentspace([mle_est], yields, tau_n; data_scale=1200)[1]
+## Turing hyper-parameters
+diag_G = diag_G[dimQ()+1:end]
+rho = zeros(dP - dimQ())
+rho[diag_G.>0.5] .= 1.0
+medium_tau = collect(36:42)
+medium_tau_pr = [truncated(Normal(1, 0.1), -1, 1), truncated(Normal(1, 0.1), -1, 1), truncated(Normal(1, 0.1), -1, 1)]
+std_kQ_infty = 0.2
+tuned, opt = tuning_hyperparameter(yields, macros, tau_n, rho; std_kQ_infty, medium_tau, medium_tau_pr)
+
+## Estimating
+iteration = 10_000
+saved_θ, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty, medium_tau_pr)
+saved_θ = saved_θ[round(Int, 0.1iteration):end]
+saved_θ, accept_rate = erase_nonstationary_param(saved_θ)
+ineff = ineff_factor(saved_θ)
+saved_Xθ = latentspace(saved_θ, yields, τₙ)
+saved_TP = term_premium(120, τₙ, saved_θ[1:50:end], yields, macros)
+reduced_θ = reducedform(saved_θ, yields, macros, τₙ)
+fits = fitted_YieldCurve(τₙ, saved_Xθ)
+idx = 18
+plot(mean(fits)[:yields][:, idx])
+plot!(yields[:, idx])
