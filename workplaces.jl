@@ -1,5 +1,9 @@
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.instantiate()
+Pkg.precompile()
 using TermStructureModels
-using CSV, Dates, DataFrames, XLSX, JLD2
+using CSV, Dates, DataFrames, XLSX, JLD2, Plots
 
 date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(18 + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
@@ -86,62 +90,89 @@ iteration = 2_000
 burnin = 1_000
 TP_tau = 120
 
-scenario_TP = [12, 24, 60, 120]
-scenario_horizon = 60
-function gen_scene(idx_case)
-
-    if idx_case == 1
-        scene = Vector{Scenario}(undef, 36)
-        for h in 1:36
-            combs = zeros(1, dP - dQ + length(tau_n))
-            vals = [0.0]
-            scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-        end
-
-        combs = [1 zeros(1, dP - dQ + length(tau_n) - 1)]
-        vals = [5.1]
-        scene[12] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-
-        combs = [1 zeros(1, dP - dQ + length(tau_n) - 1)]
-        vals = [4.1]
-        scene[24] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-
-        combs = [1 zeros(1, dP - dQ + length(tau_n) - 1)]
-        vals = [3.1]
-        scene[end] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-        return scene
-    elseif idx_case == 2
-        scene = Vector{Scenario}(undef, 10)
-        VIX_path = raw_macros[sdate(2008, 9):sdate(2009, 6), end]
-        for h in 1:10
-            combs = zeros(1, dP - dQ + length(tau_n))
-            vals = zeros(size(combs, 1))
-
-            combs[1, end] = 1.0
-            vals[1] = 100log(VIX_path[h]) - mean_macros[end]
-            scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
-        end
-        return scene
-    end
-end
-
 tuned = JLD2.load("tuned.jld2")["tuned"]
 p = tuned.p
 tuned = Hyperparameter(p=deepcopy(tuned.p), q=deepcopy(tuned.q), nu0=deepcopy(tuned.ν0), Omega0=deepcopy(tuned.Ω0), mean_phi_const=deepcopy(tuned.μϕ_const))
 
-saved_params, acceptPrMH = posterior_sampler(Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2:end]), tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty)
+# saved_params, acceptPrMH = posterior_sampler(Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2:end]), tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty)
 
-saved_params = saved_params[burnin+1:end]
-iteration = length(saved_params)
+# saved_params = saved_params[burnin+1:end]
+# iteration = length(saved_params)
 
-saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
-iteration = length(saved_params)
+# saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
+# iteration = length(saved_params)
 
-JLD2.save("est.jld2", "saved_params", saved_params)
+# JLD2.save("est.jld2", "saved_params", saved_params)
 saved_params = JLD2.load("est.jld2")["saved_params"]
 
-projections = scenario_analysis([], scenario_TP, scenario_horizon, saved_params[1:end], Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2:end]), tau_n; mean_macros)
+scenario_TP = [12, 24, 60, 120]
+scenario_horizon = 12
 
-for i in 1:2
-    projections = scenario_analysis(gen_scene(i), scenario_TP, scenario_horizon, saved_params[1:iter_sub:end], Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2:end]), tau_n; mean_macros)
+# uncond_projections = scenario_analysis([], scenario_TP, scenario_horizon, saved_params[1:end], Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2:end]), tau_n; mean_macros)
+# JLD2.save("uncond_scenario.jld2", "projections", uncond_projections)
+uncond_projections = JLD2.load("uncond_scenario.jld2")["projections"]
+
+function gen_scene()
+    scene = Vector{Scenario}(undef, 12)
+    for h in 1:12
+        combs = zeros(2, dP - dQ + length(tau_n))
+        vals = zeros(2)
+
+        combs[1, 1] = 1.0
+        combs[2, 18+23] = 1.0
+
+        vals[1] = mean(uncond_projections)[:yields][h, 1] + 1.0
+        vals[2] = mean(uncond_projections)[:factors][h, 3+23] - mean_macros[23] - 0.2h
+        scene[h] = Scenario(combinations=deepcopy(combs), values=deepcopy(vals))
+    end
+    return scene
+end
+# projections = scenario_analysis(gen_scene(), scenario_TP, scenario_horizon, saved_params, Array(yields[18-p+1:end, 2:end]), Array(macros[18-p+1:end, 2:end]), tau_n; mean_macros)
+# JLD2.save("scenario.jld2", "projections", projections)
+
+scenario_start_date = Date("2022-12-01", "yyyy-mm-dd")
+idx_date = sdate(yearmonth(scenario_start_date)...)
+## constructing predictions
+# load results
+raw_projections = JLD2.load("scenario.jld2")["projections"]
+projections = Vector{Forecast}(undef, length(raw_projections))
+for i in eachindex(projections)
+    predicted_factors = deepcopy(raw_projections[i][:factors])
+    for j in 1:dP-dQ
+        if idx_diff[j] == 1 && is_percent[j]
+            predicted_factors[:, dQ+j] = [raw_macros[idx_date, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+        elseif idx_diff[j] == 0 && !is_percent[j]
+            predicted_factors[:, dQ+j] = [logmacros[idx_date-11:idx_date, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+        elseif idx_diff[j] == 1 && !is_percent[j]
+            predicted_factors[:, dQ+j] = [logmacros[idx_date, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-11:idx_date, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+        end
+    end
+    projections[i] = Forecast(yields=deepcopy(raw_projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(raw_projections[i][:TP]))
+end
+
+raw_projections = JLD2.load("uncond_scenario.jld2")["projections"]
+for i in eachindex(projections)
+    predicted_factors = deepcopy(raw_projections[i][:factors])
+    for j in 1:dP-dQ
+        if idx_diff[j] == 1 && is_percent[j]
+            predicted_factors[:, dQ+j] = [raw_macros[idx_date, 1+j]; predicted_factors[:, dQ+j]] |> cumsum |> x -> x[2:end]
+        elseif idx_diff[j] == 0 && !is_percent[j]
+            predicted_factors[:, dQ+j] = [logmacros[idx_date-11:idx_date, j]; predicted_factors[:, dQ+j]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+        elseif idx_diff[j] == 1 && !is_percent[j]
+            predicted_factors[:, dQ+j] = [logmacros[idx_date, j]; predicted_factors[:, dQ+j] ./ 12] |> cumsum |> x -> [logmacros[idx_date-11:idx_date, j]; x[2:end]] |> x -> [x[t] - x[t-12] for t in 13:length(x)]
+        end
+    end
+    projections[i] = Forecast(yields=deepcopy(projections[i][:yields] - raw_projections[i][:yields]), factors=deepcopy(projections[i][:factors] - predicted_factors), TP=deepcopy(projections[i][:TP] - raw_projections[i][:TP]))
+end
+
+for i in eachindex(projections)
+    predicted_factors = deepcopy(projections[i][:factors])
+    for j in 1:dP-dQ
+        if !is_percent[j]
+            for k in 13:size(predicted_factors, 1)
+                predicted_factors[k, dQ+j] += predicted_factors[k-12, dQ+j]
+            end
+        end
+    end
+    projections[i] = Forecast(yields=deepcopy(projections[i][:yields]), factors=deepcopy(predicted_factors), TP=deepcopy(projections[i][:TP]))
 end
