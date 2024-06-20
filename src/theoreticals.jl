@@ -398,7 +398,7 @@ It generates a fitted yield curve.
 """
 function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dQ = saved_latent_params[:latents][1] |> x -> size(x, 2)
     iteration = length(saved_latent_params)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="fitted_YieldCurve...")

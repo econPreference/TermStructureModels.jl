@@ -27,13 +27,13 @@ while ~isstationary(GPXFXF)
 end
 
 # Generating samples
-yields, latents, macros = generative(T, dP, tau_n, p, 0.0001; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF)
+yields, latents, macros = generative(T, dP, tau_n, p, 0.01; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF)
 
 ## Turing hyper-parameters
 diag_G = diag_G[dimQ()+1:end]
 rho = zeros(dP - dimQ())
 rho[diag_G.>0.5] .= 1.0
-medium_tau = collect(36:42)
+medium_tau = collect(30:2:48)
 medium_tau_pr = [truncated(Normal(1, 0.1), -1, 1), truncated(Normal(1, 0.1), -1, 1), truncated(Normal(1, 0.1), -1, 1)]
 std_kQ_infty = 0.2
 tuned, opt = tuning_hyperparameter(yields, macros, tau_n, rho; std_kQ_infty, medium_tau, medium_tau_pr)
@@ -44,10 +44,9 @@ saved_θ, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, 
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = erase_nonstationary_param(saved_θ)
 ineff = ineff_factor(saved_θ)
-saved_Xθ = latentspace(saved_θ, yields, τₙ)
-saved_TP = term_premium(120, τₙ, saved_θ[1:50:end], yields, macros)
-reduced_θ = reducedform(saved_θ, yields, macros, τₙ)
-fits = fitted_YieldCurve(τₙ, saved_Xθ)
+saved_Xθ = latentspace(saved_θ, yields, tau_n)
+saved_TP = term_premium(120, tau_n, saved_θ[1:50:end], yields, macros)
+reduced_θ = reducedform(saved_θ, yields, macros, tau_n)
+fits = fitted_YieldCurve(tau_n, saved_Xθ)
 idx = 18
-plot(mean(fits)[:yields][:, idx])
-plot!(yields[:, idx])
+cor([mean(fits)[:yields][:, idx] yields[:, idx]])
