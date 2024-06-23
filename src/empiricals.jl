@@ -36,6 +36,37 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
 end
 
 """
+    loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+"""
+function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale)
+
+    yields = yields[p+1:end, :] #excludes initial observations
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+    Bₓ_ = Bₓ(bτ_, tau_n)
+    T1X_ = T1X(Bₓ_, Wₚ)
+    Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
+
+    aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
+    Aₓ_ = Aₓ(aτ_, tau_n)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+    Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
+
+    T = size(OCs, 1)
+    dist_mea = MvNormal(diagm(SigmaO))
+    residuals = (OCs' - (Aₚ_ .+ Bₚ_ * PCs'))'
+
+    logpdf_ = 0
+    for t = 1:T
+        logpdf_ += logpdf(dist_mea, residuals[t, :])
+    end
+
+    return logpdf_
+end
+
+"""
     loglik_tran(PCs, macros; phi, varFF)
 It calculate log likelihood of the transition equation. 
 # Output 

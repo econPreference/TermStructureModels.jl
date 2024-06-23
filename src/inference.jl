@@ -197,43 +197,54 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         ψ0 = ones(dP)
     end
     if !(typeof(medium_tau_pr[1]) <: Real)
-        function logpost(x)
-            kappaQ = [x[1]; x[1] + x[2]; x[1] + x[2] + x[3]]
 
-            loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+        ΩPP = OLS_tranQQ(yields, [], tau_n, p)
+        function logpost(x)
+            kappaQ_logpost = cumsum(x[1:dQ])
+            kQ_infty_logpost = x[dQ+1]
+            SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
+            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || minimum(SigmaO_logpost) < eps()
+                return -1e6
+            end
+
             logprior = 0.0
             for i in eachindex(prior_kappaQ_)
-                logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
+                logprior += logpdf(prior_kappaQ_[i], kappaQ_logpost[i])
             end
-            return loglik + logprior
+            return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale)
         end
 
         # Construct the proposal distribution
-        x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-        x_mode = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1)], [1; 0 * ones(length(kappaQ) - 1)], x, Fminbox(LBFGS()), Optim.Options(show_trace=true)) |> Optim.minimizer
-        x_hess = hessian(x -> -logpost(x), x_mode)
+        #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
+        x = [kappaQ[1]; diff(kappaQ[1:end])]
+        init = [x; kQ_infty; log.(SigmaO)]
+        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, Fminbox(LBFGS()), Optim.Options(show_trace=true)) |> Optim.minimizer
+        x_mode = minimizers[1:dQ]
+        x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
         if !isposdef(inv_x_hess)
             C, V = eigen(inv_x_hess)
             C = max.(eps(), C) |> diagm
             inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
         end
+
     end
 
-    isaccept_MH = zeros(dQ)
+    isaccept_MH = zeros(dQ + 1)
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
         if typeof(medium_tau_pr[1]) <: Real
             kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
         else
-            kappaQ = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+            isaccept_MH[end] += isaccept
         end
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))
 
         phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
-        isaccept_MH += isaccept
+        isaccept_MH[1:dQ] += isaccept
 
         SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale))
 
@@ -394,4 +405,50 @@ function longvar(v)
 
     return S * (T / (T - 1))
 
+end
+
+"""
+OLS_tranQQ(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200)
+"""
+function OLS_tranQQ(yields, macros, tau_n, p)
+
+    ## Extracting PCs
+    PCs = PCA(yields, p)[1]
+    N = length(tau_n)
+    dQ = dimQ() + size(yields, 2) - N
+    if isempty(macros)
+        dP = deepcopy(dQ)
+        factors = [PCs yields[:, end-(dQ-dimQ()-1):end]]
+    else
+        dP = dQ + size(macros, 2)
+        factors = [PCs yields[:, end-(dQ-dimQ()-1):end] macros]
+    end
+
+    ## VAR(p) estimation
+    Y = factors[(p+1):end, :]
+    X = ones(size(Y, 1))
+    for i in 1:p
+        X = hcat(X, factors[(p-i+1):(end-i), :])
+    end
+    PHI = (X'X) \ (X'Y)
+    res = Y - X * PHI
+    Omega = res'res / size(Y, 1)
+
+    # ## Transform to the recursive VAR
+    # phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
+    # phi[:, 1] = PHI'[:, 1]
+    # for i in 1:p
+    #     phi[:, 1+dP*(i-1)+1:1+dP*i] = PHI'[:, 1+dP*(i-1)+1:1+dP*i]
+    # end
+    # phi[:, end-dP+1:end] = I(dP)
+    # L, D = LDL(Omega)
+    # varFF = diag(D)
+    # phi = L \ phi
+    # phi[:, end-dP+1:end] -= I(dP)
+    # phi_vec = vec(phi[:, 1:end-dP])
+    # for i in 1:dP
+    #     phi_vec = vcat(phi_vec, phi[i+1:end, end-dP+i])
+    # end
+
+    return Omega
 end

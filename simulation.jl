@@ -34,16 +34,14 @@ diag_G = diag_G[dimQ()+1:end]
 rho = zeros(dP - dimQ())
 rho[diag_G.>0.5] .= 1.0
 medium_tau = collect(24:3:60)
-medium_tau_pr = [truncated(Normal(1, 0.1), -1, 1), truncated(Normal(1, 0.1), -1, 1), truncated(Normal(1, 0.1), -1, 1)]
-diffkappaQ_mode = [0.98, 0.9, 0.8] |> x -> [x[1]; diff(x)]
-diffkappaQ_var = [0.0001, 0.0001, 0.0001] .^ 2
+medium_tau_pr = [truncated(Normal(0.9, 0.05), -1, 1), truncated(Normal(0.9, 0.05), -1, 1), truncated(Normal(0.9, 0.05), -1, 1)]
 std_kQ_infty = 0.2
 tuned, opt = tuning_hyperparameter(yields, macros, tau_n, rho; std_kQ_infty, medium_tau, medium_tau_pr)
 p = tuned.p
 
 ## Estimating
 iteration = 10_000
-saved_θ, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty, medium_tau_pr, diffkappaQ_mode, diffkappaQ_var)
+saved_θ, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty, medium_tau_pr)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = erase_nonstationary_param(saved_θ)
 ineff = ineff_factor(saved_θ)
