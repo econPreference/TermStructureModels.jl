@@ -23,11 +23,11 @@ while ~isstationary(GPXFXF)
     aux -= diagm(diag(aux))
     global diag_G = 0.9rand(dP) .+ 0
     global GPXFXF = [diagm(diag_G) + aux 0.1randn(dP, (p - 1) * dP)]
-    global GPXFXF[1:dimQ(), 1:dimQ()] = diagm([0.98, 0.9, 0.8])
+    global GPXFXF[1:dimQ(), 1:dimQ()] = diagm([0.98, 0.93, 0.88])
 end
 
 # Generating samples
-yields, latents, macros = generative(T, dP, tau_n, p, 0.01; kappaQ=[0.98, 0.9, 0.8], kQ_infty, KPXF, GPXFXF, OmegaXFXF)
+yields, latents, macros = generative(T, dP, tau_n, p, 0.0001; kappaQ=[0.99, 0.94, 0.9], kQ_infty, KPXF, GPXFXF, OmegaXFXF)
 
 ## Turing hyper-parameters
 diag_G = diag_G[dimQ()+1:end]
@@ -91,7 +91,7 @@ fitted_samples = Vector{Matrix}(undef, length(saved_Xθ))
 @showprogress for iter in eachindex(saved_Xθ)
     KPXF = saved_Xθ[iter].KPXF
     GPXFXF = saved_Xθ[iter].GPXFXF
-    OmegaXFXF = saved_Xθ[iter].OmegaXFXF + eps() * I(dP)
+    OmegaXFXF = saved_Xθ[iter].OmegaXFXF + eps() * I(dP) |> x -> 0.5(x + x')
 
     fitted = zeros(size(latentms, 1), dP)
     fitted[1:p, :] = latentms[1:p, :]
