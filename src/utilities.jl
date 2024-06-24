@@ -103,9 +103,9 @@ end
 function hessian(f, x, index=[])
 
     if !(typeof(x) <: Vector)
-        x = deepcopy([x])
+        x = copy([x])
     end
-    x = float.(x) |> deepcopy
+    x = float.(x) |> copy
     if isempty(index)
         index = collect(1:length(x))
     end
@@ -121,7 +121,7 @@ function hessian(f, x, index=[])
 
     g = zeros(k)
     for i in 1:k
-        xee = deepcopy(x)
+        xee = copy(x)
         xee[index] = xarg - ee[:, i]
         g[i] = f(xee)
     end
@@ -130,11 +130,11 @@ function hessian(f, x, index=[])
 
     for i in 1:k
         for j in 1:i
-            xeeij = deepcopy(x)
+            xeeij = copy(x)
             xeeij[index] = xarg - ee[:, i] - ee[:, j]
 
             H[i, j] = (f(xeeij) - g[i] - g[j] + fx) / H[i, j]
-            H[j, i] = deepcopy(H[i, j])
+            H[j, i] = copy(H[i, j])
         end
     end
 

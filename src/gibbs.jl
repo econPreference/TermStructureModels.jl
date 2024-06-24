@@ -146,8 +146,8 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
     isaccept = fill(false, dQ)
     for i in 1:dP
         if i <= dQ
-            prop_phi = deepcopy(phi) # proposal for C
-            prop_varFF = deepcopy(varFF) # proposal for varFF
+            prop_phi = copy(phi) # proposal for C
+            prop_varFF = copy(varFF) # proposal for varFF
 
             mᵢ = mean.(prior_phi_[i, 1:(1+p*dP+i-1)])
             Vᵢ = var.(prior_phi_[i, 1:(1+p*dP+i-1)])
@@ -157,8 +157,8 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
             prob -= loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
 
             if rand() < min(1.0, exp(prob))
-                phi = deepcopy(prop_phi)
-                varFF = deepcopy(prop_varFF)
+                phi = copy(prop_phi)
+                varFF = copy(prop_varFF)
                 isaccept[i] = true
             end
         else

@@ -30,7 +30,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     if isempty(macros)
-        dP = deepcopy(dQ)
+        dP = copy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
@@ -48,7 +48,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
                 mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
             end
             if isempty(macros)
-                mean_phi_const[:, i] = deepcopy(mean_phi_const_PCs)
+                mean_phi_const[:, i] = copy(mean_phi_const_PCs)
             else
                 mean_phi_const[:, i] = [mean_phi_const_PCs; zeros(size(macros, 2))]
             end
@@ -76,7 +76,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
         if isempty(macros)
-            factors = deepcopy(PCs)
+            factors = copy(PCs)
         else
             factors = [PCs macros[(upper_p-p)+1:end, :]]
         end
@@ -85,7 +85,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
         end
 
-        tuned = Hyperparameter(p=deepcopy(p), q=deepcopy(q), nu0=deepcopy(nu0), Omega0=deepcopy(Omega0), mean_phi_const=deepcopy(mean_phi_const[:, p]))
+        tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
         if isempty(macros)
             return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
         else
@@ -108,7 +108,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
     PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
     if isempty(macros)
-        factors = deepcopy(PCs)
+        factors = copy(PCs)
     else
         factors = [PCs macros[(upper_p-p)+1:end, :]]
     end
@@ -117,7 +117,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
 
-    return Hyperparameter(p=deepcopy(p), q=deepcopy(q), nu0=deepcopy(nu0), Omega0=deepcopy(Omega0), mean_phi_const=deepcopy(mean_phi_const[:, p])), opt
+    return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt
 
 end
 
@@ -157,7 +157,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     N = size(yields, 2) # of maturities
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     if isempty(macros)
-        dP = deepcopy(dQ)
+        dP = copy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
@@ -218,7 +218,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
         x = [kappaQ[1]; diff(kappaQ[1:end])]
         init = [x; kQ_infty; log.(SigmaO)]
-        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, Fminbox(LBFGS()), Optim.Options(show_trace=true)) |> Optim.minimizer
+        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, Fminbox(ConjugateGradient()), Optim.Options(show_trace=true)) |> Optim.minimizer
         x_mode = minimizers[1:dQ]
         x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
@@ -250,7 +250,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
         gamma = rand.(post_gamma(; gamma_bar, SigmaO))
 
-        saved_params[iter] = Parameter(kappaQ=deepcopy(kappaQ), kQ_infty=deepcopy(kQ_infty), phi=deepcopy(phi), varFF=deepcopy(varFF), SigmaO=deepcopy(SigmaO), gamma=deepcopy(gamma))
+        saved_params[iter] = Parameter(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma))
 
     end
 
@@ -354,7 +354,7 @@ function ineff_factor(saved_params)
         gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
         SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
         varFF=ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
-        phi=deepcopy(phi_ineff)
+        phi=copy(phi_ineff)
     )
 end
 
@@ -379,7 +379,7 @@ function longvar(v)
     vh = v[2:T]
     vl = v[1:T-1]
     r = (vl'vh) / (vl'vl)
-    rho = deepcopy(r)
+    rho = copy(r)
     e = vh - vl * r
     sig = (e'e) / T
 
@@ -417,7 +417,7 @@ function OLS_tranQQ(yields, macros, tau_n, p)
     N = length(tau_n)
     dQ = dimQ() + size(yields, 2) - N
     if isempty(macros)
-        dP = deepcopy(dQ)
+        dP = copy(dQ)
         factors = [PCs yields[:, end-(dQ-dimQ()-1):end]]
     else
         dP = dQ + size(macros, 2)

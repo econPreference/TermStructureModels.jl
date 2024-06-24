@@ -4,7 +4,7 @@ Pkg.activate(@__DIR__)
 Pkg.instantiate()
 Pkg.precompile()
 using TermStructureModels, ProgressMeter, Distributions, LinearAlgebra, Distributions
-using CSV, DataFrames, XLSX, StatsBase, Dates, JLD2
+using CSV, DataFrames, XLSX, StatsBase, Dates, JLD2, Plots
 
 ## Data setting
 upper_p = 18
@@ -12,6 +12,7 @@ date_start = Date("1987-01-01", "yyyy-mm-dd") |> x -> x - Month(upper_p + 2)
 date_end = Date("2022-12-01", "yyyy-mm-dd")
 tau_n = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
 medium_tau = collect(36:42)
+dP = deepcopy(dimQ())
 
 function data_loading(; date_start, date_end, tau_n)
 
@@ -57,17 +58,18 @@ iteration = length(saved_params)
 ineff = ineff_factor(saved_params)
 
 saved_TP = term_premium(120, tau_n, saved_params[1:iter_sub:end], Array(yields[upper_p-p+1:end, 2:end]), [])
-saved_paramsX = latentspace(saved_params, yields, tau_n)
-reduced_params = reducedform(saved_params, yields, macros, tau_n)
+saved_paramsX = latentspace(saved_params, Array(yields[upper_p-p+1:end, 2:end]), tau_n)
+reduced_params = reducedform(saved_params, Array(yields[upper_p-p+1:end, 2:end]), [], tau_n)
 fits = fitted_YieldCurve(tau_n, saved_paramsX)
+yields = Array(yields[upper_p-p+1:end, 2:end])
 
 idx = 18
 plot(mean(fits)[:yields][:, idx])
 plot!(yields[:, idx])
 
-data = [yields macros]
-factors = [PCA(yields, p)[1] macros]
-latentms = [latents macros]
+data = deepcopy(yields)
+factors = PCA(yields, p)[1]
+latents = mean(saved_paramsX)[:latents]
 # Compare observations and fitted variables of the reducedform transition equation
 fitted_samples = Vector{Matrix}(undef, length(reduced_params))
 @showprogress for iter in eachindex(reduced_params)
@@ -104,24 +106,24 @@ fitted_samples = Vector{Matrix}(undef, length(saved_paramsX))
     GPXFXF = saved_paramsX[iter].GPXFXF
     OmegaXFXF = saved_paramsX[iter].OmegaXFXF + eps() * I(dP) |> x -> 0.5(x + x')
 
-    fitted = zeros(size(latentms, 1), dP)
-    fitted[1:p, :] = latentms[1:p, :]
-    for t in p+1:size(latentms, 1)
-        Xs = latentms[t-1:-1:t-p, :]' |> vec
+    fitted = zeros(size(latents, 1), dP)
+    fitted[1:p, :] = latents[1:p, :]
+    for t in p+1:size(latents, 1)
+        Xs = latents[t-1:-1:t-p, :]' |> vec
         fitted[t, :] = KPXF + GPXFXF * Xs + rand(MvNormal(zeros(dP), OmegaXFXF))
     end
     fitted_samples[iter] = fitted
 end
-idx = 4
-plot(latentms[:, idx])
+idx = 1
+plot(latents[:, idx])
 plot!(mean(fitted_samples)[:, idx])
-aux = Vector{Float64}(undef, size(latentms, 1))
-for t in 1:size(latentms, 1)
+aux = Vector{Float64}(undef, size(latents, 1))
+for t in 1:size(latents, 1)
     aux[t] = quantile([fitted_samples[i][t, idx] for i in eachindex(fitted_samples)], 0.025)
 end
 plot!(aux)
-aux = Vector{Float64}(undef, size(latentms, 1))
-for t in 1:size(latentms, 1)
+aux = Vector{Float64}(undef, size(latents, 1))
+for t in 1:size(latents, 1)
     aux[t] = quantile([fitted_samples[i][t, idx] for i in eachindex(fitted_samples)], 0.975)
 end
 plot!(aux)
@@ -130,11 +132,11 @@ plot!(aux)
 predicted_yields = zeros(size(yields, 1), length(tau_n))
 predicted_factors = zeros(size(yields, 1), dP)
 for t = (size(yields, 1)-10):(size(yields, 1)-1)
-    prediction = conditional_forecasts([], 120, 1, saved_params, yields[1:t, :], macros[1:t, :], tau_n)
+    prediction = conditional_forecasts([], 120, 1, saved_params, yields[1:t, :], [], tau_n)
     predicted_yields[t+1, :] = mean(prediction)[:yields][end, :]
     predicted_factors[t+1, :] = mean(prediction)[:factors][end, :]
 end
-idx = 4
+idx = 1
 plot(factors[(size(yields, 1)-9):(size(yields, 1)), idx])
 plot!(predicted_factors[(size(yields, 1)-9):(size(yields, 1)), idx])
 idx = 18
@@ -146,36 +148,17 @@ predicted_factors = zeros(size(yields, 1), dP)
 for t = (size(yields, 1)-10):(size(yields, 1)-1)
 
     S = zeros(1, dP - dimQ() + length(tau_n))
-    S[1, 19] = 1.0
-    s = [data[t+1, 19]]
+    S[1, 1] = 1.0
+    s = [data[t+1, 1]]
     scene = Scenario(combinations=deepcopy(S), values=deepcopy(s))
 
-    prediction = conditional_forecasts([scene], 120, 1, saved_params, yields[1:t, :], macros[1:t, :], tau_n)
+    prediction = conditional_forecasts([scene], 120, 1, saved_params, yields[1:t, :], [], tau_n)
     predicted_yields[t+1, :] = mean(prediction)[:yields][end, :]
     predicted_factors[t+1, :] = mean(prediction)[:factors][end, :]
 end
-idx = 4
+idx = 1
 plot(factors[(size(yields, 1)-9):(size(yields, 1)), idx])
 plot!(predicted_factors[(size(yields, 1)-9):(size(yields, 1)), idx])
 idx = 18
 plot(yields[(size(yields, 1)-9):(size(yields, 1)), idx])
 plot!(predicted_yields[(size(yields, 1)-9):(size(yields, 1)), idx])
-
-scene = Vector{Scenario}(undef, 4)
-S = zeros(2, dP - dimQ() + length(tau_n))
-s = zeros(2)
-for h = 1:4
-    S[1, 1] = 1.0
-    s[1] = data[size(data, 1)-4+h, 1]
-    S[2, 19] = 1.0
-    s[2] = data[size(data, 1)-4+h, 19]
-    scene[h] = Scenario(combinations=deepcopy(S), values=deepcopy(s))
-end
-prediction = conditional_forecasts(scene, 120, 8, saved_params, yields[1:size(data, 1)-4, :], macros[1:size(data, 1)-4, :], tau_n)
-plot(mean(prediction)[:TP])
-idx = 4
-plot(factors[(end-3):end, idx])
-plot!(mean(prediction)[:factors][:, idx])
-idx = 18
-plot(yields[(end-3):end, idx])
-plot!(mean(prediction)[:yields][:, idx])

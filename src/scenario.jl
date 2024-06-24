@@ -32,7 +32,7 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
         else
             spanned_yield, spanned_F, predicted_TP = _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         end
-        scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
+        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
 
         next!(prog)
     end
@@ -66,7 +66,7 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     end
 
     if isempty(macros)
-        data = deepcopy(PCs)
+        data = copy(PCs)
     else
         data = [PCs macros]
     end
@@ -132,7 +132,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     end
 
     if isempty(macros)
-        data = deepcopy(PCs)
+        data = copy(PCs)
     else
         data = [PCs macros]
     end
@@ -149,10 +149,15 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-        zeros(N - dQ, dP * p + N - dQ)
-        I(dP) zeros(dP, dP * p - dP + N - dQ)
-        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
     G = zeros(k, k)
     G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
@@ -179,8 +184,8 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 
     function filtering_smoothing(S_)
 
-        f_tt = deepcopy(init_f_ll)
-        P_tt = deepcopy(init_P_ll)
+        f_tt = copy(init_f_ll)
+        P_tt = copy(init_P_ll)
         # Kalman filtering
         for t = 1:dh
 
@@ -205,8 +210,8 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
                 precFtm[t] = zeros(size(St, 1))
                 Ktm[t] = zeros(k, size(St, 1))
 
-                f_tt = deepcopy(f_tl)
-                P_tt = deepcopy(P_tl)
+                f_tt = copy(f_tl)
+                P_tt = copy(P_tl)
             end
             idx = diag(P_tt) .< eps()
             P_tt[idx, :] .= 0
@@ -229,7 +234,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
             predicted_errors[t, :] = Ω * ΩFL' * rt
             rt = (St * H)' * ut + G' * rt
             if t == 1
-                r0 = deepcopy(rt)
+                r0 = copy(rt)
             end
         end
 
@@ -249,18 +254,18 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         St = S[1].combinations
         ftm[1, :] = G * init_f_ll + ΩFL * rand(MvNormal(zeros(dP + N - dQ), Ω))
         if maximum(abs.(St)) > 0
-            auxS[1] = Scenario(combinations=deepcopy(St), values=St * μM + St * H * ftm[1, :])
+            auxS[1] = Scenario(combinations=copy(St), values=St * μM + St * H * ftm[1, :])
         else
-            auxS[1] = Scenario(combinations=deepcopy(St), values=zeros(size(St, 1)))
+            auxS[1] = Scenario(combinations=copy(St), values=zeros(size(St, 1)))
         end
 
         for t in 2:dh
             St = S[t].combinations
             ftm[t, :] = G * ftm[t-1, :] + ΩFL * rand(MvNormal(zeros(dP + N - dQ), Ω))
             if maximum(abs.(St)) > 0
-                auxS[t] = Scenario(combinations=deepcopy(St), values=St * μM + St * H * ftm[t, :])
+                auxS[t] = Scenario(combinations=copy(St), values=St * μM + St * H * ftm[t, :])
             else
-                auxS[t] = Scenario(combinations=deepcopy(St), values=zeros(size(St, 1)))
+                auxS[t] = Scenario(combinations=copy(St), values=zeros(size(St, 1)))
             end
         end
 
@@ -337,7 +342,7 @@ function scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros,
         else
             spanned_yield, spanned_F, predicted_TP = _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         end
-        scenarios[iter] = Forecast(yields=deepcopy(spanned_yield), factors=deepcopy(spanned_F), TP=deepcopy(predicted_TP))
+        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
         next!(prog)
     end
     finish!(prog)
@@ -374,7 +379,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     end
 
     if isempty(macros)
-        data = deepcopy(PCs)
+        data = copy(PCs)
     else
         data = [PCs macros]
     end
@@ -390,10 +395,15 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-        zeros(N - dQ, dP * p + N - dQ)
-        I(dP) zeros(dP, dP * p - dP + N - dQ)
-        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
     G = zeros(k, k)
     G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
@@ -422,8 +432,8 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     ## Conditional prediction
     function filtering_smoothing(S_)
 
-        f_tt = deepcopy(init_f_ll)
-        P_tt = deepcopy(init_P_ll)
+        f_tt = copy(init_f_ll)
+        P_tt = copy(init_P_ll)
         # Kalman filtering
         for t = 1:dh
 
@@ -448,8 +458,8 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
                 precFtm[t] = zeros(size(St, 1))
                 Ktm[t] = zeros(k, size(St, 1))
 
-                f_tt = deepcopy(f_tl)
-                P_tt = deepcopy(P_tl)
+                f_tt = copy(f_tl)
+                P_tt = copy(P_tl)
             end
             idx = diag(P_tt) .< eps()
             P_tt[idx, :] .= 0
@@ -472,7 +482,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
             predicted_errors[t, :] = Ω * ΩFL' * rt
             rt = (St * H)' * ut + G' * rt
             if t == 1
-                r0 = deepcopy(rt)
+                r0 = copy(rt)
             end
         end
 
@@ -539,7 +549,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     end
 
     if isempty(macros)
-        data = deepcopy(PCs)
+        data = copy(PCs)
     else
         data = [PCs macros]
     end
@@ -555,10 +565,15 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
 
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-        zeros(N - dQ, dP * p + N - dQ)
-        I(dP) zeros(dP, dP * p - dP + N - dQ)
-        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
     G = zeros(k, k)
     G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
