@@ -64,18 +64,23 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
     dP, dPp = size(ψ) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
     phi0 = Matrix{Any}(undef, dP, dPp + 1)
-    dQ = dimQ() # reduced dimension of yields
 
-    kappaQ_candidate = support(prior_kappaQ_)
-    kappaQ_prob = probs(prior_kappaQ_)
-    GQ_XX_mean = zeros(dQ, dQ)
+    if length(prior_kappaQ_) == 1
+        dQ = dimQ() # reduced dimension of yields
+        kappaQ_candidate = support(prior_kappaQ_)
+        kappaQ_prob = probs(prior_kappaQ_)
+        GQ_XX_mean = zeros(dQ, dQ)
 
-    for i in eachindex(kappaQ_candidate)
-        kappaQ = kappaQ_candidate[i]
-        bτ_ = bτ(tau_n[end]; kappaQ)
-        Bₓ_ = Bₓ(bτ_, tau_n)
-        T1X_ = T1X(Bₓ_, Wₚ)
-        GQ_XX_mean += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob[i]
+        for i in eachindex(kappaQ_candidate)
+            kappaQ = kappaQ_candidate[i]
+            bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_n)
+            T1X_ = T1X(Bₓ_, Wₚ)
+            GQ_XX_mean += (T1X_ * GQ_XX(; kappaQ) / T1X_) .* kappaQ_prob[i]
+        end
+    else
+        dQ = length(prior_kappaQ_)
+        GQ_XX_mean = prior_kappaQ_ |> x -> mean.(x) |> diagm
     end
 
     for i in 1:dQ
@@ -86,15 +91,15 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
         end
         for l = 1:1
             for j in 1:dQ
-                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
             for j in (dQ+1):dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
         end
         for l = 2:p
             for j in 1:dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
         end
     end
@@ -103,9 +108,9 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
-                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
                 else
-                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0)))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
                 end
             end
         end
@@ -115,7 +120,7 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
 end
 
 """
-    Minnesota(l, i, j; q, nu0, Omega0)
+    Minnesota(l, i, j; q, nu0, Omega0, dQ=[])
 It return unscaled prior variance of the Minnesota prior.
 # Input 
 - lag `l`, dependent variable `i`, regressor `j` in the VAR(`p`)
@@ -124,11 +129,14 @@ It return unscaled prior variance of the Minnesota prior.
 # Output
 - Minnesota part in the prior variance
 """
-function Minnesota(l, i, j; q, nu0, Omega0)
+function Minnesota(l, i, j; q, nu0, Omega0, dQ=[])
 
     dP = length(Omega0) # dimension
+    if isempty(dQ)
+        dQ = dimQ() # reduced dimension of yields
+    end
 
-    if i < dimQ() + 1
+    if i < dQ + 1
         if i == j
             Minn_var = q[1, 1]
         else
@@ -162,15 +170,19 @@ The function derive the maximizer decay parameter `kappaQ` that maximize the cur
 """
 function prior_kappaQ(medium_tau, pr) # Default candidates are one to five years
 
-    medium_tauN = length(medium_tau) # the number of candidates
-    kappaQ_candidate = Vector{Float64}(undef, medium_tauN) # support of the prior
+    if typeof(pr[1]) <: Real
+        medium_tauN = length(medium_tau) # the number of candidates
+        kappaQ_candidate = Vector{Float64}(undef, medium_tauN) # support of the prior
 
-    for i in eachindex(medium_tau) # calculate the maximizer kappaQ
-        obj(kappaQ) = dcurvature_dτ(medium_tau[i]; kappaQ)
-        kappaQ_candidate[i] = fzero(obj, 0.001, 2)
+        for i in eachindex(medium_tau) # calculate the maximizer kappaQ
+            obj(kappaQ) = dcurvature_dτ(medium_tau[i]; kappaQ)
+            kappaQ_candidate[i] = fzero(obj, 0.001, 2)
+        end
+
+        return DiscreteNonParametric(kappaQ_candidate, pr)
+    else
+        return pr
     end
-
-    return DiscreteNonParametric(kappaQ_candidate, pr)
 
 end
 
@@ -210,5 +222,5 @@ function prior_gamma(yields, p)
         res_var[i] = var(y - X * ((X'X) \ (X'y)))
     end
 
-    return 1 / mean(res_var)
+    return 1 / mean(res_var), res_var
 end

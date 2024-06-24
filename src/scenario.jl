@@ -54,10 +54,10 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -72,7 +72,7 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     end
     T = size(data, 1)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -119,7 +119,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
@@ -139,7 +139,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     T = size(data, 1)
     dh = length(S)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -149,10 +149,15 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-        zeros(N - dQ, dP * p + N - dQ)
-        I(dP) zeros(dP, dP * p - dP + N - dQ)
-        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
     G = zeros(k, k)
     G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
@@ -359,7 +364,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
@@ -380,7 +385,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     end
     T = size(data, 1)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -390,10 +395,15 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-        zeros(N - dQ, dP * p + N - dQ)
-        I(dP) zeros(dP, dP * p - dP + N - dQ)
-        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
     G = zeros(k, k)
     G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
@@ -526,7 +536,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
     N = length(tau_n)
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
@@ -545,7 +555,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     end
     T = size(data, 1)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
@@ -555,10 +565,15 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
 
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-        zeros(N - dQ, dP * p + N - dQ)
-        I(dP) zeros(dP, dP * p - dP + N - dQ)
-        zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
     G = zeros(k, k)
     G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)

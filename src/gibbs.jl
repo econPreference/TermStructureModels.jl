@@ -7,6 +7,7 @@
 function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale)
 
     dP = length(varFF)
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :]
 
@@ -14,17 +15,21 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
     T = size(yields, 1) # length of dependent variables
     PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
-    ΩPP = phi_varFF_2_ΩPP(; phi, varFF)
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
 
     a0 = zeros(tau_n[end])
     a1 = zeros(tau_n[end])
     for τ in 2:tau_n[end]
         a0[τ] = a0[τ-1] - jensens_inequality(τ, bτ_, T1X_; ΩPP, data_scale)
-        a1[τ] = a1[τ-1] + (τ - 1)
+        if length(kappaQ) > 1
+            a1[τ] = a1[τ-1] + (1 - (kappaQ[1]^(τ - 1))) / (1 - kappaQ[1])
+        else
+            a1[τ] = a1[τ-1] + (τ - 1)
+        end
     end
     A0_kQ_infty = a0[tau_n] ./ tau_n
     A1_kQ_infty = a1[tau_n] ./ tau_n
@@ -71,6 +76,52 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+Reparameterization:
+    kappaQ[1] = x[1]
+    kappaQ[2] = x[1] + x[2]
+    kappaQ[3] = x[1] + x[2] + x[3]
+Jacobian:
+    [1 0 0
+    1 1 0
+    1 1 1]
+The determinant = 1
+"""
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+
+    function logpost(x)
+        kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
+        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+        logprior = 0.0
+        for i in eachindex(prior_kappaQ_)
+            logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
+        end
+        return loglik + logprior
+    end
+
+    # AR step
+    proposal_dist = MvNormal(x_mode, inv_x_hess)
+
+    is_cond = true
+    kappaQ_prop = similar(kappaQ)
+    x_prop = similar(kappaQ)
+    while is_cond
+        x_prop = rand(proposal_dist)
+        kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
+        if sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0
+            is_cond = false
+        end
+    end
+    x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
+    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
+    if log(rand()) < log_MHPr
+        return kappaQ_prop, true
+    else
+        return kappaQ, false
+    end
+end
+
+"""
     post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 Full-conditional posterior sampler for `phi` and `varFF` 
 # Input
@@ -82,7 +133,7 @@ Full-conditional posterior sampler for `phi` and `varFF`
 """
 function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(ψ, 1)
     p = Int(size(ψ)[2] / dP)
     PCs, ~, Wₚ = PCA(yields, p)
@@ -155,12 +206,12 @@ Posterior sampler for the measurement errors
 function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
     yields = yields[p+1:end, :]
 
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     N = length(tau_n)
     T = size(yields, 1)
     PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
 
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)

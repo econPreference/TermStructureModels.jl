@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[])
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_strong_EH=false)
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -23,20 +23,21 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_pure_EH=false)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_strong_EH=false)
+
 
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
     end
 
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     if isempty(macros)
         dP = copy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    if isempty(kappaQ_prior_pr)
+        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
@@ -44,7 +45,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     if isempty(mean_phi_const) && is_pure_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(mean_phi_const, 2)
-            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, medium_tau_pr)[1] |> x -> mean(x, dims=1)[1, :]
+            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr)[1] |> x -> mean(x, dims=1)[1, :]
             if !isempty(mean_phi_const_PC1)
                 mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
             end
@@ -53,7 +54,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             else
                 mean_phi_const[:, i] = [mean_phi_const_PCs; zeros(size(macros, 2))]
             end
-            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, medium_tau_pr, τ=120)[2]
+            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, kappaQ_prior_pr, τ=120)[2]
             println("For lag $i, mean_phi_const[1:dQ] is $mean_phi_const_PCs ,")
             println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
             println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
@@ -88,9 +89,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
         if isempty(macros)
-            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, medium_tau_pr, fix_const_PC1)
+            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
         else
-            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, medium_tau_pr, fix_const_PC1)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
         end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -143,7 +144,7 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 This is a posterior distribution sampler.
 # Input
 - `iteration`: # of posterior samples
@@ -152,33 +153,37 @@ This is a posterior distribution sampler.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     if isempty(macros)
         dP = copy(dQ)
     else
         dP = dQ + size(macros, 2)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    if isempty(kappaQ_prior_pr)
+        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
     Wₚ = PCA(yields, p)[3]
-    prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
+    prior_kappaQ_ = prior_kappaQ(medium_tau, kappaQ_prior_pr)
     if isempty(gamma_bar)
-        gamma_bar = prior_gamma(yields, p)
+        gamma_bar = prior_gamma(yields, p)[1]
     end
 
     if typeof(init_param) == Parameter
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
-        kappaQ = 0.0609
+        if typeof(kappaQ_prior_pr[1]) <: Real
+            kappaQ = 0.0609
+        else
+            kappaQ = [0.99, 0.95, 0.9]
+        end
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
         phi[1:dQ, 2:(dQ+1)] = T1X_ * GQ_XX(; kappaQ) / T1X_
@@ -193,19 +198,57 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(ψ0)
         ψ0 = ones(dP)
     end
+    if !(typeof(kappaQ_prior_pr[1]) <: Real)
 
-    isaccept_MH = zeros(dQ)
+        ΩPP = OLS_tranQQ(yields, [], tau_n, p)
+        function logpost(x)
+            kappaQ_logpost = cumsum(x[1:dQ])
+            kQ_infty_logpost = x[dQ+1]
+            SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
+            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || minimum(SigmaO_logpost) < eps()
+                return -Inf
+            end
+
+            logprior = 0.0
+            for i in eachindex(prior_kappaQ_)
+                logprior += logpdf(prior_kappaQ_[i], kappaQ_logpost[i])
+            end
+            return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale)
+        end
+
+        # Construct the proposal distribution
+        #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
+        x = [kappaQ[1]; diff(kappaQ[1:end])]
+        init = [x; kQ_infty; log.(SigmaO)]
+        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, Fminbox(ConjugateGradient()), Optim.Options(show_trace=true)) |> Optim.minimizer
+        x_mode = minimizers[1:dQ]
+        x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
+        inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
+        if !isposdef(inv_x_hess)
+            C, V = eigen(inv_x_hess)
+            C = max.(eps(), C) |> diagm
+            inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
+        end
+
+    end
+
+    isaccept_MH = zeros(dQ + 1)
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
-        kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
+        if typeof(kappaQ_prior_pr[1]) <: Real
+            kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
+        else
+            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+            isaccept_MH[end] += isaccept
+        end
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))
 
         phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
-        isaccept_MH += isaccept
+        isaccept_MH[1:dQ] += isaccept
 
-        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF), gamma, p, data_scale))
+        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale))
 
         gamma = rand.(post_gamma(; gamma_bar, SigmaO))
 
@@ -242,7 +285,7 @@ function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPX
     XF = XF[end-T+1:end, :]
 
     # Generating yields
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
 
     ΩXX = OmegaXFXF[1:dQ, 1:dQ]
@@ -302,17 +345,17 @@ function ineff_factor(saved_params)
     end
     finish!(prog)
 
-    phi_ineff = ineff[2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)+1:end] |> x -> reshape(x, size(saved_params[:phi][1], 1), size(saved_params[:phi][1], 2))
+    phi_ineff = ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)+1:end] |> x -> reshape(x, size(saved_params[:phi][1], 1), size(saved_params[:phi][1], 2))
     dP = size(phi_ineff, 1)
     for i in 1:dP, j in i:dP
         phi_ineff[i, end-dP+j] = 0
     end
     return (;
-        kappaQ=ineff[1],
-        kQ_infty=ineff[2],
-        gamma=ineff[2+1:2+length(init_gamma)],
-        SigmaO=ineff[2+length(init_gamma)+1:2+length(init_gamma)+length(init_SigmaO)],
-        varFF=ineff[2+length(init_gamma)+length(init_SigmaO)+1:2+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
+        kappaQ=ineff[1:length(init_kappaQ)],
+        kQ_infty=ineff[length(init_kappaQ)+1],
+        gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
+        SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
+        varFF=ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
         phi=copy(phi_ineff)
     )
 end
@@ -364,4 +407,50 @@ function longvar(v)
 
     return S * (T / (T - 1))
 
+end
+
+"""
+OLS_tranQQ(yields, macros, tau_n, p; init_kappaQ=[0.99, 0.96, 0.94], data_scale=1200)
+"""
+function OLS_tranQQ(yields, macros, tau_n, p)
+
+    ## Extracting PCs
+    PCs = PCA(yields, p)[1]
+    N = length(tau_n)
+    dQ = dimQ() + size(yields, 2) - N
+    if isempty(macros)
+        dP = copy(dQ)
+        factors = [PCs yields[:, end-(dQ-dimQ()-1):end]]
+    else
+        dP = dQ + size(macros, 2)
+        factors = [PCs yields[:, end-(dQ-dimQ()-1):end] macros]
+    end
+
+    ## VAR(p) estimation
+    Y = factors[(p+1):end, :]
+    X = ones(size(Y, 1))
+    for i in 1:p
+        X = hcat(X, factors[(p-i+1):(end-i), :])
+    end
+    PHI = (X'X) \ (X'Y)
+    res = Y - X * PHI
+    Omega = res'res / size(Y, 1)
+
+    # ## Transform to the recursive VAR
+    # phi = Matrix{Float64}(undef, dP, 1 + dP * (p + 1))
+    # phi[:, 1] = PHI'[:, 1]
+    # for i in 1:p
+    #     phi[:, 1+dP*(i-1)+1:1+dP*i] = PHI'[:, 1+dP*(i-1)+1:1+dP*i]
+    # end
+    # phi[:, end-dP+1:end] = I(dP)
+    # L, D = LDL(Omega)
+    # varFF = diag(D)
+    # phi = L \ phi
+    # phi[:, end-dP+1:end] -= I(dP)
+    # phi_vec = vec(phi[:, 1:end-dP])
+    # for i in 1:dP
+    #     phi_vec = vcat(phi_vec, phi[i+1:end, end-dP+i])
+    # end
+
+    return Omega
 end

@@ -9,14 +9,46 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
     dP = length(varFF)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :] #excludes initial observations
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
 
     PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
 
-    ΩPP = phi_varFF_2_ΩPP(; phi, varFF)
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
+    aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
+    Aₓ_ = Aₓ(aτ_, tau_n)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+    Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
+
+    T = size(OCs, 1)
+    dist_mea = MvNormal(diagm(SigmaO))
+    residuals = (OCs' - (Aₚ_ .+ Bₚ_ * PCs'))'
+
+    logpdf_ = 0
+    for t = 1:T
+        logpdf_ += logpdf(dist_mea, residuals[t, :])
+    end
+
+    return logpdf_
+end
+
+"""
+    loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+"""
+function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale)
+
+    yields = yields[p+1:end, :] #excludes initial observations
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+    Bₓ_ = Bₓ(bτ_, tau_n)
+    T1X_ = T1X(Bₓ_, Wₚ)
+    Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
+
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
@@ -106,14 +138,16 @@ function LDL(X)
 end
 
 """
-    phi_varFF_2_ΩPP(; phi, varFF)
+    phi_varFF_2_ΩPP(; phi, varFF, dQ=[])
 It construct `ΩPP` from statistical parameters.
 # Output
 - `ΩPP`
 """
-function phi_varFF_2_ΩPP(; phi, varFF)
+function phi_varFF_2_ΩPP(; phi, varFF, dQ=[])
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     ~, C = phi_2_phi₀_C(; phi)
 
     CQQ = C[1:dQ, 1:dQ]
@@ -217,7 +251,7 @@ It converts posterior samples in terms of the reduced form VAR parameters.
 """
 function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -244,7 +278,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
         GPFF = phi0[:, 2:end]
         OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
         aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
@@ -274,7 +308,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 end
 
 """
-    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
+    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
@@ -286,9 +320,9 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
-function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
+function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
 
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
     if isempty(macros)
@@ -305,8 +339,8 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     if isempty(mean_phi_const_PCs)
         mean_phi_const_PCs = zeros(dQ)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    if isempty(kappaQ_prior_pr)
+        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
 
     prior_TP = Vector{Float64}(undef, iteration)
@@ -317,10 +351,10 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
         else
             ΩPP = (nu0 - dP - 1) * diagm(OmegaFF_mean) |> x -> InverseWishart(nu0, x) |> rand |> x -> x[1:dQ, 1:dQ]
         end
-        kappaQ = prior_kappaQ(medium_tau, medium_tau_pr) |> rand
+        kappaQ = prior_kappaQ(medium_tau, kappaQ_prior_pr) |> rand
         kQ_infty = Normal(mean_kQ_infty, std_kQ_infty) |> rand
 
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
 

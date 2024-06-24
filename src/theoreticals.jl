@@ -7,28 +7,31 @@
 - slope matrix of the Q-conditional mean of `X`
 """
 function GQ_XX(; kappaQ)
-    X = [1 0 0
-        0 exp(-kappaQ) 1
-        0 0 exp(-kappaQ)]
+    if length(kappaQ) == 1
+        X = [1 0 0
+            0 exp(-kappaQ) 1
+            0 0 exp(-kappaQ)]
+    else
+        X = diagm(kappaQ)
+    end
     return X
 end
 
 """
     dimQ()
-It returns the dimension of Q-dynamics.
+It returns the dimension of Q-dynamics under the standard ATSM.
 """
 function dimQ()
     return 3
 end
 
 """
-    bτ(N; kappaQ)
+    bτ(N; kappaQ, dQ)
 It solves the difference equation for `bτ`.
 # Output
 - for maturity `i`, `bτ[:, i]` is a vector of factor loadings.
 """
-function bτ(N; kappaQ)
-    dQ = dimQ()
+function bτ(N; kappaQ, dQ)
     GQ_XX_ = GQ_XX(; kappaQ)
     ι = ones(dQ)
 
@@ -77,15 +80,18 @@ The function has two methods(multiple dispatch).
 """
 function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
 
+    dQ = size(ΩPP, 1)
+
     a = zeros(N)
     T1X_ = T1X(Bₓ(bτ_, tau_n), Wₚ)
     for i in 2:N
-        a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + (i - 1) * kQ_infty
+        a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + bτ_[:, i-1]' * [kQ_infty; zeros(dQ - 1)]
     end
 
     return a
 end
 function aτ(N, bτ_; kQ_infty, ΩXX, data_scale)
+    dQ = size(ΩXX, 1)
 
     a = zeros(N)
     for i in 2:N
@@ -93,7 +99,7 @@ function aτ(N, bτ_; kQ_infty, ΩXX, data_scale)
         J = bτ_[:, i-1]' * J * bτ_[:, i-1]
         J /= data_scale
 
-        a[i] = a[i-1] - J + (i - 1) * kQ_infty
+        a[i] = a[i-1] - J + bτ_[:, i-1]' * [kQ_infty; zeros(dQ - 1)]
     end
 
     return a
@@ -182,7 +188,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
     jensen /= -τ
 
     # Constant term
-    dQ = dimQ()
+    dQ = size(ΩPP, 1)
     KQ_X = zeros(dQ)
     KQ_X[1] = copy(kQ_infty)
     KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
@@ -246,7 +252,7 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
 
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -265,7 +271,7 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         GPFF = phi0[:, 2:end]
         OmegaFF = (C \ diagm(varFF)) / C'
 
-        bτ_ = bτ(tau_n[end]; kappaQ)
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
 
@@ -333,13 +339,13 @@ Notation `XF` is for the latent factor space and notation `F` is for the PC stat
 function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
 
     dP = size(OmegaFF, 1)
-    dQ = dimQ()
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
     dM = dP - dQ # of macro variables
     p = Int(size(GPFF, 2) / dP)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
     # statistical Parameters
-    bτ_ = bτ(tau_n[end]; kappaQ)
+    bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
     T1P_ = inv(T1X_)
@@ -392,7 +398,7 @@ It generates a fitted yield curve.
 """
 function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 
-    dQ = dimQ()
+    dQ = saved_latent_params[:latents][1] |> x -> size(x, 2)
     iteration = length(saved_latent_params)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="fitted_YieldCurve...")
@@ -404,7 +410,7 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
         OmegaXFXF = saved_latent_params[:OmegaXFXF][iter]
 
         # statistical Parameters
-        bτ_ = bτ(τ0[end]; kappaQ)
+        bτ_ = bτ(τ0[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, τ0)
         aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
         Aₓ_ = Aₓ(aτ_, τ0)
@@ -424,7 +430,7 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
 end
 
 """
-    PCA(yields, p, proxies=[]; rescaling=false)
+    PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
 It derives the principal components from `yields`.
 # Input
 - `yields[p+1:end, :]` is used to construct the affine transformation, and then all `yields[:,:]` are transformed into the principal components.
@@ -438,9 +444,11 @@ It derives the principal components from `yields`.
 - `mean_PCs`: the mean of `PCs` before demeaned.
 - `PCs` are demeaned.
 """
-function PCA(yields, p, proxies=[]; rescaling=false)
+function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
 
-    dQ = dimQ()
+    if isempty(dQ)
+        dQ = dimQ()
+    end
     ## z-score case
     # std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
     # std_yields ./= std(yields[p+1:end, :], dims=1)

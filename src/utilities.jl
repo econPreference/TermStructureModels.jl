@@ -96,3 +96,47 @@ function quantile(x::Vector{<:PosteriorSample}, q)
     end
     return eltype(x)(args...)
 end
+
+"""
+    hessian(f, x, index=[])
+"""
+function hessian(f, x, index=[])
+
+    if !(typeof(x) <: Vector)
+        x = copy([x])
+    end
+    x = float.(x) |> copy
+    if isempty(index)
+        index = collect(1:length(x))
+    end
+
+    k = length(index)
+    fx = f(x)
+    xarg = x[index]
+
+    h = eps() .^ (1 / 3) * max.(abs.(xarg), 1e-2)
+    xargh = x[index] - h
+    h = x[index] - xargh
+    ee = diagm(h)
+
+    g = zeros(k)
+    for i in 1:k
+        xee = copy(x)
+        xee[index] = xarg - ee[:, i]
+        g[i] = f(xee)
+    end
+
+    H = h * h'
+
+    for i in 1:k
+        for j in 1:i
+            xeeij = copy(x)
+            xeeij[index] = xarg - ee[:, i] - ee[:, j]
+
+            H[i, j] = (f(xeeij) - g[i] - g[j] + fx) / H[i, j]
+            H[j, i] = copy(H[i, j])
+        end
+    end
+
+    return (H + H') / 2
+end
