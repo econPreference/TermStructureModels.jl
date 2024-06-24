@@ -29,7 +29,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
                                         data_scale=1200,
                                         kappaQ_prior_pr=[],
                                         init_nu0=[],
-                                        is_strong_EH=false)
+                                        is_pure_EH=false)
 ```
 
 Note that the default upper bound of `p` is `upper_p=18`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
@@ -60,7 +60,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 !!! note "Prior Belief about the Expectation Hypothesis"
 
-    Our algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the strong form of EH, where the term premium is zero, set `is_strong_EH=true`. However, note that using this option may take some initial time to numerically set the prior distribution.
+    Our algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the pure EH, where the term premium is zero, set `is_pure_EH=true`. However, note that using this option may take some initial time to numerically set the prior distribution.
 
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
