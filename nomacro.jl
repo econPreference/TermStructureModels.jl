@@ -37,17 +37,18 @@ upper_q =
         10 10
         100 100] .+ 0.0
 std_kQ_infty = 0.2
+kappaQ_prior_pr = [truncated(Normal(0.9, 0.05), -1, 1), truncated(Normal(0.9, 0.05), -1, 1), truncated(Normal(0.9, 0.05), -1, 1)]
 
 # estimation
 iteration = 5_000
 burnin = 1_000
 
-function estimation(; upper_p, tau_n, medium_tau, iteration, burnin, yields, std_kQ_infty)
+function estimation(; upper_p, tau_n, medium_tau, iteration, burnin, yields, std_kQ_infty, kappaQ_prior_pr)
 
     tuned = JLD2.load("tuned.jld2")["tuned"]
     p = tuned.p
 
-    saved_θ, acceptPrMH = posterior_sampler(Array(yields[upper_p-p+1:end, 2:end]), [], tau_n, [], iteration, tuned; medium_tau, std_kQ_infty)
+    saved_θ, acceptPrMH = posterior_sampler(Array(yields[upper_p-p+1:end, 2:end]), [], tau_n, [], iteration, tuned; medium_tau, std_kQ_infty, kappaQ_prior_pr)
     saved_θ = saved_θ[burnin+1:end]
     iteration = length(saved_θ)
 
@@ -67,7 +68,7 @@ end
 
 ## Do
 
-tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), [], tau_n, []; upper_p=1, upper_q, std_kQ_infty, medium_tau)
+tuned, opt = tuning_hyperparameter(Array(yields[:, 2:end]), [], tau_n, []; upper_p=1, upper_q, std_kQ_infty, medium_tau, kappaQ_prior_pr)
 JLD2.save("tuned.jld2", "tuned", tuned, "opt", opt)
 
-estimation(; upper_p, tau_n, medium_tau, iteration, burnin, yields, std_kQ_infty)
+estimation(; upper_p, tau_n, medium_tau, iteration, burnin, yields, std_kQ_infty, kappaQ_prior_pr)
