@@ -1,5 +1,5 @@
 """
-    log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, medium_tau_pr, fix_const_PC1)
+    log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
 This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
 # Input
 - tuned is a point where the marginal likelihood is evaluated. 	
@@ -7,11 +7,11 @@ This file calculates a value of our marginal likelihood. Only the transition equ
 # Output
 - the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, medium_tau_pr, fix_const_PC1)
+function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
 
     p, nu0, Omega0, q, mean_phi_const = tuned.p, tuned.nu0, tuned.Omega0, tuned.q, tuned.mean_phi_const
 
-    prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
+    prior_kappaQ_ = prior_kappaQ(medium_tau, kappaQ_prior_pr)
     dP = length(Omega0)
 
     if isempty(ψ)

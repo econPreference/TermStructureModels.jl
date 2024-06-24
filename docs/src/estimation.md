@@ -27,7 +27,7 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
                                         upper_p=18,
                                         mean_phi_const_PC1=[],
                                         data_scale=1200,
-                                        medium_tau_pr=[],
+                                        kappaQ_prior_pr=[],
                                         init_nu0=[],
                                         is_strong_EH=false)
 ```
@@ -73,7 +73,7 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
                                             ψ=[],
                                             ψ0=[],
                                             gamma_bar=[],
-                                            medium_tau_pr=[],
+                                            kappaQ_prior_pr=[],
                                             mean_kQ_infty=0,
                                             std_kQ_infty=0.1,
                                             fix_const_PC1=false,

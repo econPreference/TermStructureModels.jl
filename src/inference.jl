@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false)
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_strong_EH=false)
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -22,7 +22,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, medium_tau_pr=[], init_nu0=[], is_strong_EH=false)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_strong_EH=false)
 
     if isempty(upper_nu0) == true
         upper_nu0 = size(yields, 1)
@@ -34,8 +34,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     else
         dP = dQ + size(macros, 2)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    if isempty(kappaQ_prior_pr)
+        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
@@ -43,7 +43,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     if isempty(mean_phi_const) && is_strong_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(mean_phi_const, 2)
-            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, medium_tau_pr)[1] |> x -> mean(x, dims=1)[1, :]
+            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr)[1] |> x -> mean(x, dims=1)[1, :]
             if !isempty(mean_phi_const_PC1)
                 mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
             end
@@ -52,7 +52,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             else
                 mean_phi_const[:, i] = [mean_phi_const_PCs; zeros(size(macros, 2))]
             end
-            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, medium_tau_pr, τ=120)[2]
+            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, kappaQ_prior_pr, τ=120)[2]
             println("For lag $i, mean_phi_const[1:dQ] is $mean_phi_const_PCs ,")
             println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
             println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
@@ -87,9 +87,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         tuned = Hyperparameter(p=deepcopy(p), q=deepcopy(q), nu0=deepcopy(nu0), Omega0=deepcopy(Omega0), mean_phi_const=deepcopy(mean_phi_const[:, p]))
         if isempty(macros)
-            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, medium_tau_pr, fix_const_PC1)
+            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
         else
-            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, medium_tau_pr, fix_const_PC1)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
         end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -142,7 +142,7 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 This is a posterior distribution sampler.
 # Input
 - `iteration`: # of posterior samples
@@ -151,7 +151,7 @@ This is a posterior distribution sampler.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], medium_tau_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -161,11 +161,11 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     else
         dP = dQ + size(macros, 2)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    if isempty(kappaQ_prior_pr)
+        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
     Wₚ = PCA(yields, p)[3]
-    prior_kappaQ_ = prior_kappaQ(medium_tau, medium_tau_pr)
+    prior_kappaQ_ = prior_kappaQ(medium_tau, kappaQ_prior_pr)
     if isempty(gamma_bar)
         gamma_bar = prior_gamma(yields, p)[1]
     end
@@ -174,7 +174,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
-        if typeof(medium_tau_pr[1]) <: Real
+        if typeof(kappaQ_prior_pr[1]) <: Real
             kappaQ = 0.0609
         else
             kappaQ = [0.99, 0.95, 0.9]
@@ -196,7 +196,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(ψ0)
         ψ0 = ones(dP)
     end
-    if !(typeof(medium_tau_pr[1]) <: Real)
+    if !(typeof(kappaQ_prior_pr[1]) <: Real)
 
         ΩPP = OLS_tranQQ(yields, [], tau_n, p)
         function logpost(x)
@@ -234,7 +234,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
-        if typeof(medium_tau_pr[1]) <: Real
+        if typeof(kappaQ_prior_pr[1]) <: Real
             kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
         else
             kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)

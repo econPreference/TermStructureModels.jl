@@ -308,7 +308,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 end
 
 """
-    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
+    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
@@ -320,7 +320,7 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
-function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, medium_tau_pr=[], τ=[])
+function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
@@ -339,8 +339,8 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     if isempty(mean_phi_const_PCs)
         mean_phi_const_PCs = zeros(dQ)
     end
-    if isempty(medium_tau_pr)
-        medium_tau_pr = length(medium_tau) |> x -> ones(x) / x
+    if isempty(kappaQ_prior_pr)
+        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
 
     prior_TP = Vector{Float64}(undef, iteration)
@@ -351,7 +351,7 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
         else
             ΩPP = (nu0 - dP - 1) * diagm(OmegaFF_mean) |> x -> InverseWishart(nu0, x) |> rand |> x -> x[1:dQ, 1:dQ]
         end
-        kappaQ = prior_kappaQ(medium_tau, medium_tau_pr) |> rand
+        kappaQ = prior_kappaQ(medium_tau, kappaQ_prior_pr) |> rand
         kQ_infty = Normal(mean_kQ_infty, std_kQ_infty) |> rand
 
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
