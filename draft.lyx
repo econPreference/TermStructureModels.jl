@@ -136,27 +136,6 @@ Technical Notes for the ATSM
 
 \shape smallcaps
 Sunho Lee
-\shape default
-
-\begin_inset Foot
-status collapsed
-
-\begin_layout Plain Layout
-Ph.D.
- candidate,
- Department of Economics,
- Korea University,
- Seoul,
- South Korea,
- Email:
- preference@korea.ac.kr,
- Tel:
- +82-2-3290-2200.
-\end_layout
-
-\end_inset
-
- 
 \end_layout
 
 \begin_layout Section
@@ -806,9 +785,10 @@ O_{(N-d_{\mathbb{Q}})\times1}
  & =\begin{pmatrix}W_{\mathcal{P}}\mathcal{A}_{X}-c\\
 O_{d_{z}\times1}\\
 W_{\mathcal{O}}\mathcal{A}_{X}
-\end{pmatrix}+\begin{pmatrix} & W_{\mathcal{P}}\mathcal{B}{}_{X}\\
-O_{d_{z}\times3} & I_{d_{z}}\\
- & W_{\mathcal{O}}\mathcal{B}{}_{X}
+\end{pmatrix}+\begin{pmatrix}W_{\mathcal{P}}\mathcal{B}{}_{X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}\\
+W_{\mathcal{O}}\mathcal{B}{}_{X}
 \end{pmatrix}X_{t}+\begin{bmatrix}O_{d_{\mathbb{Q}}\times1}\\
 O_{d_{z}\times1}\\
 e_{\mathcal{O},t}
@@ -828,8 +808,9 @@ The inverse of the transformation would be
 Z_{t}
 \end{bmatrix} & =\begin{bmatrix}\mathcal{T}_{0,X}\\
 O_{d_{z}\times1}
-\end{bmatrix}+\begin{pmatrix} & \mathcal{T}_{1,X}\\
-O_{d_{z}\times3} & I_{d_{z}}
+\end{bmatrix}+\begin{pmatrix}\mathcal{T}_{1,X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}
 \end{pmatrix}X_{t},
 \end{align*}
 
@@ -838,12 +819,14 @@ O_{d_{z}\times3} & I_{d_{z}}
 and the transformation is 
 \begin_inset Formula 
 \begin{align*}
-X_{t}=-\begin{pmatrix} & \mathcal{T}_{1,X}\\
-O_{d_{z}\times3} & I_{d_{z}}
+X_{t}=-\begin{pmatrix}\mathcal{T}_{1,X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}
 \end{pmatrix}^{-1}\begin{bmatrix}\mathcal{T}_{0,X}\\
 O_{d_{z}\times1}
-\end{bmatrix}+\begin{pmatrix} & \mathcal{T}_{1,X}\\
-O_{d_{z}\times3} & I_{d_{z}}
+\end{bmatrix}+\begin{pmatrix}\mathcal{T}_{1,X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}
 \end{pmatrix}^{-1}\begin{bmatrix}\mathcal{P}_{t}-c\\
 Z_{t}
 \end{bmatrix}.
@@ -885,15 +868,6 @@ G_{\mathcal{PP},l}^{\mathbb{P}} & \text{otherwise,}
 \end_inset
 
 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "CheriditoFK07"
-literal "false"
-
-\end_inset
-
-.
- 
 \end_layout
 
 \begin_layout Standard
@@ -1570,16 +1544,7 @@ Term premiums
 \end_layout
 
 \begin_layout Standard
-According to 
-\begin_inset CommandInset citation
-LatexCommand citet
-key "CochraneP08"
-literal "false"
-
-\end_inset
-
-,
- the term premium is
+The term premium is
 \begin_inset Formula 
 \begin{align}
 TP_{\tau,t} & =\frac{1}{\tau}\sum_{i=1}^{\tau-1}\mathbb{E}_{t}^{\mathbb{P}}exr_{\tau-i+1,t+i-1},\label{eq:TP}\\
@@ -2034,14 +1999,7 @@ Instead of using the InverseWishart-InverseWishart update,
 \end_layout
 
 \begin_layout Proposition
-\begin_inset CommandInset citation
-LatexCommand citep
-key "chan2022asymmetric"
-literal "true"
-
-\end_inset
-
- Consider the following normal-inverse-gamma priors on the diagonal elements of 
+Consider the following normal-inverse-gamma priors on the diagonal elements of 
 \begin_inset Formula $\Sigma$
 \end_inset
 
@@ -2267,21 +2225,12 @@ nolink "false"
 \begin{align*}
 \mathbb{E}[(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}] & =\mathbb{E}[\mathbb{E}[(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}|G_{\mathcal{FF},l}^{\mathbb{P}},\tilde{\Omega}_{\mathcal{FF}}]],\\
  & =\mathbb{E}[\mathbb{E}[G_{\mathcal{FF},l,(i,j)}^{\mathbb{P}}+\sum_{k=1}^{i-1}\mathcal{C}_{ik}(G_{\mathcal{FF},l}^{\mathbb{P}})_{(k,j)}|G_{\mathcal{FF},l}^{\mathbb{P}},\tilde{\Omega}_{\mathcal{FF}}]],\\
- & =\mathbb{E}[G_{\mathcal{FF},l,(i,j)}^{\mathbb{P}}]
+ & =\mathbb{E}[G_{\mathcal{FF},l,(i,j)}^{\mathbb{P}}].
 \end{align*}
 
 \end_inset
 
-
-\begin_inset CommandInset citation
-LatexCommand citep
-key "chan2022asymmetric"
-literal "true"
-
-\end_inset
-
-.
- Therefore,
+Therefore,
  we can use prior means of 
 \begin_inset Formula $\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
 \end_inset
@@ -2343,16 +2292,7 @@ Therefore,
 
 \begin_layout Standard
 A remaining thing is to set prior variances.
- We follow 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "chan2021minnesotatype"
-literal "false"
-
-\end_inset
-
-,
- so our prior variances are
+ Our prior variances are
 \begin_inset Formula 
 \begin{align*}
 \frac{Var[(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}]}{\sigma_{\mathcal{FF},i}^{2}} & =\underbrace{\psi_{l,ij}}_{local}\cdot\underbrace{\frac{q_{slope}}{l^{q_{lag}}}\frac{(\nu_{0}-d_{\mathbb{P}}-1)}{\Omega_{0,(j)}}}_{Minnesota},\\
@@ -2396,15 +2336,7 @@ that reminds us that
 \begin_inset Formula $\eta_{\psi}=1$
 \end_inset
 
- corresponds to the Bayesian Lasso 
-\begin_inset CommandInset citation
-LatexCommand citep
-key "park2008thebayesian"
-literal "false"
-
-\end_inset
-
-.
+ corresponds to the Bayesian Lasso.
  In the case of the intercept,
 \begin_inset Formula 
 \begin{align*}
@@ -3384,21 +3316,12 @@ Hyperparameters,
 \begin{align*}
  & \sum_{i=1}^{d_{\mathbb{P}}}\log\mathcal{N}(y_{\phi_{i}}|p,\nu_{0},\Omega_{0},q,\psi_{l,ij},\psi_{0,i})\\
 = & -\frac{Td_{\mathbb{P}}}{2}\log[2\pi]+\sum_{i=1}^{d_{\mathbb{P}}}\{-\frac{1}{2}(\sum_{j=1}^{\#\phi_{i}}\log[V_{i,(j)}]+\log\det[K_{\phi_{i}}])\\
- & +\log\Gamma(\nu_{i}+\frac{T}{2})+\nu_{i}\log S_{i}-\log\Gamma(\nu_{i})-(\nu_{i}+\frac{T}{2})\log[\hat{S}_{i}]\}
+ & +\log\Gamma(\nu_{i}+\frac{T}{2})+\nu_{i}\log S_{i}-\log\Gamma(\nu_{i})-(\nu_{i}+\frac{T}{2})\log[\hat{S}_{i}]\}.
 \end{align*}
 
 \end_inset
 
-
-\begin_inset CommandInset citation
-LatexCommand citep
-key "chan2022asymmetric"
-literal "true"
-
-\end_inset
-
-.
- Here,
+Here,
  
 \begin_inset Formula $\nu_{i}=(\nu_{0}+i-d_{\mathbb{P}})/2$
 \end_inset
@@ -3504,16 +3427,7 @@ Sparsity on the covariance matrix
 \end_layout
 
 \begin_layout Standard
-Using 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "hauzenberger2021combining"
-literal "true"
-
-\end_inset
-
-,
- we post-processing posterior samples of 
+We post-processing posterior samples of 
 \begin_inset Formula $\Omega_{\mathcal{FF}}$
 \end_inset
 
@@ -3710,31 +3624,6 @@ Using the above state space and the Kalman filter,
 
 ,
  the posterior distribution is sampled by only using the predictive part in the Kalman filter.
-\end_layout
-
-\begin_layout Standard
-\begin_inset Newpage newpage
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset CommandInset bibtex
-LatexCommand bibtex
-bibfiles "mybib"
-options "asa"
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Newpage newpage
-\end_inset
-
-
 \end_layout
 
 \begin_layout Section
