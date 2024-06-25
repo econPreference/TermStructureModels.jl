@@ -99,6 +99,7 @@ end
 
 """
     hessian(f, x, index=[])
+It calculates the Hessian matrix of a scalar function `f` at `x`. If `index` is not empty, it calculates the Hessian matrix of the function with respect to the selected variables.
 """
 function hessian(f, x, index=[])
 

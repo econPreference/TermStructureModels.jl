@@ -77,15 +77,16 @@ end
 
 """
     post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
-Reparameterization:
+It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. `x_mode` and `inv_x_hess` constitute the mean and variance of the Normal proposal distribution.
+- Reparameterization:
     kappaQ[1] = x[1]
     kappaQ[2] = x[1] + x[2]
     kappaQ[3] = x[1] + x[2] + x[3]
-Jacobian:
+- Jacobian:
     [1 0 0
     1 1 0
     1 1 1]
-The determinant = 1
+- The determinant = 1
 """
 function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
 

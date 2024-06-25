@@ -37,6 +37,7 @@ end
 
 """
     loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+This function is the same as `loglik_mea` but it requires ΩPP as an input.
 """
 function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale)
 
