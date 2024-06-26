@@ -62,7 +62,7 @@ end
 - `T1X`
 """
 function T1X(Bₓ_, Wₚ)
-    dQ = size(Bₓ, 1)
+    dQ = size(Bₓ_, 2)
     return [Wₚ * Bₓ_; zeros(dQ - dimQ(), dimQ()) I(dQ - dimQ())]
 end
 
@@ -140,7 +140,7 @@ end
 - `T0P`
 """
 function T0P(T1X_, Aₓ_, Wₚ, c)
-    dQ = size(T1X, 1)
+    dQ = size(T1X_, 1)
     return -T1X_ \ [Wₚ * Aₓ_ - c; zeros(dQ - dimQ())]
 end
 
@@ -451,6 +451,13 @@ It derives the principal components from `yields`.
 """
 function PCA(yields, p; spanned=[], proxies=[], rescaling=false, n_PCs=[])
 
+    if isempty(spanned)
+        dZ = 0
+    else
+        dZ = size(spanned, 2)
+    end
+
+    yields = yields[:, 1:(end-dZ)]
     if isempty(n_PCs)
         n_PCs = dimQ()
     end

@@ -157,7 +157,7 @@ This is a posterior distribution sampler.
 function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
-    N = size(yields, 2) # of maturities
+    N = length(tau_n) # of maturities
     dZ = size(yields, 2) - length(tau_n)
     dQ = dimQ() + dZ
     if isempty(macros)
@@ -181,7 +181,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         if typeof(kappaQ_prior_pr[1]) <: Real
             kappaQ = 0.0609
         else
-            kappaQ = [0.99, 0.95, 0.9]
+            kappaQ = 0.9 .+ 0.1rand(dQ) |> x -> sort(x, rev=true)
         end
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
@@ -190,8 +190,8 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         T1X_ = T1X(Bₓ_, Wₚ)
         phi[1:dQ, 2:(dQ+1)] = T1X_ * GQ_XX(; kappaQ) / T1X_
         varFF = [Omega0[i] / (nu0 + i - dP) for i in eachindex(Omega0)]
-        SigmaO = 1 ./ fill(gamma_bar, N - dQ)
-        gamma = 1 ./ fill(gamma_bar, N - dQ)
+        SigmaO = 1 ./ fill(gamma_bar, N - dimQ())
+        gamma = 1 ./ fill(gamma_bar, N - dimQ())
         ########################
     end
     if isempty(ψ)
@@ -206,7 +206,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         function logpost(x)
             kappaQ_logpost = cumsum(x[1:dQ])
             kQ_infty_logpost = x[dQ+1]
-            SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
+            SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dimQ()] |> x -> exp.(x)
             if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || minimum(SigmaO_logpost) < eps()
                 return -Inf
             end
@@ -220,9 +220,9 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
         # Construct the proposal distribution
         #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
-        x = [kappaQ[1]; diff(kappaQ[1:end])]
+        x = [kappaQ[1]; diff(kappaQ)]
         init = [x; kQ_infty; log.(SigmaO)]
-        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, Fminbox(ConjugateGradient()), Optim.Options(show_trace=true)) |> Optim.minimizer
+        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dimQ())], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dimQ())], init, Fminbox(ConjugateGradient()), Optim.Options(show_trace=true)) |> Optim.minimizer
         x_mode = minimizers[1:dQ]
         x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
@@ -424,10 +424,10 @@ function mle_error_covariance(yields, macros, tau_n, p)
 
     if isempty(macros)
         dP = copy(dQ)
-        factors = [PCs yields[:, end-(dQ-dimQ()-1):end]]
+        factors = PCs |> copy
     else
         dP = dQ + size(macros, 2)
-        factors = [PCs yields[:, end-(dQ-dimQ()-1):end] macros]
+        factors = [PCs macros] |> copy
     end
 
     ## VAR(p) estimation

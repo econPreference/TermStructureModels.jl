@@ -24,30 +24,30 @@ while ~isstationary(GPXFXF)
     aux -= diagm(diag(aux))
     global diag_G = 0.9rand(dP) .+ 0
     global GPXFXF = [diagm(diag_G) + aux 0.1randn(dP, (p - 1) * dP)]
-    global GPXFXF[1:dimQ(), 1:dimQ()] = diagm([0.98, 0.93, 0.88])
+    global GPXFXF[1:dQ, 1:dQ] = diagm([0.98, 0.93, 0.88, 0.8])
 end
 
 # Generating samples
-yields, latents, macros = generative(T, dQ, dP, tau_n, p, 0.0001; kappaQ=[0.99, 0.94, 0.9], kQ_infty, KPXF, GPXFXF, OmegaXFXF)
+yields, latents, macros = generative(T, dQ, dP, tau_n, p, 0.0001; kappaQ=[0.99, 0.94, 0.9, 0.85], kQ_infty, KPXF, GPXFXF, OmegaXFXF)
 
 ## Turing hyper-parameters
-diag_G = diag_G[dimQ()+1:end]
-rho = zeros(dP - dimQ())
+diag_G = diag_G[dQ+1:end]
+rho = zeros(dP - dQ)
 rho[diag_G.>0.5] .= 1.0
 medium_tau = collect(24:3:60)
-kappaQ_prior_pr = [truncated(Normal(0.9, 0.05), -1, 1), truncated(Normal(0.9, 0.05), -1, 1), truncated(Normal(0.9, 0.05), -1, 1)]
+kappaQ_prior_pr = fill(truncated(Normal(0.9, 0.05), -1, 1), dQ)
 std_kQ_infty = 0.2
-tuned, opt = tuning_hyperparameter(yields, macros, tau_n, rho; std_kQ_infty, medium_tau, kappaQ_prior_pr)
+tuned, opt = tuning_hyperparameter([yields latents[:, 4]], macros, tau_n, rho; std_kQ_infty, medium_tau, kappaQ_prior_pr, upper_p=3)
 p = tuned.p
 
 ## Estimating
 iteration = 10_000
-saved_θ, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty, kappaQ_prior_pr)
+saved_θ, acceptPrMH = posterior_sampler([yields latents[:, 4]], macros, tau_n, rho, iteration, tuned; medium_tau, std_kQ_infty, kappaQ_prior_pr)
 saved_θ = saved_θ[round(Int, 0.1iteration):end]
 saved_θ, accept_rate = erase_nonstationary_param(saved_θ)
 ineff = ineff_factor(saved_θ)
-saved_Xθ = latentspace(saved_θ, yields, tau_n)
-saved_TP = term_premium(120, tau_n, saved_θ[1:50:end], yields, macros)
+saved_Xθ = latentspace(saved_θ, [yields latents[:, 4]], tau_n)
+saved_TP = term_premium(120, tau_n, saved_θ[1:50:end], [yields latents[:, 4]], macros)
 reduced_θ = reducedform(saved_θ, yields, macros, tau_n)
 fits = fitted_YieldCurve(tau_n, saved_Xθ)
 
@@ -135,7 +135,7 @@ predicted_yields = zeros(size(yields, 1), length(tau_n))
 predicted_factors = zeros(size(yields, 1), dP)
 for t = (size(yields, 1)-10):(size(yields, 1)-1)
 
-    S = zeros(1, dP - dimQ() + length(tau_n))
+    S = zeros(1, dP - dQ + length(tau_n))
     S[1, 19] = 1.0
     s = [data[t+1, 19]]
     scene = Scenario(combinations=deepcopy(S), values=deepcopy(s))
@@ -152,7 +152,7 @@ plot(yields[(size(yields, 1)-9):(size(yields, 1)), idx])
 plot!(predicted_yields[(size(yields, 1)-9):(size(yields, 1)), idx])
 
 scene = Vector{Scenario}(undef, 4)
-S = zeros(2, dP - dimQ() + length(tau_n))
+S = zeros(2, dP - dQ + length(tau_n))
 s = zeros(2)
 for h = 1:4
     S[1, 1] = 1.0

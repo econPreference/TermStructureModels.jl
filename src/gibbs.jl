@@ -92,7 +92,7 @@ It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` u
 function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
 
     function logpost(x)
-        kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
+        kappaQ = cumsum(x)
         loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
@@ -109,12 +109,12 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
     x_prop = similar(kappaQ)
     while is_cond
         x_prop = rand(proposal_dist)
-        kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
+        kappaQ_prop = cumsum(x_prop)
         if sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0
             is_cond = false
         end
     end
-    x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
+    x = [kappaQ[1]; diff(kappaQ)]
     log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
     if log(rand()) < log_MHPr
         return kappaQ_prop, true
@@ -204,7 +204,7 @@ end
     post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
 Posterior sampler for the measurement errors
 # Output
-- `Vector{Dist}(IG, N-dQ)`
+- `Vector{Dist}(IG, N-dimQ())`
 """
 function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
     yields = yields[p+1:end, :]
@@ -225,8 +225,8 @@ function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
 
-    post_SigmaO_ = Vector{Any}(undef, N - dQ)
-    for i in 1:N-dQ
+    post_SigmaO_ = Vector{Any}(undef, N - dimQ())
+    for i in 1:N-dimQ()
         residuals = OCs[:, i] - (Aₚ_[i] .+ (Bₚ_[i, :]' * PCs')')
         post_SigmaO_[i] = InverseGamma(2 + 0.5T, gamma[i] + 0.5residuals'residuals)
     end

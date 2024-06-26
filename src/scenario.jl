@@ -84,11 +84,11 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     spanned_factors = Matrix{Float64}(undef, T + horizon, dP)
     spanned_yield = Matrix{Float64}(undef, T + horizon, N)
     spanned_factors[1:T, :] = data
-    spanned_yield[1:T, :] = yields
+    spanned_yield[1:T, :] = yields[:, 1:end-dZ]
     for t in (T+1):(T+horizon) # predicted period
         X = spanned_factors[t-1:-1:t-p, :] |> (X -> vec(X'))
         spanned_factors[t, :] = KPF + GPFF * X + rand(MvNormal(zeros(dP), OmegaFF))
-        mea_error = W_inv * [rand(MvNormal(zeros(N - dQ), Matrix(diagm(SigmaO)))); zeros(dQ)]
+        mea_error = W_inv * [rand(MvNormal(zeros(N - dimQ()), Matrix(diagm(SigmaO)))); zeros(dQ)]
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
@@ -123,7 +123,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     dZ = size(yields, 2) - length(tau_n)
     dQ = dimQ() + dZ
     dP = size(OmegaFF, 1)
-    k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
+    k = size(GPFF, 2) + N - dimQ() + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
     W = [Wₒ; Wₚ]
@@ -152,36 +152,36 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
     if p == 1
-        G_sub = [GPFF zeros(dP, N - dQ)
-            zeros(N - dQ, dP + N - dQ)]
+        G_sub = [GPFF zeros(dP, N - dimQ())
+            zeros(N - dimQ(), dP + N - dimQ())]
     else
-        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-            zeros(N - dQ, dP * p + N - dQ)
-            I(dP) zeros(dP, dP * p - dP + N - dQ)
-            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dimQ()) GPFF[:, dP+1:end]
+            zeros(N - dimQ(), dP * p + N - dimQ())
+            I(dP) zeros(dP, dP * p - dP + N - dimQ())
+            zeros(dP * p - 2dP, dP + N - dimQ()) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
     end
     G = zeros(k, k)
-    G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
+    G[1:dP*p+N-dimQ(), 1:dP*p+N-dimQ()] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
     G[end-dP+1:end, end-dP+1:end] = I(dP)
 
-    Ω = zeros(dP + N - dQ, dP + N - dQ)
+    Ω = zeros(dP + N - dimQ(), dP + N - dimQ())
     Ω[1:dP, 1:dP] = OmegaFF
     Ω[dP+1:end, dP+1:end] = diagm(SigmaO)
-    ΩFL = [I(dP) zeros(dP, N - dQ)
-        zeros(N - dQ, dP) I(N - dQ)
-        zeros(dP * p, dP + N - dQ)]
+    ΩFL = [I(dP) zeros(dP, N - dimQ())
+        zeros(N - dimQ(), dP) I(N - dimQ())
+        zeros(dP * p, dP + N - dimQ())]
     # Measurement equation: Y(t) = μM + H*F(t), where Y(t): N + (dP-dQ) vector
     μM = [Aₓ_ + Bₓ_ * T0P_
         zeros(dP - dQ)]
-    H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p)
-        zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dQ)]
+    H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dimQ()] zeros(N, dP * p)
+        zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dimQ())]
 
     ## Kalman filtering & smoothing
     precFtm = Vector{Vector}(undef, dh)
     Ktm = Vector{Matrix}(undef, dh)
-    W_mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
-    init_f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dQ]; x[dP+1:end]; ones(dP)]
+    W_mea_error = yields[end, 1:end-dZ] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
+    init_f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dimQ()]; x[dP+1:end]; ones(dP)]
     init_P_ll = zeros(k, k)
 
     function filtering_smoothing(S_)
@@ -223,7 +223,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 
         ## Backward recursion
         predicted_F = zeros(dh, k)  # T by k
-        predicted_errors = zeros(dh, dP + N - dQ)  # T by k
+        predicted_errors = zeros(dh, dP + N - dimQ())  # T by k
         rt = zeros(k)
         r0 = 0
 
@@ -254,7 +254,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         ftm = Matrix{Float64}(undef, dh, k)
 
         St = S[1].combinations
-        ftm[1, :] = G * init_f_ll + ΩFL * rand(MvNormal(zeros(dP + N - dQ), Ω))
+        ftm[1, :] = G * init_f_ll + ΩFL * rand(MvNormal(zeros(dP + N - dimQ()), Ω))
         if maximum(abs.(St)) > 0
             auxS[1] = Scenario(combinations=copy(St), values=St * μM + St * H * ftm[1, :])
         else
@@ -263,7 +263,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 
         for t in 2:dh
             St = S[t].combinations
-            ftm[t, :] = G * ftm[t-1, :] + ΩFL * rand(MvNormal(zeros(dP + N - dQ), Ω))
+            ftm[t, :] = G * ftm[t-1, :] + ΩFL * rand(MvNormal(zeros(dP + N - dimQ()), Ω))
             if maximum(abs.(St)) > 0
                 auxS[t] = Scenario(combinations=copy(St), values=St * μM + St * H * ftm[t, :])
             else
@@ -283,15 +283,15 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     spanned_factors = Matrix{Float64}(undef, T + horizon, dP)
     spanned_yield = Matrix{Float64}(undef, T + horizon, N)
     spanned_factors[1:T, :] = data
-    spanned_yield[1:T, :] = yields
+    spanned_yield[1:T, :] = yields[:, 1:end-dZ]
     spanned_factors[(T+1):(T+dh), :] = predicted_F[:, 1:dP]
     for t in (T+1):(T+horizon) # predicted period
         if t > T + dh
             X = spanned_factors[t-1:-1:t-p, :] |> X -> vec(X')
             spanned_factors[t, :] = KPF + GPFF * X + rand(MvNormal(zeros(dP), OmegaFF))
-            mea_error = W_inv * [rand(MvNormal(zeros(N - dQ), Matrix(diagm(SigmaO)))); zeros(dQ)]
+            mea_error = W_inv * [rand(MvNormal(zeros(N - dimQ()), Matrix(diagm(SigmaO)))); zeros(dQ)]
         else
-            mea_error = W_inv * [predicted_F[t-T, dP+1:dP+N-dQ]; zeros(dQ)]
+            mea_error = W_inv * [predicted_F[t-T, dP+1:dP+N-dimQ()]; zeros(dQ)]
         end
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
@@ -369,7 +369,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     dZ = size(yields, 2) - length(tau_n)
     dQ = dimQ() + dZ
     dP = size(OmegaFF, 1)
-    k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
+    k = size(GPFF, 2) + N - dimQ() + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
 
@@ -399,37 +399,37 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
     if p == 1
-        G_sub = [GPFF zeros(dP, N - dQ)
-            zeros(N - dQ, dP + N - dQ)]
+        G_sub = [GPFF zeros(dP, N - dimQ())
+            zeros(N - dimQ(), dP + N - dimQ())]
     else
-        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-            zeros(N - dQ, dP * p + N - dQ)
-            I(dP) zeros(dP, dP * p - dP + N - dQ)
-            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dimQ()) GPFF[:, dP+1:end]
+            zeros(N - dimQ(), dP * p + N - dimQ())
+            I(dP) zeros(dP, dP * p - dP + N - dimQ())
+            zeros(dP * p - 2dP, dP + N - dimQ()) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
     end
     G = zeros(k, k)
-    G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
+    G[1:dP*p+N-dimQ(), 1:dP*p+N-dimQ()] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
     G[end-dP+1:end, end-dP+1:end] = I(dP)
 
-    Ω = zeros(dP + N - dQ, dP + N - dQ)
+    Ω = zeros(dP + N - dimQ(), dP + N - dimQ())
     Ω[1:dP, 1:dP] = OmegaFF
     Ω[dP+1:end, dP+1:end] = diagm(SigmaO)
-    ΩFL = [I(dP) zeros(dP, N - dQ)
-        zeros(N - dQ, dP) I(N - dQ)
-        zeros(dP * p, dP + N - dQ)]
+    ΩFL = [I(dP) zeros(dP, N - dimQ())
+        zeros(N - dimQ(), dP) I(N - dimQ())
+        zeros(dP * p, dP + N - dimQ())]
     # Measurement equation: Y(t) = μM + H*F(t), where Y(t): N + (dP-dQ) vector
     μM = [Aₓ_ + Bₓ_ * T0P_
         zeros(dP - dQ)]
-    H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p)
-        zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dQ)]
+    H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dimQ()] zeros(N, dP * p)
+        zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dimQ())]
 
     ## initializing
     # for conditional prediction
     precFtm = Vector{Vector}(undef, dh)
     Ktm = Vector{Matrix}(undef, dh)
-    W_mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
-    init_f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dQ]; x[dP+1:end]; ones(dP)]
+    W_mea_error = yields[end, 1:end-dZ] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
+    init_f_ll = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dimQ()]; x[dP+1:end]; ones(dP)]
     init_P_ll = zeros(k, k)
 
     ## Conditional prediction
@@ -472,7 +472,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 
         ## Backward recursion
         predicted_F = zeros(dh, k)  # T by k
-        predicted_errors = zeros(dh, dP + N - dQ)  # T by k
+        predicted_errors = zeros(dh, dP + N - dimQ())  # T by k
         rt = zeros(k)
         r0 = 0
 
@@ -501,7 +501,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     spanned_factors = Matrix{Float64}(undef, T + horizon, dP)
     spanned_yield = Matrix{Float64}(undef, T + horizon, N)
     spanned_factors[1:T, :] = data
-    spanned_yield[1:T, :] = yields
+    spanned_yield[1:T, :] = yields[:, 1:end-dZ]
     spanned_factors[(T+1):(T+dh), :] = predicted_F[:, 1:dP]
     for t in (T+1):(T+horizon) # predicted period
         if t > T + dh
@@ -542,7 +542,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     dZ = size(yields, 2) - length(tau_n)
     dQ = dimQ() + dZ
     dP = size(OmegaFF, 1)
-    k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
+    k = size(GPFF, 2) + N - dimQ() + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
 
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
@@ -570,31 +570,31 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     ## Construct the Kalman filter parameters
     # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
     if p == 1
-        G_sub = [GPFF zeros(dP, N - dQ)
-            zeros(N - dQ, dP + N - dQ)]
+        G_sub = [GPFF zeros(dP, N - dimQ())
+            zeros(N - dimQ(), dP + N - dimQ())]
     else
-        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-            zeros(N - dQ, dP * p + N - dQ)
-            I(dP) zeros(dP, dP * p - dP + N - dQ)
-            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dimQ()) GPFF[:, dP+1:end]
+            zeros(N - dimQ(), dP * p + N - dimQ())
+            I(dP) zeros(dP, dP * p - dP + N - dimQ())
+            zeros(dP * p - 2dP, dP + N - dimQ()) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
     end
     G = zeros(k, k)
-    G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
+    G[1:dP*p+N-dimQ(), 1:dP*p+N-dimQ()] = G_sub
     G[1:dP, end-dP+1:end] = diagm(KPF)
     G[end-dP+1:end, end-dP+1:end] = I(dP)
 
-    Ω = zeros(dP + N - dQ, dP + N - dQ)
+    Ω = zeros(dP + N - dimQ(), dP + N - dimQ())
     Ω[1:dP, 1:dP] = OmegaFF
     Ω[dP+1:end, dP+1:end] = diagm(SigmaO)
-    ΩFL = [I(dP) zeros(dP, N - dQ)
-        zeros(N - dQ, dP) I(N - dQ)
-        zeros(dP * p, dP + N - dQ)]
+    ΩFL = [I(dP) zeros(dP, N - dimQ())
+        zeros(N - dimQ(), dP) I(N - dimQ())
+        zeros(dP * p, dP + N - dimQ())]
 
     ## initializing for unconditional_prediction
-    W_mea_error = yields[end, :] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
+    W_mea_error = yields[end, 1:end-dZ] - (Aₓ_ + Bₓ_ * T0P_) - Bₓ_ * T1P_ * data[end, 1:dQ] |> x -> W * x
     f_ttm_u = zeros(horizon, k)
     P_ttm_u = zeros(k, k, horizon)
-    f_ll_u = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dQ]; x[dP+1:end]; ones(dP)]
+    f_ll_u = data[end:-1:(end-p+1), :] |> (X -> vec(X')) |> x -> [x[1:dP]; W_mea_error[1:N-dimQ()]; x[dP+1:end]; ones(dP)]
     P_ll_u = zeros(k, k)
     yields_u = zeros(horizon, N)
 
@@ -613,7 +613,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     spanned_factors_u = Matrix{Float64}(undef, T + horizon, dP)
     spanned_yield_u = Matrix{Float64}(undef, T + horizon, N)
     spanned_factors_u[1:T, :] = data
-    spanned_yield_u[1:T, :] = yields
+    spanned_yield_u[1:T, :] = yields[:, 1:end-dZ]
     spanned_factors_u[(T+1):end, :] = f_ttm_u[:, 1:dP]
     spanned_yield_u[(T+1):end, :] = yields_u
 
