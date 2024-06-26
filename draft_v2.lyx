@@ -1,0 +1,4518 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+%2multibyte Version: 5.50.0.2960 CodePage: 65001
+%\usepackage{geometry}
+%\usepackage{fancyhdr}
+%\usepackage[paperwidth=188mm,paperheight=257mm,
+%left=2.5cm,right=1.5cm,top=3cm,bottom=1cm,   includefoot,heightrounded]%
+%{geometry}%
+%\voffset 0.46cm \topmargin 0cm \headheight 0cm \headsep 0cm
+%\hoffset -0.04cm \oddsidemargin 0cm \textwidth 14.8cm
+
+\usepackage[toc,page]{appendix}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage[singlespacing]{setspace}
+\usepackage{float}
+\usepackage{lscape}
+\usepackage{placeins}
+\usepackage{longtable}
+\usepackage{rotating}
+\usepackage{lscape}
+\usepackage{pdflscape}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage[bottom]{footmisc}
+\usepackage{caption} 
+\setcounter{MaxMatrixCols}{30}
+%BeginMSIPreambleData
+\providecommand{\U}[1]{\protect\rule{.1in}{.1in}}
+%EndMSIPreambleData
+%\newtheorem{theorem}{Theorem}\newtheorem{acknowledgement}[theorem]{Acknowledgement}\newtheorem{algorithm}[theorem]{Algorithm}\newtheorem{axiom}[theorem]{Axiom}\newtheorem{case}[theorem]{Case}\newtheorem{claim}[theorem]{Claim}\newtheorem{conclusion}[theorem]{Conclusion}\newtheorem{condition}[theorem]{Condition}\newtheorem{conjecture}[theorem]{Conjecture}\newtheorem{corollary}[theorem]{Corollary}\newtheorem{criterion}[theorem]{Criterion}\newtheorem{definition}[theorem]{Definition}\newtheorem{example}[theorem]{Example}\newtheorem{exercise}[theorem]{Exercise}\newtheorem{lemma}[theorem]{Lemma}\newtheorem{notation}[theorem]{Notation}\newtheorem{problem}[theorem]{Problem}\newtheorem{proposition}[theorem]{Proposition}\newtheorem{remark}[theorem]{Remark}\newtheorem{solution}[theorem]{Solution}\newtheorem{summary}[theorem]{Summary}\newenvironment{proof}[1][Proof]{\noindent\textbf{#1.} }{\ \rule{0.5em}{0.5em}}
+\topmargin -.7in \textheight 8.7in \oddsidemargin .20in \evensidemargin .20in \textwidth 6.2in
+\baselineskip=21pt 
+\captionsetup[table]{skip=3pt}
+\allowdisplaybreaks
+\end_preamble
+\use_default_options false
+\begin_modules
+theorems-ams
+theorems-ams-extended
+\end_modules
+\maintain_unincluded_children no
+\language english
+\language_package none
+\inputencoding utf8
+\fontencoding default
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 12
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 2
+\use_package amssymb 2
+\use_package cancel 0
+\use_package esint 1
+\use_package mathdots 0
+\use_package mathtools 0
+\use_package mhchem 0
+\use_package stackrel 0
+\use_package stmaryrd 0
+\use_package undertilde 0
+\cite_engine natbib
+\cite_engine_type authoryear
+\biblio_style plainnat
+\biblio_options round,longnamesfirst
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 0
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\end_header
+
+\begin_body
+
+\begin_layout Title
+
+\series bold
+Technical Notes for the ATSM
+\end_layout
+
+\begin_layout Author
+
+\shape smallcaps
+Sunho Lee
+\end_layout
+
+\begin_layout Section
+Bond pricing model
+\end_layout
+
+\begin_layout Subsection
+JSZ normalization
+\end_layout
+
+\begin_layout Standard
+The short-term interest rate 
+\begin_inset Formula $r_{t}$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\begin{align}
+\underset{(1\times1)}{r_{t}} & =\underset{(1\times d_{\mathbb{Q}})}{\iota^{\prime}}\underset{(d_{\mathbb{Q}}\times1)}{X_{t}},\label{eq:r}
+\end{align}
+
+\end_inset
+
+where 
+\begin_inset Formula $\iota$
+\end_inset
+
+ is a vector of ones.
+ 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics is 
+\begin_inset Formula 
+\begin{align}
+\underset{(d_{\mathbb{Q}}\times1)}{X_{t}} & =\underset{(d_{\mathbb{Q}}\times1)}{K_{X}^{\mathbb{Q}}}+\underset{(d_{\mathbb{Q}}\times d_{\mathbb{Q}})}{G_{XX}^{\mathbb{Q}}}X_{t-1}+\underset{(d_{\mathbb{Q}}\times1)}{\epsilon_{X,t}^{\mathbb{Q}}},\label{eq:Q_X}\\
+K_{X}^{\mathbb{Q}} & \equiv\begin{bmatrix}\underset{(1\times1)}{k_{\infty}^{\mathbb{Q}}} & O_{1\times(d_{\mathbb{Q}}-1)}\end{bmatrix}^{\prime}\nonumber \\
+G_{XX}^{\mathbb{Q}} & =Jordan(3),\nonumber \\
+\epsilon_{X,t}^{\mathbb{Q}} & \backsim\mathcal{N}(O_{d_{\mathbb{Q}}\times1},\Omega_{XX}).\nonumber 
+\end{align}
+
+\end_inset
+
+We justify our specific form of 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-eigenvalues in 
+\begin_inset Formula $G_{XX}^{\mathbb{Q}}$
+\end_inset
+
+ by the below proposition.
+ 
+\end_layout
+
+\begin_layout Proposition
+\begin_inset CommandInset label
+LatexCommand label
+name "prop:JSZ"
+
+\end_inset
+
+When the eigenvalues of 
+\begin_inset Formula $G_{XX}^{\mathbb{Q}}-I_{d_{\mathbb{Q}}}$
+\end_inset
+
+ is restricted to 
+\begin_inset Formula $\{0,\exp(-\kappa^{\mathbb{Q}})-1,\exp(-\kappa^{\mathbb{Q}})-1\}$
+\end_inset
+
+,
+ the restricted JSZ model with is observationally equivalent to the AFNS model.
+\end_layout
+
+\begin_layout Proof
+See Appendix 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:proof_JSZ"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Setting prior belief about 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is easy,
+ because 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is just the DNS decay parameter.
+ It is easy to modify our model to estimate unrestricted 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-eigenvalues if we have reasonable prior belief.
+ Reflecting a prior belief on the eigenvalues and estimate unrestricted eigenvalues is straight-forward.
+ Considering a great cross-sectional fit of the DNS model,
+ the restriction on the 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-eigenvalues is supported empirically.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics is 
+\begin_inset Formula 
+\begin{align*}
+\underbrace{\begin{bmatrix}\underset{(d_{\mathbb{Q}}\times1)}{X_{t}}\\
+M_{t}
+\end{bmatrix}}_{F_{t}:d_{\mathbb{P}}\times1} & =\underbrace{\begin{bmatrix}\underset{(d_{\mathbb{Q}}\times1)}{K_{X}^{\mathbb{P}}}\\
+K_{M}^{\mathbb{P}}
+\end{bmatrix}}_{K_{F}^{\mathbb{P}}:d_{\mathbb{P}}\times1}+\sum_{l=1}^{p}\underbrace{\begin{pmatrix}\underset{(d_{\mathbb{Q}}\times d_{\mathbb{Q}})}{G_{XX,l}^{\mathbb{P}}} & G_{XM,l}^{\mathbb{P}}\\
+G_{MX,l}^{\mathbb{P}} & G_{MM,l}^{\mathbb{P}}
+\end{pmatrix}}_{G_{FF,l}^{\mathbb{P}}:d_{\mathbb{P}}\times d_{\mathbb{P}}}\begin{bmatrix}X_{t-l}\\
+M_{t-l}
+\end{bmatrix}+\underbrace{\begin{bmatrix}\underset{(d_{\mathbb{Q}}\times1)}{\epsilon_{X,t}^{\mathbb{P}}}\\
+\epsilon_{M,t}^{\mathbb{P}}
+\end{bmatrix}}_{\epsilon_{F,t}^{\mathbb{P}}:d_{\mathbb{P}}\times1},\\
+\epsilon_{F,t}^{\mathbb{P}} & \backsim\mathcal{N}(O_{d_{\mathbb{P}}\times1},\underbrace{\Omega_{FF}}_{d_{\mathbb{P}}\times d_{\mathbb{P}}}\equiv\begin{pmatrix}\underbrace{\Omega_{XX}}_{d_{\mathbb{Q}}\times d_{\mathbb{Q}}} & \Omega_{MX}^{\prime}\\
+\Omega_{MX} & \Omega_{MM}
+\end{pmatrix}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Bond price
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Bond-price"
+
+\end_inset
+
+Our guess about the bond price formula is 
+\begin_inset Formula 
+\begin{equation}
+P_{\tau,t}=\exp[-a_{\tau}-b_{\tau}^{\prime}X_{t}].\label{eq:pricing}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We verify our guess with the method of undetermined coefficients.
+ Under 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-measure,
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+P_{\tau,t}=\mathbb{E}_{t}^{\mathbb{Q}}[\exp[-r_{t}]P_{\tau-1,t+1}].\label{eq:LOP}
+\end{equation}
+
+\end_inset
+
+If we combine the above equations,
+ 
+\begin_inset Formula 
+\begin{equation}
+\exp[-a_{\tau}-b_{\tau}^{\prime}X_{t}]=\mathbb{E}_{t}^{\mathbb{Q}}[\exp[-r_{t}-a_{\tau-1}-b_{\tau-1}^{\prime}X_{t+1}]].\label{eq;aux41}
+\end{equation}
+
+\end_inset
+
+By equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Q_X"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+),
+\begin_inset Formula 
+\begin{align*}
+ & \exp[-a_{\tau}-b_{\tau}^{\prime}X_{t}]\\
+= & \mathbb{E}_{t}^{\mathbb{Q}}[\exp[-r_{t}-a_{\tau-1}-b_{\tau-1}^{\prime}(K_{X}^{\mathbb{Q}}+G_{XX}^{\mathbb{Q}}X_{t}+\epsilon_{X,t+1}^{\mathbb{Q}})]],\\
+= & \mathbb{E}_{t}^{\mathbb{Q}}[\exp[-r_{t}-a_{\tau-1}-b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-b_{\tau-1}^{\prime}G_{XX}^{\mathbb{Q}}X_{t}-b_{\tau-1}^{\prime}\epsilon_{X,t+1}^{\mathbb{Q}}]].
+\end{align*}
+
+\end_inset
+
+Expectation operator 
+\begin_inset Formula $\mathbb{E}_{t}^{\mathbb{Q}}$
+\end_inset
+
+ is applied,
+ then 
+\begin_inset Formula 
+\begin{align*}
+ & \exp[-a_{\tau}-b_{\tau}^{\prime}X_{t}]\\
+= & \exp[-r_{t}-a_{\tau-1}-b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-b_{\tau-1}^{\prime}G_{XX}^{\mathbb{Q}}X_{t}+0.5b_{\tau-1}^{\prime}\Omega_{XX}b_{\tau-1}].
+\end{align*}
+
+\end_inset
+
+We substitute equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:r"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+) into the above expression.
+ Then,
+\begin_inset Formula 
+\begin{align*}
+ & \exp[-a_{\tau}-b_{\tau}^{\prime}X_{t}]\\
+= & \exp[-a_{\tau-1}-b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}+0.5b_{\tau-1}^{\prime}\Omega_{XX}b_{\tau-1}-(b_{\tau-1}^{\prime}G_{XX}^{\mathbb{Q}}+\iota^{\prime})X_{t}].
+\end{align*}
+
+\end_inset
+
+By the method of undetermined coefficient,
+ 
+\begin_inset Formula 
+\begin{align*}
+\therefore a_{\tau}= & a_{\tau-1}+b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-0.5b_{\tau-1}^{\prime}\Omega_{XX}b_{\tau-1},\\
+b_{\tau}= & \iota+G_{XX}^{\mathbb{Q}\prime}b_{\tau-1}.
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In reality,
+ the bond yield is determined by
+\begin_inset Formula 
+\begin{align*}
+R_{\tau,t} & =\frac{a_{\tau}}{\tau}+\frac{b_{\tau}^{\prime}}{\tau}X_{t}+e_{\tau,t},\\
+e_{\tau,t} & \backsim\mathcal{N}(0,\sigma_{\tau,e}^{2}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Affine Transformation to Principal Components
+\end_layout
+
+\begin_layout Standard
+We use an affine transformation from 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ to principal components to estimate our model efficiently.
+ For first 
+\begin_inset Formula $d_{\mathbb{Q}}$
+\end_inset
+
+ principal components 
+\begin_inset Formula $\mathcal{P}_{t}$
+\end_inset
+
+ and remaining 
+\begin_inset Formula $\mathcal{O}_{t}$
+\end_inset
+
+,
+ 
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\mathcal{P}_{t}-c\\
+\mathcal{O}_{t}
+\end{bmatrix} & :=\begin{pmatrix}W_{\mathcal{P}}\\
+W_{\mathcal{O}}
+\end{pmatrix}R_{t}-\begin{bmatrix}c\\
+O_{(N-d_{\mathbb{Q}})\times1}
+\end{bmatrix}\\
+ & =\begin{pmatrix}W_{\mathcal{P}}\mathcal{A}_{X}-c\\
+W_{\mathcal{O}}\mathcal{A}_{X}
+\end{pmatrix}+\begin{pmatrix}W_{\mathcal{P}}\\
+W_{\mathcal{O}}
+\end{pmatrix}\mathcal{B}{}_{X}X_{t}+\begin{bmatrix}O_{d_{\mathbb{Q}}\times1}\\
+e_{\mathcal{O},t}
+\end{bmatrix},\\
+\text{where }R_{t}^{\prime} & :=\begin{bmatrix}R_{\tau_{1},t} & R_{\tau_{2},t} & \cdots & R_{\tau_{N},t}\end{bmatrix},\\
+\mathcal{A}{}_{X}^{\prime} & :=\begin{bmatrix}a_{\tau_{1}}/\tau_{1} & a_{\tau_{2}}/\tau_{2} & \cdots & a_{\tau_{N}}/\tau_{N}\end{bmatrix},\\
+\mathcal{B}_{X}^{\prime} & :=\begin{bmatrix}b_{\tau_{1}}/\tau_{1} & b_{\tau_{2}}/\tau_{2} & \cdots & b_{\tau_{N}}/\tau_{N}\end{bmatrix},\\
+e_{\mathcal{O},t} & \backsim\mathcal{N}(O_{(N-d_{\mathbb{Q}})\times1},\Sigma_{\mathcal{O}}:=diag(\begin{bmatrix}\sigma_{O,1}^{2} & \sigma_{O,2}^{2} & \cdots & \sigma_{\mathcal{O},N-d_{\mathbb{Q}}}^{2}\end{bmatrix})),
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula $W_{\mathcal{P}}$
+\end_inset
+
+ and 
+\begin_inset Formula $W_{\mathcal{O}}$
+\end_inset
+
+ is rotation matrices for 
+\begin_inset Formula $\mathcal{P}_{t}$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathcal{O}_{t}$
+\end_inset
+
+,
+ respectively.
+ We set 
+\begin_inset Formula $c$
+\end_inset
+
+ to a sample mean of 
+\begin_inset Formula $\mathcal{P}_{t}$
+\end_inset
+
+ to make the sample mean of latent pricing factors to zeros.
+ Under this assumption,
+ 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ becomes observed factors given parameters,
+ because 
+\begin_inset Formula 
+\begin{align*}
+\mathcal{P}_{t}-c & =\mathcal{T}_{0,X}+\mathcal{T}_{1,X}X_{t},\\
+\text{where }\mathcal{T}_{0,X}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{XX}) & :=W_{\mathcal{P}}\mathcal{A}_{X}-c,\\
+\mathcal{T}_{1,X}(:\kappa^{\mathbb{Q}}) & :=W_{\mathcal{P}}\mathcal{B}{}_{X},
+\end{align*}
+
+\end_inset
+
+and
+\begin_inset Formula 
+\begin{align}
+X_{t} & =\mathcal{T}_{0,\mathcal{P}}+\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c),\label{eq:P2X}\\
+\text{where }\mathcal{T}_{1,\mathcal{P}}(:\kappa^{\mathbb{Q}}) & :=(W_{\mathcal{P}}\mathcal{B}{}_{X})^{-1}\equiv\mathcal{T}_{1,X}^{-1},\nonumber \\
+\mathcal{T}_{0,\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{XX}) & :=-\mathcal{T}_{1,\mathcal{P}}(W_{\mathcal{P}}\mathcal{A}_{X}-c)\equiv-\mathcal{T}_{1,\mathcal{P}}\mathcal{T}_{0,X}.\nonumber 
+\end{align}
+
+\end_inset
+
+The parentheses indicate deep-parameters in the latent factor state space.
+\end_layout
+
+\begin_layout Standard
+Using the transformation
+\begin_inset Formula 
+\[
+\underbrace{\begin{bmatrix}X_{t}\\
+M_{t}
+\end{bmatrix}}_{F_{t}}=\underbrace{\begin{bmatrix}\mathcal{T}_{0,\mathcal{P}}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix}}_{\mathcal{T}_{0,\mathcal{F}}}+\underbrace{\begin{pmatrix}\mathcal{T}_{1,\mathcal{P}} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times d_{\mathbb{Q}}} & I_{(d_{\mathbb{P}}-d_{\mathbb{Q}})}
+\end{pmatrix}}_{\mathcal{T}_{1,\mathcal{F}}}\underbrace{\begin{bmatrix}\mathcal{P}_{t}-c\\
+M_{t}
+\end{bmatrix}}_{\mathcal{F}_{t}},
+\]
+
+\end_inset
+
+we rotate our JSZ model.
+ The rotated short-term interest rate is
+\begin_inset Formula 
+\begin{equation}
+r_{t}=\underbrace{\iota^{\prime}\mathcal{T}_{0,\mathcal{P}}}_{\delta(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{XX})}+\underbrace{\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}}_{\beta(:\kappa^{\mathbb{Q}})^{\prime}}(\mathcal{P}_{t}-c),\label{eq:r_P}
+\end{equation}
+
+\end_inset
+
+and the rotated 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics is
+\begin_inset Formula 
+\begin{align*}
+\mathcal{P}_{t}-c & =\underbrace{\mathcal{T}_{1,X}[K_{X}^{\mathbb{Q}}+(G_{XX}^{\mathbb{Q}}-I_{d_{\mathbb{Q}}})\mathcal{T}_{0,\mathcal{P}}]}_{K_{\mathcal{P}}^{\mathbb{Q}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{XX})}+\underbrace{\mathcal{T}_{1,X}G_{XX}^{\mathbb{Q}}\mathcal{T}_{1,\mathcal{P}}}_{G_{\mathcal{PP}}^{\mathbb{Q}}(:\kappa^{\mathbb{Q}})}(\mathcal{P}_{t-1}-c)+\underbrace{\mathcal{T}_{1,X}\epsilon_{X,t}^{\mathbb{Q}}}_{\epsilon_{\mathcal{P},t}^{\mathbb{Q}}},\\
+\epsilon_{\mathcal{P},t}^{\mathbb{Q}} & \backsim\mathcal{N}(O_{d_{\mathbb{Q}}\times1},\Omega_{\mathcal{PP}}\equiv\mathcal{T}_{1,X}\Omega_{XX}\mathcal{T}_{1,X}^{\prime}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+State-Space Representation
+\end_layout
+
+\begin_layout Standard
+The rotated model has a measurement equation of
+\begin_inset Formula 
+\[
+\mathcal{O}_{t}=\underbrace{W_{\mathcal{O}}[\mathcal{A}_{X}+\mathcal{B}{}_{X}\mathcal{T}_{0,\mathcal{P}}]}_{\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{XX})}+\underbrace{W_{\mathcal{O}}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}}_{\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})}(\mathcal{P}_{t}-c)+e_{\mathcal{O},t}.
+\]
+
+\end_inset
+
+The 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-transition equation is
+\begin_inset Formula 
+\begin{align*}
+\mathcal{F}_{t} & =\underbrace{\begin{bmatrix}\mathcal{T}_{1,X}[K_{X}^{\mathbb{P}}-(I_{d_{\mathbb{Q}}}-\sum_{l=1}^{p}G_{XX,l}^{\mathbb{P}})\mathcal{T}_{0,\mathcal{P}}]\\
+K_{M}^{\mathbb{P}}+(\sum_{l=1}^{p}G_{MX,l}^{\mathbb{P}})\mathcal{T}_{0,\mathcal{P}}
+\end{bmatrix}}_{K_{\mathcal{F}}^{\mathbb{P}}}\\
+ & +\sum_{l=1}^{p}\underbrace{\begin{pmatrix}\mathcal{T}_{1,X}G_{XX,l}^{\mathbb{P}}\mathcal{T}_{1,\mathcal{P}} & \mathcal{T}_{1,X}G_{XM,l}^{\mathbb{P}}\\
+G_{MX,l}^{\mathbb{P}}\mathcal{T}_{1,\mathcal{P}} & G_{MM,l}^{\mathbb{P}}
+\end{pmatrix}}_{G_{\mathcal{FF},l}^{\mathbb{P}}}\mathcal{F}_{t-l}+\underbrace{\begin{bmatrix}\mathcal{T}_{1,X}\epsilon_{X,t}^{\mathbb{P}}\\
+\epsilon_{M,t}^{\mathbb{P}}
+\end{bmatrix}}_{\epsilon_{\mathcal{F},t}^{\mathbb{P}}}.
+\end{align*}
+
+\end_inset
+
+It is easy to verify that there is a sufficient degree of freedom to set parameters,
+ 
+\begin_inset Formula $K_{\mathcal{F}}^{\mathbb{P}}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $G_{\mathcal{FF},l}^{\mathbb{P}}$
+\end_inset
+
+ and the covariance of 
+\begin_inset Formula $\epsilon_{\mathcal{F},t}^{\mathbb{P}}$
+\end_inset
+
+,
+ as unrestricted parameters.
+ Therefore,
+ we can estimate the 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics with a unrestricted 
+\begin_inset Formula $VAR(p)$
+\end_inset
+
+ model of 
+\begin_inset Formula 
+\begin{align}
+\mathcal{F}_{t} & =\underbrace{\begin{bmatrix}K_{\mathcal{P}}^{\mathbb{P}}\\
+K_{M|\mathcal{F}}^{\mathbb{P}}
+\end{bmatrix}}_{K_{\mathcal{F}}^{\mathbb{P}}}+\sum_{l=1}^{p}\underbrace{\begin{pmatrix}G_{\mathcal{PP},l}^{\mathbb{P}} & G_{\mathcal{P}M,l}^{\mathbb{P}}\\
+G_{M\mathcal{P},l}^{\mathbb{P}} & G_{MM,l}^{\mathbb{P}}
+\end{pmatrix}}_{G_{\mathcal{FF},l}^{\mathbb{P}}}\mathcal{F}_{t-l}+\underbrace{\begin{bmatrix}\epsilon_{\mathcal{P},t}^{\mathbb{P}}\\
+\epsilon_{M,t}^{\mathbb{P}}
+\end{bmatrix}}_{\epsilon_{\mathcal{F},t}^{\mathbb{P}}},\label{eq:P}\\
+\epsilon_{\mathcal{F},t}^{\mathbb{P}} & \backsim\mathcal{N}(O_{d_{\mathbb{P}}\times1},\Omega_{\mathcal{FF}}:=\begin{pmatrix}\Omega_{\mathcal{PP}} & \Omega_{M\mathcal{P}}^{\prime}\\
+\Omega_{M\mathcal{P}} & \Omega_{MM}
+\end{pmatrix}:=\begin{pmatrix}\mathcal{T}_{1,X}\Omega_{XX}\mathcal{T}_{1,X}^{\prime} & \mathcal{T}_{1,X}\Omega_{MX}^{\prime}\\
+\Omega_{MX}\mathcal{T}_{1,X}^{\prime} & \Omega_{MM}
+\end{pmatrix}).\nonumber 
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Given 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+,
+ there is a one-to-one mapping between 
+\begin_inset Formula $\Omega_{\mathcal{PP}}$
+\end_inset
+
+ and 
+\begin_inset Formula $\Omega_{XX}$
+\end_inset
+
+.
+ Therefore,
+ we can write the state-space equations as
+\begin_inset Formula 
+\begin{align}
+\mathcal{O}_{t} & =\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t}-c)+e_{\mathcal{O},t},\label{eq:mea}\\
+\mathcal{F}_{t} & =K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+\epsilon_{\mathcal{F},t}^{\mathbb{P}}.\label{eq:trans}
+\end{align}
+
+\end_inset
+
+In this case,
+ the difference equations are
+\begin_inset Formula 
+\begin{align*}
+a_{\tau} & =a_{\tau-1}+b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1},\\
+b_{\tau} & =\iota+G_{XX}^{\mathbb{Q}\prime}b_{\tau-1},
+\end{align*}
+
+\end_inset
+
+and also the short rate and 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics are
+\begin_inset Formula 
+\begin{align}
+r_{t} & =\delta(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\beta(:\kappa^{\mathbb{Q}})^{\prime}(\mathcal{P}_{t}-c),\nonumber \\
+\mathcal{P}_{t} & -c=K_{\mathcal{P}}^{\mathbb{Q}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+G_{\mathcal{PP}}^{\mathbb{Q}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t-1}-c)+\epsilon_{\mathcal{P},t}^{\mathbb{Q}}.\label{eq:Q}
+\end{align}
+
+\end_inset
+
+
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics can be re-written with macro variables,
+ for example,
+ 
+\begin_inset Formula 
+\begin{align}
+\mathcal{F}_{t} & =\underbrace{\begin{bmatrix}K_{\mathcal{P}}^{\mathbb{Q}}\\
+K_{M|\mathcal{F}}^{\mathbb{P}}
+\end{bmatrix}}_{K_{\mathcal{F}}^{\mathbb{Q}}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{Q}}\mathcal{F}_{t-l}+\underbrace{\begin{bmatrix}\epsilon_{\mathcal{P},t}^{\mathbb{Q}}\\
+\epsilon_{M,t}^{\mathbb{P}}
+\end{bmatrix}}_{\epsilon_{\mathcal{F},t}^{\mathbb{Q}}},\label{eq:Q_macro}\\
+G_{\mathcal{FF},l}^{\mathbb{Q}} & =\begin{cases}
+\begin{pmatrix}G_{\mathcal{PP}}^{\mathbb{Q}} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+G_{M\mathcal{P},1}^{\mathbb{P}} & G_{MM,1}^{\mathbb{P}}
+\end{pmatrix} & \text{if }l=1,\\
+\begin{pmatrix}O_{d_{\mathbb{Q}}\times d_{\mathbb{Q}}} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+G_{M\mathcal{P},l}^{\mathbb{P}} & G_{MM,l}^{\mathbb{P}}
+\end{pmatrix} & \text{otherwise.}
+\end{cases}\nonumber 
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Moving to deep-parameters
+\end_layout
+
+\begin_layout Standard
+Given 
+\begin_inset Formula $\{\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},K_{\mathcal{F}}^{\mathbb{P}},G_{\mathcal{FF},l}^{\mathbb{P}},\Omega_{\mathcal{FF}}\}$
+\end_inset
+
+,
+ we can get the deep-parameters by
+\begin_inset Formula 
+\begin{align}
+\Omega_{XX} & =\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime},\label{eq:OmegaPP2OmegaXX}\\
+\Omega_{MX} & =\Omega_{M\mathcal{P}}\mathcal{T}_{1,\mathcal{P}}^{\prime},\nonumber \\
+G_{XX,l}^{\mathbb{P}} & =\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP},l}^{\mathbb{P}}\mathcal{T}_{1,X},\nonumber \\
+G_{MX,l}^{\mathbb{P}} & =G_{M\mathcal{P},l}^{\mathbb{P}}\mathcal{T}_{1,X},\nonumber \\
+G_{XM,l}^{\mathbb{P}} & =\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{P}M,l}^{\mathbb{P}},\nonumber \\
+K_{X}^{\mathbb{P}} & =\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}+(I_{d_{\mathbb{Q}}}-\sum_{l=1}^{p}G_{XX,l}^{\mathbb{P}})\mathcal{T}_{0,\mathcal{P}},\nonumber \\
+K_{M}^{\mathbb{P}} & =K_{M|\mathcal{F}}^{\mathbb{P}}-(\sum_{l=1}^{p}G_{MX,l}^{\mathbb{P}})\mathcal{T}_{0,\mathcal{P}},\nonumber \\
+G_{XX}^{\mathbb{Q}} & =\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP}}^{\mathbb{Q}}\mathcal{T}_{1,X},\label{eq:GQPP2GQXX}\\
+K_{X}^{\mathbb{Q}} & =\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}+(I_{d_{\mathbb{Q}}}-G_{XX}^{\mathbb{Q}})\mathcal{T}_{0,\mathcal{P}}.\label{eq:KQP2KQX}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Incorporation of the fourth observable spanned factor
+\end_layout
+
+\begin_layout Standard
+Suppose the fourth factor is observable by a 
+\begin_inset Formula $d_{z}$
+\end_inset
+
+-dimensional vector 
+\begin_inset Formula $Z_{t}$
+\end_inset
+
+,
+ so the pricing factor 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\[
+X_{t}:=\begin{bmatrix}X_{t,(1:3)}\\
+Z_{t}
+\end{bmatrix}.
+\]
+
+\end_inset
+
+ In this case,
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\mathcal{P}_{t}-c\\
+Z_{t}\\
+\mathcal{O}_{t}
+\end{bmatrix} & =\begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\\
+W_{\mathcal{O}}
+\end{pmatrix}\begin{bmatrix}R_{t}\\
+Z_{t}
+\end{bmatrix}-\begin{bmatrix}c\\
+-Z_{t}\\
+O_{(N-d_{\mathbb{Q}})\times1}
+\end{bmatrix},\\
+ & =\begin{pmatrix}W_{\mathcal{P}}\mathcal{A}_{X}-c\\
+O_{d_{z}\times1}\\
+W_{\mathcal{O}}\mathcal{A}_{X}
+\end{pmatrix}+\begin{pmatrix}W_{\mathcal{P}}\mathcal{B}{}_{X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}\\
+W_{\mathcal{O}}\mathcal{B}{}_{X}
+\end{pmatrix}X_{t}+\begin{bmatrix}O_{d_{\mathbb{Q}}\times1}\\
+O_{d_{z}\times1}\\
+e_{\mathcal{O},t}
+\end{bmatrix}.
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The inverse of the transformation would be 
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\mathcal{P}_{t}-c\\
+Z_{t}
+\end{bmatrix} & =\begin{bmatrix}\mathcal{T}_{0,X}\\
+O_{d_{z}\times1}
+\end{bmatrix}+\begin{pmatrix}\mathcal{T}_{1,X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}
+\end{pmatrix}X_{t},
+\end{align*}
+
+\end_inset
+
+and the transformation is 
+\begin_inset Formula 
+\begin{align*}
+X_{t}=-\begin{pmatrix}\mathcal{T}_{1,X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}
+\end{pmatrix}^{-1}\begin{bmatrix}\mathcal{T}_{0,X}\\
+O_{d_{z}\times1}
+\end{bmatrix}+\begin{pmatrix}\mathcal{T}_{1,X}\\
+\begin{array}{cc}
+O_{d_{z}\times3} & I_{d_{z}}\end{array}
+\end{pmatrix}^{-1}\begin{bmatrix}\mathcal{P}_{t}-c\\
+Z_{t}
+\end{bmatrix}.
+\end{align*}
+
+\end_inset
+
+Therefore,
+ the coefficients of the transformation can be extended by augmenting the identity matrix and zeros.
+\end_layout
+
+\begin_layout Section
+Stochastic Discount Factor
+\end_layout
+
+\begin_layout Standard
+Our market prices of risks are 
+\begin_inset Formula 
+\begin{align}
+\Omega_{\mathcal{FF}}^{1/2}\underset{(d_{\mathbb{P}}\times1)}{\lambda_{t}} & \equiv\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{F}_{t+1}]-\mathbb{E}_{t}^{\mathbb{Q}}[\mathcal{F}_{t+1}],\label{eq:aux4}\\
+ & =\underbrace{K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}}}_{\lambda:d_{\mathbb{P}}\times1}+\sum_{l=1}^{p}(\underbrace{G_{\mathcal{FF},l}^{\mathbb{P}}-G_{\mathcal{FF},l}^{\mathbb{Q}}}_{\Lambda_{l}:d_{\mathbb{P}}\times d_{\mathbb{P}}})\mathcal{F}_{t+1-l},\label{eq:mpr}\\
+ & =\begin{bmatrix}\lambda_{\mathcal{P}}+\sum_{l=1}^{p}\Lambda_{\mathcal{PP},l}\mathcal{P}_{t+1-l}+\sum_{l=1}^{p}\Lambda_{\mathcal{P}M,l}M_{t+1-l}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix}.\label{eq:frp}\\
+\text{where }\lambda & =\begin{bmatrix}\lambda_{\mathcal{P}}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix},\label{eq:lambda}\\
+\underset{(d_{\mathbb{Q}}\times1)}{\lambda_{\mathcal{P}}} & =K_{\mathcal{P}}^{\mathbb{P}}-K_{\mathcal{P}}^{\mathbb{Q}},\label{eq:lambda_P}\\
+\Lambda_{l} & =\begin{pmatrix}\Lambda_{\mathcal{PP},l} & \Lambda_{\mathcal{P}M,l}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times d_{\mathbb{Q}}} & O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}
+\end{pmatrix},\label{eq:Lambda}\\
+\underset{(d_{\mathbb{Q}}\times d_{\mathbb{Q}})}{\Lambda_{\mathcal{PP},l}} & =\begin{cases}
+G_{\mathcal{PP},1}^{\mathbb{P}}-G_{\mathcal{PP}}^{\mathbb{Q}} & \text{if }l=1,\\
+G_{\mathcal{PP},l}^{\mathbb{P}} & \text{otherwise,}
+\end{cases}\label{eq:Lambda_PP}\\
+\underset{(d_{\mathbb{Q}}\times(d_{\mathbb{P}}-d_{\mathbb{Q}}))}{\Lambda_{\mathcal{P}M,l}} & =G_{\mathcal{P}M,l}^{\mathbb{P}}.\label{eq:Lambda_PM}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Next,
+ we derive the Radon-Nikodym derivative 
+\begin_inset Formula $d\mathbb{Q}/d\mathbb{P}$
+\end_inset
+
+ to specify a relationship between the two measures.
+ By equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:P"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+),
+ risk factor 
+\begin_inset Formula $\mathcal{F}_{t}$
+\end_inset
+
+ has 
+\begin_inset Formula 
+\begin{equation}
+\mathcal{F}_{t+1}=K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t+1-l}+\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}\label{eq;dynP}
+\end{equation}
+
+\end_inset
+
+in the 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-measure.
+ We transform the above 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics into 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics by making 
+\begin_inset Formula $\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}-(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l})$
+\end_inset
+
+ in the above equation.
+ So,
+ 
+\begin_inset Formula 
+\begin{align*}
+\mathcal{F}_{t+1} & =K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t+1-l}+\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}-(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}),\\
+ & =(K_{\mathcal{F}}^{\mathbb{P}}-\lambda)+\sum_{l=1}^{p}(G_{\mathcal{FF},l}^{\mathbb{P}}-\Lambda_{l})\mathcal{F}_{t+1-l}+\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}.
+\end{align*}
+
+\end_inset
+
+By equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:mpr"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ the above equation can be written as
+\begin_inset Formula 
+\[
+\mathcal{F}_{t+1}=K_{\mathcal{F}}^{\mathbb{Q}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{Q}}\mathcal{F}_{t+1-l}+\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}.
+\]
+
+\end_inset
+
+By comparing the above expression with equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:Q_macro"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+),
+ we derive the relationship between 
+\begin_inset Formula $\epsilon_{t+1}^{\mathbb{P}}$
+\end_inset
+
+ and 
+\begin_inset Formula $\epsilon_{t+1}^{\mathbb{Q}}.$
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
+\epsilon_{\mathcal{F},t+1}^{\mathbb{Q}} & =\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l},\\
+\epsilon_{\mathcal{F},t+1}^{\mathbb{P}} & =\epsilon_{\mathcal{F},t+1}^{\mathbb{Q}}-(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Under 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-measure,
+ since 
+\begin_inset Formula $\epsilon_{\mathcal{F},t+1}^{\mathbb{Q}}$
+\end_inset
+
+ follows 
+\begin_inset Formula $\mathcal{N}(O_{d_{\mathbb{P}}\times1},\Omega_{\mathcal{FF}})$
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+p^{\mathbb{Q}}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|\mathcal{I}_{t}) & =\mathcal{N}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|-(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}),\Omega_{\mathcal{FF}})\text{ under }\mathbb{Q}\text{-measure.}
+\end{align*}
+
+\end_inset
+
+On the other hand,
+ 
+\begin_inset Formula 
+\begin{align*}
+p^{\mathbb{P}}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|\mathcal{I}_{t}) & =\mathcal{N}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|O_{d_{\mathbb{P}}\times1},\Omega_{\mathcal{FF}})\text{ under the }\mathbb{P}\text{-measure.}
+\end{align*}
+
+\end_inset
+
+Radon-Nikodym derivative 
+\begin_inset Formula $d\mathbb{P}/d\mathbb{Q}$
+\end_inset
+
+ is the one that satisfies
+\begin_inset Formula 
+\[
+p^{\mathbb{Q}}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|\mathcal{I}_{t})=\frac{d\mathbb{Q}}{d\mathbb{P}}p^{\mathbb{P}}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|\mathcal{I}_{t}).
+\]
+
+\end_inset
+
+If we substitute the above derivations into the above equation,
+\begin_inset Formula 
+\[
+\mathcal{N}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|-(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}),\Omega_{\mathcal{FF}})=\frac{d\mathbb{Q}}{d\mathbb{P}}\mathcal{N}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}|O_{d_{\mathbb{P}}\times1},\Omega_{\mathcal{FF}}).
+\]
+
+\end_inset
+
+By the functional form of a normal density,
+ the above equation is 
+\begin_inset Formula 
+\begin{align*}
+ & (2\pi)^{-\frac{d_{\mathbb{P}}}{2}}\det\left(\Omega_{\mathcal{FF}}\right)^{-\frac{1}{2}}\exp[-\frac{1}{2}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}))^{\prime}\Omega_{\mathcal{FF}}^{-1}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}))]\\
+= & \frac{d\mathbb{Q}}{d\mathbb{P}}(2\pi)^{-\frac{d_{\mathbb{P}}}{2}}\det\left(\Omega_{\mathcal{FF}}\right)^{-\frac{1}{2}}\exp[-\frac{1}{2}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}\prime}\Omega_{\mathcal{FF}}^{-1}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}],
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
+\frac{d\mathbb{Q}}{d\mathbb{P}}\exp[-\frac{1}{2}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}\prime}\Omega_{\mathcal{FF}}^{-1}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}] & =\exp[-\frac{1}{2}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}))^{\prime}\Omega_{\mathcal{FF}}^{-1}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+(\lambda+\sum_{l=1}^{p}\Lambda_{l}\mathcal{F}_{t+1-l}))].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+By equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:mpr"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+),
+ the right-hand side can be simplified as
+\begin_inset Formula 
+\[
+\exp[-\frac{1}{2}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\Omega_{\mathcal{FF}}^{1/2}\lambda_{t})^{\prime}\Omega_{\mathcal{FF}}^{-1}(\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\Omega_{\mathcal{FF}}^{1/2}\lambda_{t})].
+\]
+
+\end_inset
+
+We expand the above equation as
+\begin_inset Formula 
+\begin{align*}
+ & \exp[-\frac{1}{2}\{\epsilon_{\mathcal{F},t+1}^{\mathbb{P}\prime}\Omega_{\mathcal{FF}}^{-1}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+2\lambda_{t}^{\prime}\Omega_{\mathcal{FF}}^{-1/2}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}+\lambda_{t}^{\prime}\lambda_{t}\}]\\
+= & \exp[-\frac{1}{2}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}\prime}\Omega_{\mathcal{FF}}^{-1}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}].
+\end{align*}
+
+\end_inset
+
+Therefore,
+ if we substitute the last expression into the original equation,
+\begin_inset Formula 
+\begin{align*}
+\frac{d\mathbb{Q}}{d\mathbb{P}}\exp[-\frac{1}{2}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}\prime}\Omega_{\mathcal{FF}}^{-1}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}] & =\exp[-\frac{1}{2}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}\prime}\Omega_{\mathcal{FF}}^{-1}\epsilon_{\mathcal{F},t+1}^{\mathbb{P}}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}].
+\end{align*}
+
+\end_inset
+
+We simplify the above equation with respect to 
+\begin_inset Formula $d\mathbb{Q}/d\mathbb{P}$
+\end_inset
+
+,
+ and it leads to 
+\begin_inset Formula 
+\[
+\frac{d\mathbb{Q}}{d\mathbb{P}}=\exp[-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}].
+\]
+
+\end_inset
+
+Therefore,
+ the model-consistent SDF 
+\begin_inset Formula $\mathcal{M}_{t+1}^{\mathbb{P}}$
+\end_inset
+
+ should be
+\begin_inset Formula 
+\begin{align}
+\mathcal{M}_{t+1}^{\mathbb{P}} & \equiv\exp[-r_{t}]\frac{d\mathbb{Q}}{d\mathbb{P}},\nonumber \\
+ & =\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}].\label{eq;sdfp}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Bond price under 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+ measure
+\end_layout
+
+\begin_layout Standard
+By equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq;sdfp"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+P_{\tau,t} & =\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{M}_{t+1}^{\mathbb{P}}P_{\tau-1,t+1}],\\
+ & =\mathbb{E}_{t}^{\mathbb{P}}[\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}]P_{\tau-1,t+1}].
+\end{align*}
+
+\end_inset
+
+Also,
+ by equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:pricing"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+ & \exp[-a_{\tau}-b_{\tau}^{\prime}X_{t}]\\
+= & \mathbb{E}_{t}^{\mathbb{P}}[\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}-a_{\tau-1}-b_{\tau-1}^{\prime}X_{t+1}]],\\
+1= & \mathbb{E}_{t}^{\mathbb{P}}[\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}-a_{\tau-1}-b_{\tau-1}^{\prime}X_{t+1}+a_{\tau}+b_{\tau}^{\prime}X_{t}]],\\
+0= & \log\mathbb{E}_{t}^{\mathbb{P}}[\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}-a_{\tau-1}-b_{\tau-1}^{\prime}X_{t+1}+a_{\tau}+b_{\tau}^{\prime}X_{t}]],\\
+0= & \log\mathbb{E}_{t}^{\mathbb{P}}[\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t+1}-c)\\
+ & +a_{\tau}+b_{\tau}^{\prime}\mathcal{T}_{0,\mathcal{P}}+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)]],\\
+0= & \log\mathbb{E}_{t}^{\mathbb{P}}[\exp[-r_{t}-\frac{1}{2}\lambda_{t}^{\prime}\lambda_{t}-\lambda_{t}^{\prime}v_{\mathcal{F},t+1}^{\mathbb{P}}-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+b_{\tau}^{\prime}\mathcal{T}_{0,\mathcal{P}}+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\{K_{\mathcal{P}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)+\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}+\epsilon_{\mathcal{P},t+1}^{\mathbb{P}}\}]].
+\end{align*}
+
+\end_inset
+
+We focus on the RHS.
+ By equations 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:v"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:r_P"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ the RHS is
+\begin_inset Formula 
+\begin{align*}
+ & \log\mathbb{E}_{t}^{\mathbb{P}}[\exp[-\iota^{\prime}\mathcal{T}_{0,\mathcal{P}}-\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)-\frac{1}{2}\lambda_{t,(1:d_{\mathbb{Q}})}^{\prime}\lambda_{t,(1:d_{\mathbb{Q}})}-\frac{1}{2}\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}^{\prime}\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}\\
+ & -\lambda_{t,(1:d_{\mathbb{Q}})}^{\prime}v_{\mathcal{P},t+1}^{\mathbb{P}}-\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}^{\prime}v_{M,t+1}^{\mathbb{P}}-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+b_{\tau}^{\prime}\mathcal{T}_{0,\mathcal{P}}+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}^{1/2}v_{\mathcal{P},t+1}^{\mathbb{P}})]],\\
+= & -\iota^{\prime}\mathcal{T}_{0,\mathcal{P}}-\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)-\frac{1}{2}\lambda_{t,(1:d_{\mathbb{Q}})}^{\prime}\lambda_{t,(1:d_{\mathbb{Q}})}-\frac{1}{2}\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}^{\prime}\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}\\
+ & -a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+b_{\tau}^{\prime}\mathcal{T}_{0,\mathcal{P}}+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}\\
+ & +\frac{1}{2}\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}^{\prime}\lambda_{t,(d_{\mathbb{Q}}+1:d_{\mathbb{P}})}+\frac{1}{2}(\lambda_{t,(1:d_{\mathbb{Q}})}^{\prime}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}^{1/2})(\lambda_{t,(1:d_{\mathbb{Q}})}^{\prime}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}^{1/2})^{\prime},\\
+= & -\iota^{\prime}\mathcal{T}_{0,\mathcal{P}}-\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+b_{\tau}^{\prime}\mathcal{T}_{0,\mathcal{P}}+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}\\
+ & +b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}^{1/2}\lambda_{t,(1:d_{\mathbb{Q}})}+\frac{1}{2}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}.
+\end{align*}
+
+\end_inset
+
+By equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:frp"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ the RHS is
+\begin_inset Formula 
+\begin{align*}
+ & -\iota^{\prime}\mathcal{T}_{0,\mathcal{P}}-\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+b_{\tau}^{\prime}\mathcal{T}_{0,\mathcal{P}}+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}+\frac{1}{2}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}\\
+ & +b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(K_{\mathcal{P}}^{\mathbb{P}}-K_{\mathcal{P}}^{\mathbb{Q}}+(G_{\mathcal{PP},1}^{\mathbb{P}}-G_{\mathcal{PP}}^{\mathbb{Q}})(\mathcal{P}_{t}-c)+\sum_{l=2}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)+\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}),\\
+= & -a_{\tau-1}+a_{\tau}+(b_{\tau}^{\prime}-\iota^{\prime}-b_{\tau-1}^{\prime})\mathcal{T}_{0,\mathcal{P}}+\frac{1}{2}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}\\
+ & +[(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{1,\mathcal{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP}}^{\mathbb{Q}}](\mathcal{P}_{t}-c).
+\end{align*}
+
+\end_inset
+
+Therefore,
+\begin_inset Formula 
+\begin{align*}
+a_{\tau} & =a_{\tau-1}-(b_{\tau}^{\prime}-\iota^{\prime}-b_{\tau-1}^{\prime})\mathcal{T}_{0,\mathcal{P}}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}-\frac{1}{2}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1},\\
+b_{\tau} & =\iota+(\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP}}^{\mathbb{Q}}\mathcal{T}_{1,X})^{\prime}b_{\tau-1}.
+\end{align*}
+
+\end_inset
+
+In section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Bond-price"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\begin_inset Formula 
+\begin{align}
+a_{\tau}= & a_{\tau-1}+b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-\frac{1}{2}b_{\tau-1}^{\prime}\Omega_{XX}b_{\tau-1},\nonumber \\
+b_{\tau}= & \iota+G_{XX}^{\mathbb{Q}\prime}b_{\tau-1}.\label{eq:aux8}
+\end{align}
+
+\end_inset
+
+By equations 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:OmegaPP2OmegaXX"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:GQPP2GQXX"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:KQP2KQX"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ the above equations are
+\begin_inset Formula 
+\begin{align*}
+b_{\tau}= & \iota+(\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP}}^{\mathbb{Q}}\mathcal{T}_{1,X})^{\prime}b_{\tau-1}.\\
+a_{\tau}= & a_{\tau-1}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}+b_{\tau-1}^{\prime}(I_{d_{\mathbb{Q}}}-G_{XX}^{\mathbb{Q}})\mathcal{T}_{0,\mathcal{P}}-\frac{1}{2}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1},\\
+= & a_{\tau-1}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}-(b_{\tau}^{\prime}-\iota^{\prime}-b_{\tau-1}^{\prime})\mathcal{T}_{0,\mathcal{P}}-\frac{1}{2}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}.
+\end{align*}
+
+\end_inset
+
+For the last equality,
+ we use 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:aux8"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+.
+ In conclusion,
+ the results are the same between 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+ and 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+ measures.
+\end_layout
+
+\begin_layout Section
+Risk premiums
+\end_layout
+
+\begin_layout Subsection
+Expected Return-Beta Representation
+\end_layout
+
+\begin_layout Standard
+Market prices of risks 
+\begin_inset Formula $\lambda_{t}$
+\end_inset
+
+ is a price for 
+\begin_inset Formula 
+\begin{align}
+v_{\mathcal{F},t}^{\mathbb{P}} & \equiv\Omega_{\mathcal{FF}}^{-1/2}\epsilon_{\mathcal{F},t}^{\mathbb{P}}\backsim\mathcal{N}(O_{d_{\mathbb{P}}\times1},I_{d_{\mathbb{P}}}).\label{eq:v}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To show that,
+ we first define the holding-period return,
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align}
+hr_{\tau,t+1} & \equiv\ln P_{\tau-1,t+1}-\ln P_{\tau,t},\nonumber \\
+ & =-a_{\tau-1}-b_{\tau-1}^{\prime}X_{t+1}+a_{\tau}+b_{\tau}^{\prime}X_{t}\nonumber \\
+ & =-a_{\tau-1}-\underbrace{\begin{bmatrix}b_{\tau-1}^{\prime} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}}_{b_{F,\tau-1}^{\prime}}F_{t+1}+a_{\tau}+b_{F,\tau}^{\prime}F_{t},\nonumber \\
+ & =-a_{\tau-1}-b_{F,\tau-1}^{\prime}(\mathcal{T}_{0,\mathcal{F}}+\mathcal{T}_{1,\mathcal{F}}\mathcal{F}_{t+1})+a_{\tau}+b_{F,\tau}^{\prime}(\mathcal{T}_{0,\mathcal{F}}+\mathcal{T}_{1,\mathcal{F}}\mathcal{F}_{t}),\nonumber \\
+ & =a_{\tau}-a_{\tau-1}+(b_{F,\tau}^{\prime}-b_{F,\tau-1}^{\prime})\mathcal{T}_{0,\mathcal{F}}-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}\mathcal{F}_{t+1}+b_{F,\tau}^{\prime}\mathcal{T}_{1,\mathcal{F}}\mathcal{F}_{t}.\label{eq:aux2}
+\end{align}
+
+\end_inset
+
+By 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics 
+\begin_inset Formula $\mathcal{F}_{t+1}=K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t+1-l}+\epsilon_{\mathcal{F},t+1}^{\mathbb{P}},$
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align}
+hr_{\tau,t+1}= & a_{\tau}-a_{\tau-1}+(b_{F,\tau}^{\prime}-b_{F,\tau-1}^{\prime})\mathcal{T}_{0,\mathcal{F}}+b_{F,\tau}^{\prime}\mathcal{T}_{1,\mathcal{F}}\mathcal{F}_{t}\nonumber \\
+ & -b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}K_{\mathcal{F}}^{\mathbb{P}}-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t+1-l}-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}\Omega_{\mathcal{FF}}^{1/2}v_{\mathcal{F},t+1}^{\mathbb{P}}.\label{eq:hr}
+\end{align}
+
+\end_inset
+
+In the case of the beta,
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align}
+Cov_{t}^{\mathbb{P}}[hr_{\tau,t+1},v_{\mathcal{F},t+1}^{\mathbb{P}}] & =\mathbb{E}_{t}^{\mathbb{P}}[hr_{\tau,t+1}v_{\mathcal{F},t+1}^{\mathbb{P}\prime}]-\mathbb{E}_{t}^{\mathbb{P}}[hr_{\tau,t+1}]\mathbb{E}_{t}^{\mathbb{P}}[v_{\mathcal{F},t+1}^{\mathbb{P}\prime}],\nonumber \\
+ & =\mathbb{E}_{t}^{\mathbb{P}}[-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}\Omega_{\mathcal{FF}}^{1/2}v_{\mathcal{F},t+1}^{\mathbb{P}}v_{\mathcal{F},t+1}^{\mathbb{P}\prime}],\nonumber \\
+ & =-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}\Omega_{\mathcal{FF}}^{1/2},\label{eq:aux3}\\
+ & =-\begin{bmatrix}b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}\Omega_{\mathcal{FF}}^{1/2},\nonumber 
+\end{align}
+
+\end_inset
+
+Therefore,
+ the expected excess return is
+\begin_inset Formula 
+\begin{align*}
+\mathbb{E}_{t}^{\mathbb{P}}[hr_{\tau,t+1}]-\mathbb{E}_{t}^{\mathbb{Q}}[hr_{\tau,t+1}] & =-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}(\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{F}_{t+1}]-\mathbb{E}_{t}^{\mathbb{Q}}[\mathcal{F}_{t+1}])\text{ by equation \eqref{eq:aux2},}\\
+ & =-b_{F,\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{F}}\Omega_{\mathcal{FF}}^{1/2}\Omega_{\mathcal{FF}}^{-1/2}(\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{F}_{t+1}]-\mathbb{E}_{t}^{\mathbb{Q}}[\mathcal{F}_{t+1}]),\\
+ & =Cov_{t}^{\mathbb{P}}[hr_{\tau,t+1},v_{\mathcal{F},t+1}^{\mathbb{P}}]\lambda_{t}\text{ by equations \eqref{eq:aux3} and \eqref{eq:aux4}},\\
+ & =\sum_{i=1}^{d_{\mathbb{P}}}\underbrace{\frac{Cov_{t}^{\mathbb{P}}[hr_{\tau,t+1},v_{\mathcal{F},t+1,(i)}^{\mathbb{P}}]}{Var_{t}^{\mathbb{P}}[v_{\mathcal{F},t+1,(i)}^{\mathbb{P}}]}}_{beta}\lambda_{t,(i)}.
+\end{align*}
+
+\end_inset
+
+Our beta representation shows that 
+\begin_inset Formula $\lambda_{t}$
+\end_inset
+
+ is a price for 
+\begin_inset Formula $v_{\mathcal{F},t+1}^{\mathbb{P}}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Sharpe Ratio
+\end_layout
+
+\begin_layout Standard
+We define the Sharpe ratio as 
+\begin_inset Formula 
+\begin{align*}
+SR_{\tau,t} & :=\frac{\mathbb{E}_{t}^{\mathbb{P}}[xr_{\tau,t+1}]+\frac{1}{2}Var_{t}^{\mathbb{P}}[xr_{\tau,t+1}]}{Std_{t}^{\mathbb{P}}[xr_{\tau,t+1}]},
+\end{align*}
+
+\end_inset
+
+where 
+\begin_inset Formula $xr_{\tau,t+1}:=\ln P_{\tau-1,t+1}-\ln P_{\tau,t}-r_{t}.$
+\end_inset
+
+ By equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:LOP"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\begin_inset Formula 
+\begin{align}
+1 & =\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{M}_{t+1}^{\mathbb{P}}\frac{P_{\tau-1,t+1}}{P_{\tau,t}}],\nonumber \\
+1 & =\mathbb{E}_{t}^{\mathbb{P}}[\exp[\ln\mathcal{M}_{t+1}^{\mathbb{P}}+(xr_{\tau,t+1}+r_{t})]],\nonumber \\
+0 & =\mathbb{E}_{t}^{\mathbb{P}}\ln[\mathcal{M}_{t+1}^{\mathbb{P}}]+\mathbb{E}_{t}^{\mathbb{P}}[xr_{\tau,t+1}]+r_{t}\nonumber \\
+ & +\frac{1}{2}Var_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}}]+\frac{1}{2}Var_{t}^{\mathbb{P}}[xr_{\tau,t+1}]+Cov_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}},xr_{\tau,t+1}]).\label{eq:aux1}
+\end{align}
+
+\end_inset
+
+When 
+\begin_inset Formula $\tau=1$
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+0 & =\mathbb{E}_{t}^{\mathbb{P}}\ln[\mathcal{M}_{t+1}^{\mathbb{P}}]+r_{t}+\frac{1}{2}Var_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}}].
+\end{align*}
+
+\end_inset
+
+Therefore,
+ we can re-write equation (
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:aux1"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+) as
+\begin_inset Formula 
+\begin{align*}
+0 & =\mathbb{E}_{t}^{\mathbb{P}}[xr_{\tau,t+1}]+\frac{1}{2}Var_{t}^{\mathbb{P}}[xr_{\tau,t+1}]+Cov_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}},xr_{\tau,t+1}]),
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\mathbb{E}_{t}^{\mathbb{P}}[xr_{\tau,t+1}]+\frac{1}{2}Var_{t}^{\mathbb{P}}[xr_{\tau,t+1}]=-Cov_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}},xr_{\tau,t+1}]).
+\]
+
+\end_inset
+
+It simplifies the definition of the Sharpe ratio to
+\begin_inset Formula 
+\begin{align*}
+SR_{\tau,t} & =\frac{-Cov_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}},xr_{\tau,t+1}])}{Std_{t}^{\mathbb{P}}[xr_{\tau,t+1}]},\\
+ & =-Corr_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}},xr_{\tau,t+1}])Std_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}}],\\
+ & \leq Std_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}}].
+\end{align*}
+
+\end_inset
+
+We define 
+\begin_inset Formula $Std_{t}^{\mathbb{P}}[\ln\mathcal{M}_{t+1}^{\mathbb{P}}]$
+\end_inset
+
+ as the maximum Sharpe ratio.
+\end_layout
+
+\begin_layout Subsection
+Term premiums
+\end_layout
+
+\begin_layout Standard
+The term premium is
+\begin_inset Formula 
+\begin{align}
+TP_{\tau,t} & =\frac{1}{\tau}\sum_{i=1}^{\tau-1}\mathbb{E}_{t}^{\mathbb{P}}exr_{\tau-i+1,t+i-1},\label{eq:TP}\\
+where\text{ }exr_{\tau,t} & \equiv\mathbb{E}_{t}^{\mathbb{P}}[\ln P_{\tau-1,t+1}-\ln P_{\tau,t}-r_{t}],
+\end{align}
+
+\end_inset
+
+By equations 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:pricing"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:r"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ and 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:P2X"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+exr_{\tau,t}= & \mathbb{E}_{t}^{\mathbb{P}}[-a_{\tau-1}-b_{\tau-1}^{\prime}X_{t+1}+a_{\tau}+(b_{\tau}^{\prime}-\iota^{\prime})X_{t}],\\
+= & \mathbb{E}_{t}^{\mathbb{P}}[-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t+1}-c)+a_{\tau}+(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{0,\mathcal{P}}+(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)].
+\end{align*}
+
+\end_inset
+
+By 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics 
+\begin_inset Formula $\mathcal{P}_{t+1}-c=K_{\mathcal{P}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)+\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}+\epsilon_{\mathcal{P},t+1}^{\mathbb{P}}$
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+exr_{\tau,t}= & \mathbb{E}_{t}^{\mathbb{P}}[-a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{0,\mathcal{P}}+(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(K_{\mathcal{P}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)+\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}+\epsilon_{\mathcal{P},t+1}^{\mathbb{P}})],\\
+= & -a_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{0,\mathcal{P}}+a_{\tau}+(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{0,\mathcal{P}}+(b_{\tau}^{\prime}-\iota^{\prime})\mathcal{T}_{1,\mathcal{P}}(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l},\\
+= & (a_{\tau}-a_{\tau-1})+(b_{\tau}^{\prime}-\iota^{\prime}-b_{\tau-1}^{\prime})\mathcal{T}_{0,\mathcal{P}}+(b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}-\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP},1}^{\mathbb{P}})(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=2}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}.
+\end{align*}
+
+\end_inset
+
+By equations 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:sol_a"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:sol_b"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:GQPP2GQXX"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+ and 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:KQP2KQX"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align}
+a_{\tau}-a_{\tau-1} & =b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1},\nonumber \\
+ & =b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}+b_{\tau-1}^{\prime}(I_{d_{\mathbb{Q}}}-G_{XX}^{\mathbb{Q}})\mathcal{T}_{0,\mathcal{P}}-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1},\label{eq:aux5}\\
+b_{\tau}^{\prime}-\iota^{\prime}-b_{\tau-1}^{\prime} & =b_{\tau-1}^{\prime}(G_{XX}^{\mathbb{Q}}-I_{d_{\mathbb{Q}}}),\label{eq:aux6}\\
+b_{\tau}^{\prime}\mathcal{T}_{1,\mathcal{P}}-\iota^{\prime}\mathcal{T}_{1,\mathcal{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}G_{\mathcal{PP},1}^{\mathbb{P}} & =b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(G_{\mathcal{PP}}^{\mathbb{Q}}-G_{\mathcal{PP},1}^{\mathbb{P}}),\label{eq:aux7}
+\end{align}
+
+\end_inset
+
+and these results simplify 
+\begin_inset Formula $exr_{\tau,t}$
+\end_inset
+
+ to
+\begin_inset Formula 
+\begin{align*}
+exr_{\tau,t}= & b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{Q}}+b_{\tau-1}^{\prime}(I_{d_{\mathbb{Q}}}-G_{XX}^{\mathbb{Q}})\mathcal{T}_{0,\mathcal{P}}-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}\\
+ & +b_{\tau-1}^{\prime}(G_{XX}^{\mathbb{Q}}-I_{d_{\mathbb{Q}}})\mathcal{T}_{0,\mathcal{P}}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(G_{\mathcal{PP}}^{\mathbb{Q}}-G_{\mathcal{PP},1}^{\mathbb{P}})(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}K_{\mathcal{P}}^{\mathbb{P}}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=2}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l},\\
+= & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(K_{\mathcal{P}}^{\mathbb{P}}-K_{\mathcal{P}}^{\mathbb{Q}})-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}+b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(G_{\mathcal{PP}}^{\mathbb{Q}}-G_{\mathcal{PP},1}^{\mathbb{P}})(\mathcal{P}_{t}-c)\\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=2}^{p}G_{\mathcal{PP},l}^{\mathbb{P}}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}G_{\mathcal{P}M,l}^{\mathbb{P}}M_{t+1-l}.
+\end{align*}
+
+\end_inset
+
+Using notations defined in equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:mpr"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align}
+exr_{\tau,t}= & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\lambda_{\mathcal{P}}-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Lambda_{\mathcal{PP},1}(\mathcal{P}_{t}-c)\nonumber \\
+ & -b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=2}^{p}\Lambda_{\mathcal{PP},l}(\mathcal{P}_{t+1-l}-c)-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\sum_{l=1}^{p}\Lambda_{\mathcal{P}M,l}M_{t+1-l},\nonumber \\
+= & -0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}-b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\lambda_{\mathcal{P}}+\sum_{l=1}^{p}\Lambda_{\mathcal{PP},l}(\mathcal{P}_{t+1-l}-c)+\sum_{l=1}^{p}\Lambda_{\mathcal{P}M,l}M_{t+1-l}),\label{eq:exr2}\\
+= & -0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}-\begin{bmatrix}b_{\tau-1}^{\prime} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}\mathcal{T}_{1,\mathcal{F}}(\Omega_{\mathcal{FF}}^{1/2}\lambda_{t}).\label{eq:exr1}
+\end{align}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Therefore,
+\begin_inset Formula 
+\begin{align*}
+TP_{\tau,t} & =\frac{1}{\tau}\sum_{i=1}^{\tau-1}\mathbb{E}_{t}^{\mathbb{P}}exr_{\tau-i+1,t+i-1},\\
+ & =\frac{1}{\tau}\sum_{i=1}^{\tau-1}\mathbb{E}_{t}^{\mathbb{P}}[-0.5b_{\tau-i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-i}-\begin{bmatrix}b_{\tau-i}^{\prime} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}\mathcal{T}_{1,\mathcal{F}}\Omega_{\mathcal{FF}}^{1/2}\lambda_{t+i-1}],\\
+ & =-\frac{1}{\tau}\sum_{i=1}^{\tau-1}0.5b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{i}-\frac{1}{\tau}\sum_{i=1}^{\tau-1}\begin{bmatrix}b_{\tau-i}^{\prime} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}\mathcal{T}_{1,\mathcal{F}}\mathbb{E}_{t}^{\mathbb{P}}[\Omega_{\mathcal{FF}}^{1/2}\lambda_{t+i-1}].
+\end{align*}
+
+\end_inset
+
+and,
+ by equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:mpr"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+TP_{\tau,t}= & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}(0.5b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{i}+\begin{bmatrix}b_{\tau-i}^{\prime} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}\mathcal{T}_{1,\mathcal{F}}\lambda)\\
+ & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}\begin{bmatrix}b_{\tau-i}^{\prime} & O_{1\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\end{bmatrix}\mathcal{T}_{1,\mathcal{F}}(\sum_{l=1}^{p}\Lambda_{l}\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{F}_{t+i-l}]).
+\end{align*}
+
+\end_inset
+
+We calculate 
+\begin_inset Formula $\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{F}_{t+i-l}]$
+\end_inset
+
+ iteratively using 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics 
+\begin_inset Formula $\mathcal{F}_{t}=K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+\epsilon_{\mathcal{F},t}^{\mathbb{P}}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Or,
+ by using equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:exr2"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+TP_{\tau,t}= & \frac{1}{\tau}\sum_{i=1}^{\tau-1}\mathbb{E}_{t}^{\mathbb{P}}exr_{\tau-i+1,t+i-1},\\
+= & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}(0.5b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{i}+b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\lambda_{\mathcal{P}})\\
+ & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}b_{\tau-i}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\sum_{l=1}^{p}\Lambda_{\mathcal{PP},l}\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{P}_{t+i-l}-c]+\sum_{l=1}^{p}\Lambda_{\mathcal{P}M,l}\mathbb{E}_{t}^{\mathbb{P}}[M_{t+i-l}]).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Empirical Methodology
+\end_layout
+
+\begin_layout Standard
+We estimate the model in terms of annual returns.
+ Originally,
+ the measurement equation is
+\begin_inset Formula 
+\begin{align*}
+\mathcal{O}_{t} & =W_{\mathcal{O}}R_{t}=\mathcal{A}_{\mathcal{P}}+\mathcal{B}_{\mathcal{P}}(\mathcal{P}_{t}-c)+\mathcal{N}(O_{(N-d_{\mathbb{Q}})\times1},\Sigma_{\mathcal{O}}),\\
+\mathcal{A}_{\mathcal{P}} & =W_{\mathcal{O}}[\mathcal{A}_{X}+\mathcal{B}{}_{X}\mathcal{T}_{0,\mathcal{P}}],\\
+\mathcal{B}_{\mathcal{P}} & =W_{\mathcal{O}}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}},\\
+\mathcal{T}_{1,\mathcal{P}} & =(W_{\mathcal{P}}\mathcal{B}{}_{X})^{-1},\\
+\mathcal{T}_{0,\mathcal{P}} & =-\mathcal{T}_{1,\mathcal{P}}(W_{\mathcal{P}}\mathcal{A}_{X}-c)=-\mathcal{T}_{1,\mathcal{P}}\mathcal{T}_{0,X},\\
+\mathcal{A}{}_{X}^{\prime} & =\begin{bmatrix}a_{\tau_{1}}/\tau_{1} & a_{\tau_{2}}/\tau_{2} & \cdots & a_{\tau_{N}}/\tau_{N}\end{bmatrix},\\
+\mathcal{B}_{X}^{\prime} & =\begin{bmatrix}b_{\tau_{1}}/\tau_{1} & b_{\tau_{2}}/\tau_{2} & \cdots & b_{\tau_{N}}/\tau_{N}\end{bmatrix},\\
+a_{\tau} & =a_{\tau-1}+b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1},\\
+b_{\tau} & =\iota+G_{XX}^{\mathbb{Q}\prime}b_{\tau-1},
+\end{align*}
+
+\end_inset
+
+and the transition equation is 
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\mathcal{P}_{t}-c\\
+M_{t}
+\end{bmatrix} & =\begin{bmatrix}K_{\mathcal{P}}^{\mathbb{P}}\\
+K_{M|\mathcal{F}}^{\mathbb{P}}
+\end{bmatrix}+\sum_{l=1}^{p}\begin{pmatrix}G_{\mathcal{PP},l}^{\mathbb{P}} & G_{\mathcal{P}M,l}^{\mathbb{P}}\\
+G_{M\mathcal{P},l}^{\mathbb{P}} & G_{MM,l}^{\mathbb{P}}
+\end{pmatrix}\begin{bmatrix}\mathcal{P}_{t-l}-c\\
+M_{t-l}
+\end{bmatrix}+\mathcal{N}(O_{d_{\mathbb{P}}\times1},\begin{pmatrix}\Omega_{\mathcal{PP}} & \Omega_{M\mathcal{P}}^{\prime}\\
+\Omega_{M\mathcal{P}} & \Omega_{MM}
+\end{pmatrix}).
+\end{align*}
+
+\end_inset
+
+The term premium is 
+\begin_inset Formula 
+\begin{align*}
+TP_{\tau,t}= & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}(0.5b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{i}+b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\lambda_{\mathcal{P}})\\
+ & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}b_{\tau-i}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\sum_{l=1}^{p}\Lambda_{\mathcal{PP},l}\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{P}_{t+i-l}-c]+\sum_{l=1}^{p}\Lambda_{\mathcal{P}M,l}\mathbb{E}_{t}^{\mathbb{P}}[M_{t+i-l}]).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If we use annual data so yields are 
+\begin_inset Formula $1200\times R_{t}$
+\end_inset
+
+,
+ the state-space is modified as
+\begin_inset Formula 
+\begin{align*}
+\mathbf{1\mathbf{200\cdot\mathcal{O}_{t}}} & =W_{\mathcal{O}}\mathbf{(1200\cdot R_{t})}=\mathbf{1200\cdot\mathcal{A}_{\mathcal{P}}}+\mathcal{B}_{\mathcal{P}}(\mathbf{1200\cdot\mathcal{P}_{t}}-\mathbf{1200\cdot c})+\mathcal{N}(O_{(N-d_{\mathbb{Q}})\times1},\mathbf{1200^{2}\cdot\Sigma_{\mathcal{O}}}),\\
+\mathbf{1200\cdot\mathcal{A}_{\mathcal{P}}} & =W_{\mathcal{O}}[\mathbf{1200\cdot\mathcal{A}_{X}}+\mathcal{B}{}_{X}(\mathbf{1200\cdot\mathcal{T}_{0,\mathcal{P}}})],\\
+\mathcal{B}_{\mathcal{P}} & =W_{\mathcal{O}}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}},\\
+\mathcal{T}_{1,\mathcal{P}} & =(W_{\mathcal{P}}\mathcal{B}{}_{X})^{-1},\\
+\mathbf{1200\cdot\mathcal{T}_{0,\mathcal{P}}} & =-\mathcal{T}_{1,\mathcal{P}}[\mathbf{W_{\mathcal{P}}(1200\cdot\mathcal{A}_{X})}-\mathbf{1200\cdot c}]=-\mathcal{T}_{1,\mathcal{P}}(\mathbf{1200\cdot\mathcal{T}_{0,X}}),\\
+\mathbf{1200\cdot\mathcal{A}{}_{X}^{\prime}} & =\begin{bmatrix}(\mathbf{1200\cdot a_{\tau_{1}}})/\tau_{1} & (\mathbf{1200\cdot a_{\tau_{2}}})/\tau_{2} & \cdots & (\mathbf{1200\cdot a_{\tau_{N}}})/\tau_{N}\end{bmatrix},\\
+\mathcal{B}_{X}^{\prime} & =\begin{bmatrix}b_{\tau_{1}}/\tau_{1} & b_{\tau_{2}}/\tau_{2} & \cdots & b_{\tau_{N}}/\tau_{N}\end{bmatrix},\\
+\mathbf{1200\cdot a_{\tau}} & =\mathbf{1200\cdot a_{\tau-1}}+b_{\tau-1}^{\prime}(\begin{bmatrix}\mathbf{1200\cdot k_{\infty}^{\mathbb{Q}}}\\
+O_{(d_{\mathbb{Q}}-1)\times1}
+\end{bmatrix})-\frac{0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathbf{1200^{2}\cdot\Omega_{\mathcal{PP}}})\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}}{1200},\\
+b_{\tau} & =\iota+G_{XX}^{\mathbb{Q}\prime}b_{\tau-1},
+\end{align*}
+
+\end_inset
+
+and
+\size small
+
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\mathbf{1200\cdot\mathcal{P}_{t}}-\mathbf{1200\cdot c}\\
+M_{t}
+\end{bmatrix}= & \begin{bmatrix}\mathbf{1200\cdot K_{\mathcal{P}}^{\mathbb{P}}}\\
+K_{M|\mathcal{F}}^{\mathbb{P}}
+\end{bmatrix}+\sum_{l=1}^{p}\begin{pmatrix}G_{\mathcal{PP},l}^{\mathbb{P}} & \mathbf{1200\cdot G_{\mathcal{P}M,l}^{\mathbb{P}}}\\
+\mathbf{1200^{-1}\cdot G_{M\mathcal{P},l}^{\mathbb{P}}} & G_{MM,l}^{\mathbb{P}}
+\end{pmatrix}\begin{bmatrix}\mathbf{1200\cdot\mathcal{P}_{t-l}-1200\cdot c}\\
+M_{t-l}
+\end{bmatrix}\\
+ & +\mathcal{N}\left(O_{d_{\mathbb{P}}\times1},\begin{pmatrix}\mathbf{1200^{2}\cdot\Omega_{\mathcal{PP}}} & \mathbf{1200\cdot\Omega_{M\mathcal{P}}^{\prime}}\\
+\mathbf{1200\cdot\Omega_{M\mathcal{P}}} & \Omega_{MM}
+\end{pmatrix}\right).
+\end{align*}
+
+\end_inset
+
+
+\size default
+The term premium is modified to
+\begin_inset Formula 
+\begin{align*}
+\mathbf{1200\cdot TP_{\tau,t}}= & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}[\frac{0.5b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathbf{1200^{2}\cdot\Omega_{\mathcal{PP}}})\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{i}}{1200}+b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\mathbf{1200\cdot\lambda_{\mathcal{P}}})]\\
+ & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}b_{\tau-i}^{\prime}\mathcal{T}_{1,\mathcal{P}}(\sum_{l=1}^{p}\Lambda_{\mathcal{PP},l}\mathbb{E}_{t}^{\mathbb{P}}[\mathbf{1200\cdot\mathcal{P}_{t+i-l}}-\mathbf{1200\cdot c}]+\sum_{l=1}^{p}\mathbf{1200\cdot\Lambda_{\mathcal{P}M,l}}\mathbb{E}_{t}^{\mathbb{P}}[M_{t+i-l}]),
+\end{align*}
+
+\end_inset
+
+and 
+\begin_inset Formula 
+\[
+\mathbf{1200\cdot\lambda_{\mathcal{P}}}=\mathbf{1200\cdot K_{\mathcal{P}}^{\mathbb{P}}}-\mathcal{T}_{1,X}[\begin{bmatrix}\mathbf{1200\cdot k_{\infty}^{\mathbb{Q}}}\\
+O_{(d_{\mathbb{Q}}-1)\times1}
+\end{bmatrix}+(G_{XX}^{\mathbb{Q}}-I_{d_{\mathbb{Q}}})(\mathbf{1200\cdot\mathcal{T}_{0,\mathcal{P}}})].
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When we redefine the notations for scaled parameters,
+ the modified state-space model is almost same as the original.
+ Therefore,
+ is not irrelevant whether we use annual yields or monthly yields.
+ The only thing we have to be careful is the form of the Jensen's inequality term.
+ The Jensen's inequality term 
+\begin_inset Formula $\mathcal{J}(:\kappa^{\mathbb{Q}},\Omega_{\mathcal{PP}})$
+\end_inset
+
+ is
+\begin_inset Formula 
+\[
+\mathcal{J}_{\tau}(:\kappa^{\mathbb{Q}},\Omega_{\mathcal{PP}})=\begin{cases}
+0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}, & \text{if yields are monthly decimal data},\\
+\frac{0.5b_{\tau-1}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Omega_{\mathcal{PP}}\mathcal{T}_{1,\mathcal{P}}^{\prime}b_{\tau-1}}{1200}, & \text{if yields are annual percentage data.}
+\end{cases}
+\]
+
+\end_inset
+
+Then,
+ the difference equation is 
+\begin_inset Formula 
+\begin{align}
+a_{\tau} & =a_{\tau-1}+b_{\tau-1}^{\prime}K_{X}^{\mathbb{Q}}-\mathcal{J}_{\tau}(:\kappa^{\mathbb{Q}},\Omega_{\mathcal{PP}}),\label{eq:sol_a}\\
+b_{\tau} & =\iota+G_{XX}^{\mathbb{Q}\prime}b_{\tau-1}.\label{eq:sol_b}
+\end{align}
+
+\end_inset
+
+and term premium is 
+\begin_inset Formula 
+\begin{align*}
+TP_{\tau,t}= & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}(\mathcal{J}_{i+1}(:\kappa^{\mathbb{Q}},\Omega_{\mathcal{PP}})+b_{i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\lambda_{\mathcal{P}})\\
+ & -\frac{1}{\tau}\sum_{i=1}^{\tau-1}\sum_{l=1}^{p}[b_{\tau-i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Lambda_{\mathcal{PP},l}\mathbb{E}_{t}^{\mathbb{P}}[\mathcal{P}_{t+i-l}-c]+b_{\tau-i}^{\prime}\mathcal{T}_{1,\mathcal{P}}\Lambda_{\mathcal{P}M,l}\mathbb{E}_{t}^{\mathbb{P}}[M_{t+i-l}])].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The estimated parameters are
+\begin_inset Formula 
+\[
+\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},K_{\mathcal{F}}^{\mathbb{P}},\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p},\Omega_{\mathcal{FF}},\Sigma_{\mathcal{O}}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Prior distribution
+\end_layout
+
+\begin_layout Subsubsection
+VAR covariance 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For a prior distribution of 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+,
+ we impose 
+\begin_inset Formula 
+\[
+\Omega_{\mathcal{FF}}\backsim\mathcal{IW}(\nu_{0},diag[\Omega_{0}]).
+\]
+
+\end_inset
+
+Instead of using the InverseWishart-InverseWishart update,
+ we translate the Wishart distribution into a series of normal-inverse gamma distributions using the following proposition.
+\end_layout
+
+\begin_layout Proposition
+Consider the following normal-inverse-gamma priors on the diagonal elements of 
+\begin_inset Formula $\Sigma$
+\end_inset
+
+ and the lower triangular elements of A:
+\begin_inset Formula 
+\begin{align*}
+\sigma_{i}^{2} & \backsim\mathcal{IG}(\frac{\nu_{0}+i-n}{2},\frac{s_{i}^{2}}{2}),i=1,\cdots,n,\\
+(A_{i,j}|\sigma_{i}^{2}) & \backsim\mathcal{N}(0,\frac{\sigma_{i}^{2}}{s_{j}^{2}}),1\leq j<i\leq n,i=2,\cdots,n.
+\end{align*}
+
+\end_inset
+
+Then 
+\begin_inset Formula $\tilde{\Sigma}^{-1}=A^{\prime}\Sigma^{-1}A$
+\end_inset
+
+ has the Wishart distribution 
+\begin_inset Formula $\tilde{\Sigma}^{-1}\backsim\mathcal{W}(v_{0},S^{-1})$
+\end_inset
+
+,
+ where 
+\begin_inset Formula $S=diag(s_{1}^{2},s_{2}^{2}\cdots,s_{n}^{2})$
+\end_inset
+
+.
+ It follows that 
+\begin_inset Formula $\tilde{\Sigma}\backsim\mathcal{IW}(\nu_{0},S)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+To this end,
+ we orthogonalize the system 
+\begin_inset Formula 
+\[
+\mathcal{F}_{t}=K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+\epsilon_{\mathcal{F},t}^{\mathbb{P}},
+\]
+
+\end_inset
+
+so
+\begin_inset Formula 
+\begin{equation}
+\underbrace{\begin{pmatrix}1 & 0 & 0 & \cdots & 0\\
+\mathcal{C}_{21} & 1 & 0 & \cdots & 0\\
+\mathcal{C}_{31} & \mathcal{C}_{32} & 1 & \cdots & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+\mathcal{C}_{d_{\mathbb{P}}1} & \mathcal{C}_{d_{\mathbb{P}}2} & \mathcal{C}_{d_{\mathbb{P}}3} & \cdots & 1
+\end{pmatrix}}_{\mathcal{C}}\mathcal{F}_{t}=\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+diag(\underbrace{\begin{bmatrix}\sigma_{\mathcal{FF},1}\\
+\vdots\\
+\sigma_{\mathcal{FF},d_{\mathbb{P}}}
+\end{bmatrix}}_{\tilde{\Omega}_{\mathcal{FF}}^{1/2}})v_{\mathcal{F},t}^{\mathbb{P}}.\label{eq:structural_VAR}
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula $\mathcal{C}$
+\end_inset
+
+ is implicitly defined as 
+\begin_inset Formula $\Omega_{\mathcal{FF}}^{-1}=\mathcal{C}^{\prime}diag[\tilde{\Omega}_{\mathcal{FF}}]^{-1}\mathcal{C}$
+\end_inset
+
+ (or 
+\begin_inset Formula $\Omega_{\mathcal{FF}}=\mathcal{C}^{-1}diag[\tilde{\Omega}_{\mathcal{FF}}]\mathcal{C}^{-1\prime}$
+\end_inset
+
+).
+ By the proposition,
+ the InverseWishart prior is the same as
+\begin_inset Formula 
+\begin{align*}
+\sigma_{\mathcal{FF},i}^{2} & \backsim\mathcal{IG}(\frac{\nu_{0}+i-d_{\mathbb{P}}}{2},\frac{\Omega_{0,(i)}}{2}),i=1,\cdots,d_{\mathbb{P}},\\
+\mathcal{C}_{ij}|\sigma_{\mathcal{FF},i}^{2} & \backsim\mathcal{N}(0,\frac{\sigma_{\mathcal{FF},i}^{2}}{\Omega_{0,(j)}}),1\leq j<i\leq d_{\mathbb{P}},i=2,\cdots,d_{\mathbb{P}}.
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+From the recursive structure that 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ has,
+ we can derive that
+\begin_inset Formula 
+\begin{align*}
+\Omega_{\mathcal{PP}} & =(\mathcal{C}^{-1})_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})}diag[\tilde{\Omega}_{\mathcal{FF},(1:d_{\mathbb{Q}})}]((\mathcal{C}^{-1})_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{\prime}.
+\end{align*}
+
+\end_inset
+
+Because 
+\begin_inset Formula $\mathcal{C}$
+\end_inset
+
+ is a lower triangular matrix,
+ when we partition 
+\begin_inset Formula 
+\begin{align*}
+\mathcal{C} & =\begin{pmatrix}\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+\mathcal{C}_{(d_{\mathbb{Q}}+1:d_{\mathbb{P}},1:d_{\mathbb{Q}})} & \mathcal{C}_{(d_{\mathbb{Q}}+1:d_{\mathbb{P}},d_{\mathbb{Q}}+1:d_{\mathbb{P}})}
+\end{pmatrix},\\
+\mathcal{C}^{-1} & =\begin{pmatrix}(\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{-1} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+-(\mathcal{C}_{(d_{\mathbb{Q}}+1:d_{\mathbb{P}},d_{\mathbb{Q}}+1:d_{\mathbb{P}})})^{-1}\mathcal{C}_{(d_{\mathbb{Q}}+1:d_{\mathbb{P}},1:d_{\mathbb{Q}})}(\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{-1} & (\mathcal{C}_{(d_{\mathbb{Q}}+1:d_{\mathbb{P}},d_{\mathbb{Q}}+1:d_{\mathbb{P}})})^{-1}
+\end{pmatrix},\\
+(\mathcal{C}^{-1})_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})} & =(\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{-1}.\\
+\therefore\Omega_{\mathcal{PP}} & =(\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{-1}diag[\tilde{\Omega}_{\mathcal{FF},(1:d_{\mathbb{Q}})}](\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{-1\prime}.
+\end{align*}
+
+\end_inset
+
+In terms of a precision,
+ 
+\begin_inset Formula 
+\[
+\Omega_{\mathcal{PP}}^{-1}=(\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})})^{\prime}diag[\tilde{\Omega}_{\mathcal{FF},(1:d_{\mathbb{Q}})}]^{-1}\mathcal{C}_{(1:d_{\mathbb{Q}},1:d_{\mathbb{Q}})}.
+\]
+
+\end_inset
+
+Therefore,
+ sampling 
+\begin_inset Formula $\sigma_{\mathcal{FF},1}^{2}$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $\{C_{(i,1:i-1)},\sigma_{\mathcal{FF},i}^{2}\}_{i=2}^{d_{\mathbb{Q}}}$
+\end_inset
+
+ is equal to sampling 
+\begin_inset Formula $\Omega_{\mathcal{PP}}$
+\end_inset
+
+.
+ For information,
+ 
+\begin_inset Formula 
+\[
+\Omega_{\mathcal{PP}}\backsim\mathcal{IW}(\nu_{0}-(d_{\mathbb{P}}-d_{\mathbb{Q}}),diag[\Omega_{0,(1:d_{\mathbb{Q}})}]).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+VAR conditional mean 
+\begin_inset Formula $K_{\mathcal{F}}^{\mathbb{P}}$
+\end_inset
+
+ and 
+\begin_inset Formula $\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+First,
+ we set prior means of 
+\begin_inset Formula $\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
+\end_inset
+
+.
+ We set prior mean of 
+\begin_inset Formula $G_{\mathcal{PP},1}^{\mathbb{P}}$
+\end_inset
+
+ to the prior mean of 
+\begin_inset Formula $G_{\mathcal{PP}}^{\mathbb{Q}}$
+\end_inset
+
+.
+ For other diagonal elements in 
+\begin_inset Formula $G_{\mathcal{PP},1}^{\mathbb{P}}$
+\end_inset
+
+,
+ we set to zero and 0.9 for growth and level variables,
+ respectively.
+ The other elements in 
+\begin_inset Formula $\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
+\end_inset
+
+ have zero prior means.
+ 
+\end_layout
+
+\begin_layout Standard
+For the efficiency of the sampler,
+ we estimate the orthogonalized equation (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:structural_VAR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+).
+ Since 
+\begin_inset Formula 
+\[
+(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}=G_{\mathcal{FF},l,(i,j)}^{\mathbb{P}}+\sum_{k=1}^{i-1}\mathcal{C}_{ik}(G_{\mathcal{FF},l}^{\mathbb{P}})_{(k,j)},
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
+\mathbb{E}[(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}] & =\mathbb{E}[\mathbb{E}[(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}|G_{\mathcal{FF},l}^{\mathbb{P}},\tilde{\Omega}_{\mathcal{FF}}]],\\
+ & =\mathbb{E}[\mathbb{E}[G_{\mathcal{FF},l,(i,j)}^{\mathbb{P}}+\sum_{k=1}^{i-1}\mathcal{C}_{ik}(G_{\mathcal{FF},l}^{\mathbb{P}})_{(k,j)}|G_{\mathcal{FF},l}^{\mathbb{P}},\tilde{\Omega}_{\mathcal{FF}}]],\\
+ & =\mathbb{E}[G_{\mathcal{FF},l,(i,j)}^{\mathbb{P}}].
+\end{align*}
+
+\end_inset
+
+Therefore,
+ we can use prior means of 
+\begin_inset Formula $\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
+\end_inset
+
+ as prior means of 
+\begin_inset Formula $\{\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
+\end_inset
+
+.
+ For the intercept term,
+ it is 
+\begin_inset Formula 
+\[
+(\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}})_{(i)}=K_{\mathcal{F},(i)}^{\mathbb{P}}+\sum_{k=1}^{i-1}\mathcal{C}_{ik}(K_{\mathcal{F}}^{\mathbb{P}})_{(k)},
+\]
+
+\end_inset
+
+and the corresponding prior mean is
+\begin_inset Formula 
+\begin{align*}
+\mathbb{E}[(\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}})_{(i)}] & =\mathbb{E}[\mathbb{E}[K_{\mathcal{F},(i)}^{\mathbb{P}}+\sum_{k=1}^{i-1}\mathcal{C}_{ik}(K_{\mathcal{F}}^{\mathbb{P}})_{(k)}|K_{\mathcal{F}}^{\mathbb{P}},\tilde{\Omega}_{ff}]],\\
+ & =\mathbb{E}[K_{\mathcal{F},(i)}^{\mathbb{P}}].
+\end{align*}
+
+\end_inset
+
+Therefore,
+ we can use a reduced form prior for 
+\begin_inset Formula $K_{\mathcal{F}}^{\mathbb{P}}$
+\end_inset
+
+ as a prior for 
+\begin_inset Formula $\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}}$
+\end_inset
+
+.
+ Here,
+ we set a mean prior of 
+\begin_inset Formula $K_{\mathcal{P}}^{\mathbb{P}}$
+\end_inset
+
+ to be same to that of 
+\begin_inset Formula $K_{\mathcal{P}}^{\mathbb{Q}}$
+\end_inset
+
+.
+ We can calculate a prior mean of 
+\begin_inset Formula $K_{\mathcal{P}}^{\mathbb{Q}}$
+\end_inset
+
+ with a Monte Carlo simulation.
+ The prior mean of the remaining elements in 
+\begin_inset Formula $K_{\mathcal{F}}^{\mathbb{P}}$
+\end_inset
+
+ is set to zero.
+\end_layout
+
+\begin_layout Standard
+A remaining thing is to set prior variances.
+ Our prior variances are
+\begin_inset Formula 
+\begin{align*}
+\frac{Var[(\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}})_{(i,j)}]}{\sigma_{\mathcal{FF},i}^{2}} & =\underbrace{\psi_{l,ij}}_{local}\cdot\underbrace{\frac{q_{slope}}{l^{q_{lag}}}\frac{(\nu_{0}-d_{\mathbb{P}}-1)}{\Omega_{0,(j)}}}_{Minnesota},\\
+\text{where }q_{slope} & =\begin{cases}
+q_{11} & \text{if }i=j\text{ and }i\leq d_{\mathbb{Q}},\\
+q_{12} & \text{if }i=j\text{ and }i>d_{\mathbb{Q}},\\
+q_{21} & \text{if }i\neq j\text{ and }i\leq d_{\mathbb{Q}},\\
+q_{22} & \text{otherwise,}
+\end{cases}\\
+q_{lag} & =\begin{cases}
+q_{31} & \text{if }i\leq d_{\mathbb{Q}},\\
+q_{32} & \text{otherwise},
+\end{cases}
+\end{align*}
+
+\end_inset
+
+and 
+\begin_inset Formula $\psi_{l,ij}\backsim\text{\ensuremath{\mathcal{G}(\eta_{\psi},\eta_{\psi})}}$
+\end_inset
+
+ or 
+\begin_inset Formula $\psi_{l,ij}=1$
+\end_inset
+
+ if we want to shut down a local shrinkage.
+ The benchmark value for 
+\begin_inset Formula $q_{lag}$
+\end_inset
+
+ is two.
+ If we introduce the local prior,
+\begin_inset Formula 
+\[
+\eta_{\psi}\backsim\mathcal{G}(1,1)
+\]
+
+\end_inset
+
+that reminds us that 
+\begin_inset Formula $\eta_{\psi}=1$
+\end_inset
+
+ corresponds to the Bayesian Lasso.
+ In the case of the intercept,
+\begin_inset Formula 
+\begin{align*}
+\frac{Var[(\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}})_{(i)}]}{\sigma_{\mathcal{FF},i}^{2}} & =\underbrace{\psi_{0,i}}_{local}\cdot\underbrace{q_{intercept}}_{Minnesota},\\
+\text{where }q_{intercept} & =\begin{cases}
+q_{41} & \text{if }i\leq d_{\mathbb{Q}},\\
+q_{42} & \text{otherwise}.
+\end{cases}
+\end{align*}
+
+\end_inset
+
+The intercept and slope matrices are estimated with 
+\begin_inset Formula $\mathcal{C}$
+\end_inset
+
+.
+ Specifically,
+ for 
+\begin_inset Formula 
+\begin{align*}
+\phi_{i} & =\begin{bmatrix}\begin{bmatrix}(\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}})_{(i)} & (\mathcal{C}G_{\mathcal{FF},1}^{\mathbb{P}})_{(i,:)} & \cdots & (\mathcal{C}G_{\mathcal{FF},p}^{\mathbb{P}})_{(i,:)}\end{bmatrix} & \begin{bmatrix}\mathcal{C}_{i1} & \cdots & \mathcal{C}_{i(i-1)}\end{bmatrix}\end{bmatrix}^{\prime},
+\end{align*}
+
+\end_inset
+
+we express the 
+\begin_inset Formula $i$
+\end_inset
+
+th row of orthogonalized system (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:structural_VAR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+) as
+\begin_inset Formula 
+\[
+\underbrace{\begin{bmatrix}\mathcal{F}_{1,(i)}\\
+\mathcal{F}_{2,(i)}\\
+\vdots\\
+\mathcal{F}_{T,(i)}
+\end{bmatrix}}_{y_{\phi_{i}}}=X_{\phi_{i}}\phi_{i}+\mathcal{N}(O_{T\times1},\sigma_{\mathcal{FF},i}^{2}I_{T}).
+\]
+
+\end_inset
+
+By estimating 
+\begin_inset Formula $\phi_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma_{\mathcal{FF},i}^{2}$
+\end_inset
+
+ 
+\begin_inset Formula $\forall i$
+\end_inset
+
+,
+ we can derive a posterior sample of 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $K_{\mathcal{F}}^{\mathbb{P}}$
+\end_inset
+
+ and 
+\begin_inset Formula $\{G_{\mathcal{FF},l}^{\mathbb{P}}\}_{l=1}^{p}$
+\end_inset
+
+.
+ The corresponding prior distribution is 
+\begin_inset Formula 
+\[
+\phi_{i}\backsim\mathcal{N}(m_{i},\sigma_{\mathcal{FF},i}^{2}\cdot diag[V_{i}]).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+prices of risks 
+\begin_inset Formula $k_{\infty}^{\mathbb{Q}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We observe 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics only once at a time,
+ but we can observe 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics several times contemporaneously through forward rates in the bond market.
+ Therefore,
+ 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+ dynamics is estimated stably without a sensitivity on prior settings.
+ We impose 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+k_{\infty}^{\mathbb{Q}} & \backsim\mathcal{N}(0,\sigma_{k_{\infty}^{\mathbb{Q}}}^{2}),\\
+\sigma_{k_{\infty}^{\mathbb{Q}}}^{2} & =0.01^{2}.
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Decay parameter 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+The DNS decay parameter is typically chosen to maximize the curvature factor loading at a specific maturity.
+ The curvature factor loading is 
+\begin_inset Formula 
+\[
+\frac{1-\exp(-\kappa^{\mathbb{Q}}\tau)}{\kappa^{\mathbb{Q}}\tau}-\exp(-\kappa^{\mathbb{Q}}\tau).
+\]
+
+\end_inset
+
+We calculate 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+ that maximize the curvature factor loading at each maturity 
+\begin_inset Formula $\tau\in\{24,30,\cdots,60\}$
+\end_inset
+
+.
+ Suppose the calculated decay parameters are 
+\begin_inset Formula $\{\kappa_{24}^{\mathbb{Q}},\kappa_{30}^{\mathbb{Q}}\cdots,\kappa_{60}^{\mathbb{Q}}\}$
+\end_inset
+
+.
+ We impose a uniform distribution on grid 
+\begin_inset Formula $\{\kappa_{24}^{\mathbb{Q}},\kappa_{30}^{\mathbb{Q}}\cdots,\kappa_{60}^{\mathbb{Q}}\}$
+\end_inset
+
+ as a prior distribution for 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+.
+ A first derivative of the factor loading w.r.t.
+ 
+\begin_inset Formula $\tau$
+\end_inset
+
+ is
+\begin_inset Formula 
+\[
+\frac{(\kappa^{\mathbb{Q}}\tau+1)\exp(-\kappa^{\mathbb{Q}}\tau)-1}{\kappa^{\mathbb{Q}}\tau^{2}}+\exp(-\kappa^{\mathbb{Q}}\tau)\kappa^{\mathbb{Q}}.
+\]
+
+\end_inset
+
+On the grid,
+ the derivative should be zero for each maturity 
+\begin_inset Formula $\tau\in\{24,30,\cdots,60\}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+Pricing error 
+\begin_inset Formula $\Sigma_{\mathcal{O}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We impose a hierarchical prior structure,
+ so that 
+\begin_inset Formula 
+\begin{align*}
+\sigma_{\mathcal{O},i}^{2} & \backsim\mathcal{IG}(2,\gamma_{i}),\\
+\gamma_{i} & \backsim\mathcal{G}(1,\bar{\gamma}).
+\end{align*}
+
+\end_inset
+
+To determine 
+\begin_inset Formula $\bar{\gamma}$
+\end_inset
+
+,
+ we regress the measurement equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:mea"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+ using OLS with unrestricted coefficients.
+ And then,
+ we set an inverse of 
+\begin_inset Formula $\bar{\gamma}$
+\end_inset
+
+ to an average of the residual variances.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Summary
+\end_layout
+
+\begin_layout Standard
+Our prior distribution is 
+\begin_inset Formula 
+\begin{align*}
+ & p(\theta\equiv\{\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{P}}},\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}},\eta_{\psi},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}},\Sigma_{\mathcal{O}},\{\gamma_{i}\}_{i=1}^{N-d_{\mathbb{Q}}}\}|p,\nu_{0},\Omega_{0},q)\\
+= & p(\{\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{P}}}|\nu_{0},\Omega_{0})p(\{\phi_{i}\}_{i=1}^{d_{\mathbb{P}}}|p,\{\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{P}}},q,\nu_{0},\Omega_{0},\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}})\\
+ & \times p(\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}}|p,\eta_{\psi})p(\eta_{\psi})p(k_{\infty}^{\mathbb{Q}})p(\kappa^{\mathbb{Q}})p(\Sigma_{\mathcal{O}}|\{\gamma_{i}\}_{i=1}^{N-d_{\mathbb{Q}}})p(\{\gamma_{i}\}_{i=1}^{N-d_{\mathbb{Q}}}),
+\end{align*}
+
+\end_inset
+
+where 
+\begin_inset Formula $q\equiv\begin{bmatrix}q_{slope} & q_{lag} & q_{intercept}\end{bmatrix}^{\prime}$
+\end_inset
+
+.
+ The hyper-parameters are 
+\begin_inset Formula $p$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\nu_{0}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\Omega_{0}$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $q$
+\end_inset
+
+.
+ Our MH block contains 
+\begin_inset Formula $\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{Q}}}$
+\end_inset
+
+ and 
+\begin_inset Formula $\eta_{\psi}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Likelihood
+\end_layout
+
+\begin_layout Standard
+Our likelihood function is
+\begin_inset Formula 
+\begin{align*}
+p(\{\mathcal{O}_{t},\mathcal{P}_{t},M_{t}\}_{t=1}^{T}|\theta) & =\Pi_{t=1}^{T}p(\mathcal{O}_{t},\mathcal{P}_{t},M_{t}|\mathcal{I}_{t-1},\theta),\\
+p(\mathcal{O}_{t},\mathcal{P}_{t},M_{t}|\mathcal{I}_{t-1},\theta) & =p(\mathcal{O}_{t}|\mathcal{P}_{t},\theta)p(\mathcal{F}_{t}|\mathcal{I}_{t-1},\theta).
+\end{align*}
+
+\end_inset
+
+We express the likelihood in terms of orthogonalized system (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:structural_VAR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+),
+ so
+\begin_inset Formula 
+\begin{align*}
+p(\mathcal{F}_{t,(1)},\cdots,\mathcal{F}_{t,(d_{\mathbb{P}})}|\mathcal{I}_{t-1},\theta) & =p(\mathcal{F}_{t,(1)}|\mathcal{I}_{t-1},\theta)\Pi_{i=2}^{d_{\mathbb{P}}}p(\mathcal{F}_{t,(i)}|\mathcal{F}_{t,(i-1)},\cdots,\mathcal{F}_{t,(1)},\mathcal{I}_{t-1},\theta),
+\end{align*}
+
+\end_inset
+
+Therefore,
+\begin_inset Formula 
+\begin{align*}
+p(\{\mathcal{O}_{t},\mathcal{P}_{t},M_{t}\}_{t=1}^{T}|\theta) & =\Pi_{t=1}^{T}p(\mathcal{O}_{t}|\mathcal{P}_{t},\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}},\Sigma_{\mathcal{O}})\\
+ & \times\Pi_{t=1}^{T}p(\mathcal{F}_{t,(1)}|\mathcal{I}_{t-1},\phi_{1},\sigma_{\mathcal{FF},1}^{2})\\
+ & \times\Pi_{i=2}^{d_{\mathbb{P}}}[\Pi_{t=1}^{T}p(\mathcal{F}_{t,(i)}|\mathcal{F}_{t,(i-1)},\cdots,\mathcal{F}_{t,(1)},\mathcal{I}_{t-1},\phi_{i},\sigma_{\mathcal{FF},i}^{2})].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The measurement equation is 
+\begin_inset Formula 
+\[
+\Pi_{t=1}^{T}p(\mathcal{O}_{t}|\mathcal{P}_{t},\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}},\Sigma_{\mathcal{O}})=\Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t}-c),\Sigma_{\mathcal{O}}),
+\]
+
+\end_inset
+
+and the transition equation is 
+\begin_inset Formula 
+\[
+\Pi_{t=1}^{T}p(\mathcal{F}_{t,(i)}|\mathcal{F}_{t,(i-1)},\cdots,\mathcal{F}_{t,(1)},\mathcal{I}_{t-1},\theta)=\mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T}).
+\]
+
+\end_inset
+
+Therefore,
+\begin_inset Formula 
+\begin{align*}
+p(\{\mathcal{O}_{t},\mathcal{P}_{t},M_{t}\}_{t=1}^{T}|\theta)= & \Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t}-c),\Sigma_{\mathcal{O}})\\
+ & \times\Pi_{i=1}^{d_{\mathbb{P}}}\mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Posterior distribution
+\end_layout
+
+\begin_layout Standard
+We use the Gibbs sampling to sampling our joint posterior distribution.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Long-run level parameter 
+\begin_inset Formula $k_{\infty}^{\mathbb{Q}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The full-conditional posterior distribution is 
+\begin_inset Formula 
+\begin{align*}
+p(k_{\infty}^{\mathbb{Q}}|\mathcal{I}_{T},\theta\backslash\{k_{\infty}^{\mathbb{Q}}\}) & \propto p(k_{\infty}^{\mathbb{Q}})\Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t}-c),\Sigma_{\mathcal{O}}).
+\end{align*}
+
+\end_inset
+
+We first simplify the measurement equation.
+ A close inspection on the difference equations 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:sol_a"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:sol_b"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+ leads to
+\begin_inset Formula 
+\begin{align*}
+a_{\tau} & =a_{\tau-1}-\mathcal{J}_{\tau}(:\kappa^{\mathbb{Q}},\Omega_{\mathcal{PP}})+(\tau-1)k_{\infty}^{\mathbb{Q}}.
+\end{align*}
+
+\end_inset
+
+So,
+\begin_inset Formula 
+\begin{align*}
+a_{\tau} & =0,\text{for }\tau<2\\
+a_{\tau} & =\underbrace{-\sum_{i=2}^{\tau}\mathcal{J}_{i}(:\kappa^{\mathbb{Q}},\Omega_{\mathcal{PP}})}_{a_{0\tau}}+\underbrace{\sum_{i=2}^{\tau}(i-1)}_{a_{1\tau}}k_{\infty}^{\mathbb{Q}},\text{for }\tau\geq2,
+\end{align*}
+
+\end_inset
+
+and,
+\begin_inset Formula 
+\[
+\mathcal{A}_{X}=\underbrace{\begin{bmatrix}a_{0\tau_{1}}/\tau_{1}\\
+a_{0\tau_{2}}/\tau_{2}\\
+\vdots\\
+a_{0\tau_{N}}/\tau_{N}
+\end{bmatrix}}_{\mathcal{A}_{0,k_{\infty}^{\mathbb{Q}}}}+\underbrace{\begin{bmatrix}\sum_{i=2}^{\tau_{1}}\frac{(i-1)}{\tau_{1}}\\
+\sum_{i=2}^{\tau_{2}}\frac{(i-1)}{\tau_{2}}\\
+\vdots\\
+\sum_{i=2}^{\tau_{N}}\frac{(i-1)}{\tau_{N}}
+\end{bmatrix}}_{\mathcal{A}_{1,k_{\infty}^{\mathbb{Q}}}}k_{\infty}^{\mathbb{Q}}.
+\]
+
+\end_inset
+
+Based on the result,
+ the measurement equation can be rephrased as
+\begin_inset Formula 
+\begin{align*}
+\mathcal{O}_{t} & =\mathcal{A}_{\mathcal{P}}+\mathcal{B}_{\mathcal{P}}(\mathcal{P}_{t}-c)+\mathcal{N}(O_{N-d_{\mathbb{Q}}},\Sigma_{\mathcal{O}}),\\
+ & =W_{\mathcal{O}}(\mathcal{A}_{X}+\mathcal{B}{}_{X}\mathcal{T}_{0,\mathcal{P}})+\mathcal{B}_{\mathcal{P}}(\mathcal{P}_{t}-c)+\mathcal{N}(O_{N-d_{\mathbb{Q}}},\Sigma_{\mathcal{O}}),\\
+ & =W_{\mathcal{O}}(I_{N}-\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}W_{\mathcal{P}})\mathcal{A}_{X}+W_{\mathcal{O}}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}c+\mathcal{B}_{\mathcal{P}}(\mathcal{P}_{t}-c)+\mathcal{N}(O_{N-d_{\mathbb{Q}}},\Sigma_{\mathcal{O}}),\\
+ & =W_{\mathcal{O}}(I_{N}-\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}W_{\mathcal{P}})(\mathcal{A}_{0,k_{\infty}^{\mathbb{Q}}}+\mathcal{A}_{1,k_{\infty}^{\mathbb{Q}}}k_{\infty}^{\mathbb{Q}})+W_{\mathcal{O}}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}c+\mathcal{B}_{\mathcal{P}}(\mathcal{P}_{t}-c)+\mathcal{N}(O_{N-d_{\mathbb{Q}}},\Sigma_{\mathcal{O}}),
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
+\therefore & \underbrace{\Sigma_{\mathcal{O}}^{-1/2}[\mathcal{O}_{t}-W_{\mathcal{O}}(I_{N}-\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}W_{\mathcal{P}})\mathcal{A}_{0,k_{\infty}^{\mathbb{Q}}}-W_{\mathcal{O}}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}c-\mathcal{B}_{\mathcal{P}}(\mathcal{P}_{t}-c)]}_{y_{k_{\infty}^{\mathbb{Q}},t}}\\
+ & =\underbrace{\Sigma_{\mathcal{O}}^{-1/2}W_{\mathcal{O}}(I_{N}-\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}}W_{\mathcal{P}})\mathcal{A}_{1,k_{\infty}^{\mathbb{Q}}}}_{x_{k_{\infty}^{\mathbb{Q}}}}k_{\infty}^{\mathbb{Q}}+\mathcal{N}(O_{(N-d_{\mathbb{Q}})\times1},I_{N-d_{\mathbb{Q}}}).
+\end{align*}
+
+\end_inset
+
+ Stacking up 
+\begin_inset Formula $y_{k_{\infty}^{\mathbb{Q}},t}$
+\end_inset
+
+ leads to 
+\begin_inset Formula 
+\[
+\underbrace{\begin{bmatrix}y_{k_{\infty}^{\mathbb{Q}},1}\\
+y_{k_{\infty}^{\mathbb{Q}},2}\\
+\vdots\\
+y_{k_{\infty}^{\mathbb{Q}},T}
+\end{bmatrix}}_{Y_{k_{\infty}^{\mathbb{Q}}}}=\underbrace{\begin{bmatrix}x_{k_{\infty}^{\mathbb{Q}}}\\
+x_{k_{\infty}^{\mathbb{Q}}}\\
+\vdots\\
+x_{k_{\infty}^{\mathbb{Q}}}
+\end{bmatrix}}_{X_{k_{\infty}^{\mathbb{Q}}}}k_{\infty}^{\mathbb{Q}}+\mathcal{N}(O_{T(N-d_{\mathbb{Q}})\times1},I_{T(N-d_{\mathbb{Q}})}).
+\]
+
+\end_inset
+
+This derivation says that we can do the Normal-Normal update for 
+\begin_inset Formula $k_{\infty}^{\mathbb{Q}}$
+\end_inset
+
+,
+ so
+\begin_inset Formula 
+\[
+p(k_{\infty}^{\mathbb{Q}}|\mathcal{I}_{T},\theta\backslash\{k_{\infty}^{\mathbb{Q}}\})=\mathcal{N}((X_{k_{\infty}^{\mathbb{Q}}}^{\prime}X_{k_{\infty}^{\mathbb{Q}}}+\sigma_{k_{\infty}^{\mathbb{Q}}}^{-2})^{-1}X_{k_{\infty}^{\mathbb{Q}}}^{\prime}Y_{k_{\infty}^{\mathbb{Q}}},(X_{k_{\infty}^{\mathbb{Q}}}^{\prime}X_{k_{\infty}^{\mathbb{Q}}}+\sigma_{k_{\infty}^{\mathbb{Q}}}^{-2})^{-1}).
+\]
+
+\end_inset
+
+We do not care about the Jacobian term because it does not depend on 
+\begin_inset Formula $k_{\infty}^{\mathbb{Q}}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+Decay parameter 
+\begin_inset Formula $\kappa^{\mathbb{Q}}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+The unnormalized kernel of the full-conditional posterior distribution is 
+\begin_inset Formula 
+\begin{align*}
+p^{*}(\kappa^{\mathbb{Q}}=\kappa_{i}^{\mathbb{Q}}|\mathcal{I}_{T},\theta\backslash\{\kappa^{\mathbb{Q}}\})= & p(\kappa_{i}^{\mathbb{Q}})\Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa_{i}^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa_{i}^{\mathbb{Q}})(\mathcal{P}_{t}-c),\Sigma_{\mathcal{O}}).
+\end{align*}
+
+\end_inset
+
+Therefore,
+ the posterior is
+\begin_inset Formula 
+\[
+p(\kappa^{\mathbb{Q}}=\kappa_{i}^{\mathbb{Q}}|\mathcal{I}_{T},\theta\backslash\{\kappa^{\mathbb{Q}}\})=\frac{p^{*}(\kappa^{\mathbb{Q}}=\kappa_{i}^{\mathbb{Q}}|\mathcal{I}_{T},\theta\backslash\{\kappa^{\mathbb{Q}}\})}{\sum_{j\in\{24,30,\cdots,60\}}p^{*}(\kappa^{\mathbb{Q}}=\kappa_{j}^{\mathbb{Q}}|\mathcal{I}_{T},\theta\backslash\{\kappa^{\mathbb{Q}}\})},
+\]
+
+\end_inset
+
+for 
+\begin_inset Formula $i\in\{24,30,\cdots,60\}.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+MCMC algorithm for 
+\begin_inset Formula $\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{Q}}}$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $\eta_{\psi}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The full-conditional posterior is 
+\begin_inset Formula 
+\begin{align*}
+ & \Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t}-c),\Sigma_{\mathcal{O}})\times\Pi_{i=1}^{d_{\mathbb{P}}}\mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T})\\
+\times & p(\{\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{P}}}|\nu_{0},\Omega_{0})p(\{\phi_{i}\}_{i=1}^{d_{\mathbb{P}}}|p,\{\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{P}}},q,\nu_{0},\Omega_{0},\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}})\\
+\times & \Pi_{l=1}^{p}\Pi_{i=1}^{d_{\mathbb{P}}}\Pi_{j=1}^{d_{\mathbb{P}}}\text{\ensuremath{\mathcal{G}(\psi_{l,ij}|\eta_{\psi},\eta_{\psi})}}\times\Pi_{i=1}^{d_{\mathbb{P}}}\text{\ensuremath{\mathcal{G}(\psi_{0,i}|\eta_{\psi},\eta_{\psi})}}\times\mathcal{G}(\eta_{\psi}|1,1).
+\end{align*}
+
+\end_inset
+
+This MCMC sampling is divided into 
+\begin_inset Formula $d_{\mathbb{Q}}+1$
+\end_inset
+
+ MCMC blocks,
+ that are 
+\begin_inset Formula $\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}$
+\end_inset
+
+ for each 
+\begin_inset Formula $i\in\{1,\cdots,d_{\mathbb{Q}}\}$
+\end_inset
+
+ and 
+\begin_inset Formula $\eta_{\psi}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Paragraph
+Sampling 
+\begin_inset Formula $\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}_{i=1}^{d_{\mathbb{Q}}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For specific 
+\begin_inset Formula $i$
+\end_inset
+
+,
+ the targeted 
+\begin_inset Formula $\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}$
+\end_inset
+
+ has a posterior distribution of
+\begin_inset Formula 
+\begin{align*}
+ & \Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP}})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})(\mathcal{P}_{t}-c),\Sigma_{\mathcal{O}})\\
+\times & \mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T})\times\mathcal{N}(\phi_{i}|m_{i},\sigma_{\mathcal{FF},i}^{2}\cdot diag[V_{i}])\times\mathcal{IG}(\sigma_{\mathcal{FF},i}^{2}|\frac{\nu_{0}+i-d_{\mathbb{P}}}{2},\frac{\Omega_{0,(i)}}{2}).
+\end{align*}
+
+\end_inset
+
+Here,
+ 
+\begin_inset Formula 
+\[
+\mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T})\times\mathcal{N}(\phi_{i}|m_{i},\sigma_{\mathcal{FF},i}^{2}\cdot diag[V_{i}])\times\mathcal{IG}(\sigma_{\mathcal{FF},i}^{2}|\frac{\nu_{0}+i-d_{\mathbb{P}}}{2},\frac{\Omega_{0,(i)}}{2})
+\]
+
+\end_inset
+
+corresponds to the Normal-InverseGamma-Normal-InverseGamma update.
+ We set it as a proposal distribution.
+ Then,
+ the acceptance probability is 
+\begin_inset Formula 
+\[
+min[1,\frac{\Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP},proposal})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})\mathcal{P}_{t},\Sigma_{\mathcal{O}})}{\Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t}|\mathcal{A}_{\mathcal{P}}(:\kappa^{\mathbb{Q}},k_{\infty}^{\mathbb{Q}},\Omega_{\mathcal{PP},current})+\mathcal{B}_{\mathcal{P}}(:\kappa^{\mathbb{Q}})\mathcal{P}_{t},\Sigma_{\mathcal{O}})}].
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph
+Sampling 
+\begin_inset Formula $\eta_{\psi}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The log target distribution is 
+\begin_inset Formula 
+\begin{align*}
+ & \log p(\eta_{\psi}|\mathcal{I}_{T},\theta\backslash\{\eta_{\psi}\})\\
+= & \sum_{l=1}^{p}\sum_{i=1}^{d_{\mathbb{P}}}\sum_{j=1}^{d_{\mathbb{P}}}\log\text{\ensuremath{\mathcal{G}(\psi_{l,ij}|\eta_{\psi},\eta_{\psi})}}+\sum_{i=1}^{d_{\mathbb{P}}}\log\text{\ensuremath{\mathcal{G}(\psi_{0,i}|\eta_{\psi},\eta_{\psi})}}+\log\mathcal{G}(\eta_{\psi}|1,1)+\text{constant},\\
+= & \sum_{l=1}^{p}\sum_{i=1}^{d_{\mathbb{P}}}\sum_{j=1}^{d_{\mathbb{P}}}\log[\frac{\eta_{\psi}^{\eta_{\psi}}}{\Gamma(\eta_{\psi})}\psi_{l,ij}^{\eta_{\psi}-1}\exp[-\eta_{\psi}\psi_{l,ij}]]\\
+ & +\sum_{i=1}^{d_{\mathbb{P}}}\log[\frac{\eta_{\psi}^{\eta_{\psi}}}{\Gamma(\eta_{\psi})}\psi_{0,i}^{\eta_{\psi}-1}\exp[-\eta_{\psi}\psi_{0,i}]]+\log[\frac{1}{\Gamma(1)}\exp[-\eta_{\psi}]]+\text{constant}\\
+= & \sum_{l=1}^{p}\sum_{i=1}^{d_{\mathbb{P}}}\sum_{j=1}^{d_{\mathbb{P}}}[\eta_{\psi}\log\eta_{\psi}-\log\Gamma(\eta_{\psi})+(\eta_{\psi}-1)\log\psi_{l,ij}-\eta_{\psi}\psi_{l,ij}]\\
+ & +\sum_{i=1}^{d_{\mathbb{P}}}[\eta_{\psi}\log\eta_{\psi}-\log\Gamma(\eta_{\psi})+(\eta_{\psi}-1)\log\psi_{0,i}-\eta_{\psi}\psi_{0,i}]-\log\Gamma(1)-\eta_{\psi}+\text{constant},\\
+= & (pd_{\mathbb{P}}^{2}+d_{\mathbb{P}})[\eta_{\psi}\log\eta_{\psi}-\log\Gamma(\eta_{\psi})]+\sum_{\forall\psi}[(\eta_{\psi}-1)\log\psi-\eta_{\psi}\psi]-\log\Gamma(1)-\eta_{\psi}+\text{constant}.
+\end{align*}
+
+\end_inset
+
+We derive an approximated target distribution and then use it as a proposal distribution.
+ The first derivative is 
+\begin_inset Formula 
+\[
+\frac{\partial\log p(\eta_{\psi}|\mathcal{I}_{T},\theta\backslash\{\eta_{\psi}\})}{\partial\eta_{\psi}}=(pd_{\mathbb{P}}^{2}+d_{\mathbb{P}})[\log\eta_{\psi}+1-\frac{d\log\Gamma(\eta_{\psi})}{d\eta_{\psi}}]+\sum_{\forall\psi}\log\psi-\sum_{\forall\psi}\psi-1,
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\frac{d\log\Gamma(\eta_{\psi})}{d\eta_{\psi}}$
+\end_inset
+
+ is a digamma function.
+ The second derivative is 
+\begin_inset Formula 
+\[
+\frac{\partial^{2}\log p(\eta_{\psi}|\mathcal{I}_{T},\theta\backslash\{\eta_{\psi}\})}{(\partial\eta_{\psi})^{2}}=(pd_{\mathbb{P}}^{2}+d_{\mathbb{P}})[\frac{1}{\eta_{\psi}}-\frac{d^{2}\log\Gamma(\eta_{\psi})}{(d\eta_{\psi})^{2}}],
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\frac{d^{2}\log\Gamma(\eta_{\psi})}{(d\eta_{\psi})^{2}}$
+\end_inset
+
+ is a trigamma function.
+ We use the first derivative to obtain the conditional posterior mode 
+\begin_inset Formula $\hat{\eta}_{\psi}$
+\end_inset
+
+.
+ And then,
+ the hessian is evaluated to derive the variance of the proposal distribution.
+ The proposal is a student-t distribution of
+\begin_inset Formula 
+\begin{align*}
+t_{15}(\hat{\eta}_{\psi},(-\frac{\partial^{2}\log p(\eta_{\psi}|\mathcal{I}_{T},\theta\backslash\{\eta_{\psi}\})}{(\partial\eta_{\psi})^{2}})^{-1}|_{\eta_{\psi}=\hat{\eta}_{\psi}}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Other transition equation parameters 
+\begin_inset Formula $\{\phi_{i},\sigma_{\mathcal{FF},i}^{2}\}_{i=d_{\mathbb{Q}}+1}^{d_{\mathbb{P}}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The full-conditional distribution is 
+\begin_inset Formula 
+\begin{align*}
+ & \Pi_{i=d_{\mathbb{Q}}+1}^{d_{\mathbb{P}}}\mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T})\times p(\{\sigma_{\mathcal{FF},i}^{2}\}_{i=d_{\mathbb{Q}}+1}^{d_{\mathbb{P}}}|\nu_{0},\Omega_{0})\\
+\times & p(\{\phi_{i}\}_{i=d_{\mathbb{Q}}+1}^{d_{\mathbb{P}}}|p,\{\sigma_{\mathcal{FF},i}^{2}\}_{i=d_{\mathbb{Q}}+1}^{d_{\mathbb{P}}},q,\nu_{0},\Omega_{0},\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}})
+\end{align*}
+
+\end_inset
+
+For 
+\begin_inset Formula $i\in\{d_{\mathbb{Q}}+1,\cdots,d_{\mathbb{P}}\}$
+\end_inset
+
+,
+ the kernel is 
+\begin_inset Formula 
+\[
+\mathcal{N}(y_{\phi_{i}}|X_{\phi_{i}}\phi_{i},\sigma_{\mathcal{FF},i}^{2}I_{T})\times\mathcal{N}(\phi_{i}|m_{i},\sigma_{\mathcal{FF},i}^{2}diag[V_{i}])\times\mathcal{IG}(\sigma_{\mathcal{FF},i}^{2}|\frac{\nu_{0}+i-d_{\mathbb{P}}}{2},\frac{\Omega_{0,(i)}}{2}),
+\]
+
+\end_inset
+
+so it is the Normal-InverseGamma-Normal-InverseGamma update.
+\end_layout
+
+\begin_layout Standard
+In the case of 
+\begin_inset Formula 
+\begin{align*}
+y|\beta\text{,}\sigma^{2} & =X\beta+\mathcal{N}(O,\sigma^{2}I_{T}),\\
+\beta|\sigma^{2} & \backsim\mathcal{N}(\beta_{0},\sigma^{2}B_{0}),\\
+\sigma^{2} & \backsim\mathcal{IG}(\alpha_{0},\delta_{0}),
+\end{align*}
+
+\end_inset
+
+the posterior distribution is 
+\begin_inset Formula 
+\begin{align*}
+\beta|\sigma^{2},y & \backsim\mathcal{N}(\beta_{1},\sigma^{2}B_{1}),\\
+\sigma^{2}|y & \backsim\mathcal{IG}(\alpha_{0}+\frac{T}{2},\delta_{1}),
+\end{align*}
+
+\end_inset
+
+where 
+\begin_inset Formula $B_{1}=(B_{0}^{-1}+X^{\prime}X)^{-1}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\beta_{1}=B_{1}(B_{0}^{-1}\beta_{0}+X^{\prime}y)$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $\delta_{1}=\delta_{0}+(y^{\prime}y+\beta_{0}^{\prime}B_{0}^{-1}\beta_{0}-\beta_{1}^{\prime}B_{1}^{-1}\beta_{1})/2.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Sparsity parameter 
+\begin_inset Formula $\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}}$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The kernel is 
+\begin_inset Formula 
+\begin{align*}
+ & p(\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}}|\mathcal{I}_{T},\theta\backslash\{\{\{\psi_{l,ij}\}_{l=1}^{p}\}_{i,j=1}^{d_{\mathbb{P}}},\{\psi_{0,i}\}_{i=1}^{d_{\mathbb{P}}}\})\\
+\propto & \Pi_{l=1}^{p}\Pi_{i,j=1}^{d_{\mathbb{P}}}[\mathcal{N}(\phi_{i,(1+(l-1)d_{\mathbb{P}}+j)}|m_{i,(1+(l-1)d_{\mathbb{P}}+j)},\psi_{l,ij}\sigma_{\mathcal{FF},i}^{2}\frac{q_{slope}}{l^{q_{lag}}}\frac{(\nu_{0}-d_{\mathbb{P}}-1)}{\Omega_{0,(j)}})\\
+ & \times\mathcal{G}(\psi_{l,ij}|\eta_{\psi},\eta_{\psi})]\times\Pi_{i=1}^{d_{\mathbb{P}}}[\mathcal{N}(\phi_{i,(1)}|m_{i,(1)},\psi_{0,i}\sigma_{\mathcal{FF},i}^{2}q_{intercept})\times\mathcal{G}(\psi_{0,i}|\eta_{\psi},\eta_{\psi})].
+\end{align*}
+
+\end_inset
+
+Each component in the brackets are updated to distributions of the Generalized Inverse Gaussian (GIG).
+ In general notation,
+ it is 
+\begin_inset Formula 
+\begin{align*}
+\phi & \backsim\mathcal{N}(m,\psi V),\\
+\psi & \backsim\mathcal{G}(\eta,\eta),
+\end{align*}
+
+\end_inset
+
+the corresponding kernel is 
+\begin_inset Formula 
+\[
+p(\psi|\phi)\propto\psi^{\eta-\frac{1}{2}-1}\exp[-\frac{1}{2}(2\eta\psi+\psi^{-1}\frac{(\phi-m)^{2}}{V})],
+\]
+
+\end_inset
+
+that is a kernel of 
+\begin_inset Formula 
+\[
+p(\psi|\phi)\propto\mathcal{GIG}(\eta-\frac{1}{2},2\eta,\frac{(\phi-m)^{2}}{V}).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Pricing error 
+\begin_inset Formula $\Sigma_{\mathcal{O}}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The full-conditional distribution is 
+\begin_inset Formula 
+\begin{align*}
+ & \Pi_{i=1}^{N-d_{\mathbb{Q}}}[\{\Pi_{t=1}^{T}\mathcal{N}(\mathcal{O}_{t,(i)}|\mathcal{A}_{\mathcal{P},(i)}+\mathcal{B}_{\mathcal{P},(i,:)}(\mathcal{P}_{t}-c),\sigma_{\mathcal{O},i}^{2})\}\mathcal{IG}(\sigma_{\mathcal{O},i}^{2}|2,\gamma_{i})]\\
+= & \Pi_{i=1}^{N-d_{\mathbb{Q}}}[\mathcal{N}(\underbrace{\begin{bmatrix}\mathcal{O}_{1,(i)}\\
+\mathcal{O}_{2,(i)}\\
+\vdots\\
+\mathcal{O}_{T,(i)}
+\end{bmatrix}}_{y_{\sigma_{\mathcal{O},i}^{2}}}|\underbrace{\begin{bmatrix}\mathcal{A}_{\mathcal{P},(i)}+\mathcal{B}_{\mathcal{P},(i,:)}(\mathcal{P}_{1}-c)\\
+\mathcal{A}_{\mathcal{P},(i)}+\mathcal{B}_{\mathcal{P},(i,:)}(\mathcal{P}_{2}-c)\\
+\vdots\\
+\mathcal{A}_{\mathcal{P},(i)}+\mathcal{B}_{\mathcal{P},(i,:)}(\mathcal{P}_{T}-c)
+\end{bmatrix}}_{m_{\sigma_{\mathcal{O},i}^{2}}},\sigma_{\mathcal{O},i}^{2}I_{T})\mathcal{IG}(\sigma_{\mathcal{O},i}^{2}|2,\gamma_{i})].
+\end{align*}
+
+\end_inset
+
+ Therefore,
+ we can update the components in the brackets using the InverseGamma-InverseGamma update.
+ For each 
+\begin_inset Formula $i$
+\end_inset
+
+,
+\begin_inset Formula 
+\[
+p(\sigma_{\mathcal{O},i}^{2}|\mathcal{I}_{T},\theta\backslash\{\Sigma_{\mathcal{O}}\})=\mathcal{IG}(\sigma_{\mathcal{O},i}^{2}|2+\frac{T}{2},\gamma_{i}+\frac{(y_{\sigma_{\mathcal{O},i}^{2}}-m_{\sigma_{\mathcal{O},i}^{2}})^{\prime}(y_{\sigma_{\mathcal{O},i}^{2}}-m_{\sigma_{\mathcal{O},i}^{2}})}{2}).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+Population measurement error 
+\begin_inset Formula $\gamma$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The corresponding kernel is 
+\begin_inset Formula 
+\begin{align*}
+ & \Pi_{i=1}^{N-d_{\mathbb{Q}}}p(\sigma_{\mathcal{O},i}^{2}|\gamma_{i})p(\gamma_{i})\\
+= & \Pi_{i=1}^{N-d_{\mathbb{Q}}}\mathcal{IG}(\sigma_{\mathcal{O},i}^{2}|2,\gamma_{i})\mathcal{G}(\gamma_{i}|1,\bar{\gamma}).
+\end{align*}
+
+\end_inset
+
+Therefore,
+ there is a posterior independence.
+ For each 
+\begin_inset Formula $i$
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+ & \mathcal{IG}(\sigma_{\mathcal{O},i}^{2}|2,\gamma_{i})\mathcal{G}(\gamma_{i}|1,\bar{\gamma})\\
+= & \frac{\gamma_{i}^{2}}{\Gamma(2)}(\sigma_{\mathcal{O},i}^{2})^{-(2+1)}\exp[-\sigma_{\mathcal{O},i}^{-2}\gamma_{i}]\frac{\bar{\gamma}}{\Gamma(1)}\exp[-\bar{\gamma}\gamma_{i}],\\
+\propto & \gamma_{i}^{3-1}\exp[-(\sigma_{\mathcal{O},i}^{-2}+\bar{\gamma})\gamma_{i}].
+\end{align*}
+
+\end_inset
+
+Therefore,
+ 
+\begin_inset Formula 
+\[
+p(\gamma_{i}|\mathcal{I}_{T},\theta\backslash\{\gamma_{i}\}_{i=1}^{N-d_{\mathbb{Q}}})=\mathcal{G}(3,\frac{1}{\sigma_{\mathcal{O},i}^{2}}+\bar{\gamma}).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Empirical Bayes and the marginal likelihood
+\end_layout
+
+\begin_layout Standard
+Hyperparameters,
+ 
+\begin_inset Formula $p$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\nu_{0}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\Omega_{0}$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $q$
+\end_inset
+
+,
+ should be calibrated.
+ We calibrate them in the perspective of the empirical Bayes.
+ We maximize the marginal likelihood for the 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-transition equation by calibrating 
+\begin_inset Formula $p$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\nu_{0}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\Omega_{0}$
+\end_inset
+
+,
+ and 
+\begin_inset Formula $q$
+\end_inset
+
+,
+ given 
+\begin_inset Formula $\forall\{\psi_{l,ij},\psi_{0,i}\}=1$
+\end_inset
+
+.
+ The log marginal likelihood is 
+\begin_inset Formula 
+\begin{align*}
+ & \sum_{i=1}^{d_{\mathbb{P}}}\log\mathcal{N}(y_{\phi_{i}}|p,\nu_{0},\Omega_{0},q,\psi_{l,ij},\psi_{0,i})\\
+= & -\frac{Td_{\mathbb{P}}}{2}\log[2\pi]+\sum_{i=1}^{d_{\mathbb{P}}}\{-\frac{1}{2}(\sum_{j=1}^{\#\phi_{i}}\log[V_{i,(j)}]+\log\det[K_{\phi_{i}}])\\
+ & +\log\Gamma(\nu_{i}+\frac{T}{2})+\nu_{i}\log S_{i}-\log\Gamma(\nu_{i})-(\nu_{i}+\frac{T}{2})\log[\hat{S}_{i}]\}.
+\end{align*}
+
+\end_inset
+
+Here,
+ 
+\begin_inset Formula $\nu_{i}=(\nu_{0}+i-d_{\mathbb{P}})/2$
+\end_inset
+
+,
+ 
+\begin_inset Formula $S_{i}=\Omega_{0,(i)}/2$
+\end_inset
+
+,
+ 
+\begin_inset Formula $K_{\phi_{i}}=diag[V_{i}]^{-1}+X_{\phi_{i}}^{\prime}X_{\phi_{i}}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\hat{\phi}_{i}=K_{\phi_{i}}^{-1}(diag[V_{i}]^{-1}m_{i}+X_{\phi_{i}}^{\prime}y_{\phi_{i}})$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\hat{S}_{i}=S_{i}+(y_{\phi_{i}}^{\prime}y_{\phi_{i}}+m_{i}^{\prime}diag[V_{i}]^{-1}m_{i}-\hat{\phi}_{i}^{\prime}K_{\phi_{i}}\hat{\phi}_{i})/2.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+When we maximize the marginal likelihood,
+ we constrain the maximum Sharpe ratio.
+ To do that,
+ we use the below proposition.
+\end_layout
+
+\begin_layout Proposition
+\begin_inset CommandInset label
+LatexCommand label
+name "prop:mSR"
+
+\end_inset
+
+In our specification,
+ the second-order Taylor series approximates the conditional expectation for the maximum Sharpe ratio as
+\begin_inset Formula 
+\begin{align*}
+ & \mathbb{E}[\sqrt{\lambda_{t}'\lambda_{t}}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}]\\
+\approx & \frac{\sqrt{\pi}}{2}\left[\frac{(tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}})^{0.5}}{\Gamma(1.5)}+\frac{(tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}})^{-1.5}(2tr[B_{\lambda_{t}}^{2}]+4\beta_{\lambda_{t}}^{\prime}B_{\lambda_{t}}\beta_{\lambda_{t}})}{2\Gamma(-0.5)}\right].
+\end{align*}
+
+\end_inset
+
+If we assume 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ as a diagonal,
+ the expressions for 
+\begin_inset Formula $\beta_{\lambda_{t}}$
+\end_inset
+
+ and 
+\begin_inset Formula $B_{\lambda_{t}}$
+\end_inset
+
+ get simplified.
+ Also,
+ under diagonal 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Proposition
+\begin_inset Formula 
+\begin{align*}
+ & \mathbb{E}[\sqrt{(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})^{\prime}\Omega_{\mathcal{FF}}^{-1}(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}]\\
+\approx & \frac{\sqrt{\pi}}{2}\left[\frac{(tr[B_{const}]+\beta_{const}^{\prime}\beta_{const})^{0.5}}{\Gamma(1.5)}+\frac{(tr[B_{const}]+\beta_{const}^{\prime}\beta_{const})^{-1.5}(2tr[B_{const}^{2}]+4\beta_{const}^{\prime}B_{const}\beta_{const})}{2\Gamma(-0.5)}\right].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Proof
+See Appendix 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:proof_mSR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Sparsity on the covariance matrix
+\end_layout
+
+\begin_layout Standard
+We post-processing posterior samples of 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ using the Lasso penalty.
+ Especially,
+ for 
+\begin_inset Formula $i$
+\end_inset
+
+'th sample 
+\begin_inset Formula $\Omega_{\mathcal{FF}}^{(i)}$
+\end_inset
+
+,
+\begin_inset Formula 
+\[
+\hat{\Omega}_{\mathcal{FF}}^{-1(i)}=\underset{X}{\arg\min}\{\text{tr}[X\Omega_{\mathcal{FF}}^{(i)}]-\log\det[X]+\omega_{(i)}\sum_{j,k}\frac{|X_{(j,k)}|}{|(\Omega_{\mathcal{FF}}^{-1(i)})_{(j,k)}|}\}
+\]
+
+\end_inset
+
+is the corresponding lasso estimate.
+ To choose 
+\begin_inset Formula $\omega_{(i)}$
+\end_inset
+
+,
+ we minimize the EBIC.
+\end_layout
+
+\begin_layout Subsection
+Predictions and Scenario Analysis
+\end_layout
+
+\begin_layout Standard
+The state space is 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}R_{t}\\
+M_{t}
+\end{bmatrix} & =\begin{bmatrix}\mathcal{A}_{X}+\mathcal{B}{}_{X}\mathcal{T}_{0,\mathcal{P}}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix}+\begin{pmatrix}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}} & O_{N\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times d_{\mathbb{Q}}} & I_{(d_{\mathbb{P}}-d_{\mathbb{Q}})}
+\end{pmatrix}\mathcal{F}_{t}+\begin{bmatrix}e_{R,t}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix},\\
+\mathcal{F}_{t} & =K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+\epsilon_{\mathcal{F},t}^{\mathbb{P}}.
+\end{align*}
+
+\end_inset
+
+Since 
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}O_{d_{\mathbb{Q}}\times1}\\
+e_{\mathcal{O},t}
+\end{bmatrix} & :=\begin{pmatrix}W_{\mathcal{P}}\\
+W_{\mathcal{O}}
+\end{pmatrix}e_{R,t}\backsim\mathcal{N}(O_{N\times1},\begin{pmatrix}O_{d_{\mathbb{Q}}\times d_{\mathbb{Q}}} & O_{d_{\mathbb{Q}}\times(N-d_{\mathbb{Q}})}\\
+O_{(N-d_{\mathbb{Q}})\times d_{\mathbb{Q}}} & \Sigma_{\mathcal{O}}
+\end{pmatrix}),
+\end{align*}
+
+\end_inset
+
+then
+\begin_inset Formula 
+\begin{align*}
+e_{R,t}= & \begin{pmatrix}W_{\mathcal{O}}\\
+W_{\mathcal{P}}
+\end{pmatrix}^{-1}\begin{bmatrix}e_{\mathcal{O},t}\\
+O_{d_{\mathbb{Q}}\times1}
+\end{bmatrix}.
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Let's think a series of scenarios 
+\begin_inset Formula $\{\mathcal{S}_{h},s_{h}\}_{h=T+1}^{T+d_{h}}$
+\end_inset
+
+ that
+\begin_inset Formula 
+\[
+\underset{(d_{s_{h}}\times(N+d_{\mathbb{P}}-d_{\mathbb{Q}}))}{\mathcal{S}_{h}}\begin{bmatrix}R_{h}\\
+M_{h}
+\end{bmatrix}=\underset{(d_{s_{h}}\times1)}{s_{h}},
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $h$
+\end_inset
+
+ is a forecasting horizon.
+ Given the set 
+\begin_inset Formula $\{\mathcal{S}_{h},s_{h}\}_{h=T+1}^{T+d_{h}}$
+\end_inset
+
+,
+\begin_inset Formula 
+\begin{align*}
+s_{h} & =\mathcal{S}_{h}\begin{bmatrix}\mathcal{A}_{X}+\mathcal{B}{}_{X}\mathcal{T}_{0,\mathcal{P}}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix}+\mathcal{S}_{h}\begin{pmatrix}\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}} & O_{N\times(d_{\mathbb{P}}-d_{\mathbb{Q}})}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times d_{\mathbb{Q}}} & I_{(d_{\mathbb{P}}-d_{\mathbb{Q}})}
+\end{pmatrix}\mathcal{F}_{h}+\mathcal{S}_{h,(:,1:N)}\left(\begin{pmatrix}W_{\mathcal{O}}\\
+W_{\mathcal{P}}
+\end{pmatrix}^{-1}\right)_{(:,1:N-d_{\mathbb{Q}})}e_{\mathcal{O},t},\\
+\mathcal{F}_{h} & =K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{h-l}+\epsilon_{\mathcal{F},h}^{\mathbb{P}}.
+\end{align*}
+
+\end_inset
+
+The state-space form is 
+\begin_inset Formula 
+\begin{align*}
+s_{h} & =\mathcal{S}_{h}\begin{bmatrix}\mathcal{A}_{X}+\mathcal{B}{}_{X}\mathcal{T}_{0,\mathcal{P}}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times1}
+\end{bmatrix}\\
+ & +\mathcal{S}_{h}\begin{pmatrix}\begin{array}{cccc}
+\mathcal{B}{}_{X}\mathcal{T}_{1,\mathcal{P}} & O_{N\times(d_{\mathbb{P}}-d_{\mathbb{Q}})} & \left(\begin{pmatrix}W_{\mathcal{O}}\\
+W_{\mathcal{P}}
+\end{pmatrix}^{-1}\right)_{(:,1:N-d_{\mathbb{Q}})} & O_{N\times(d_{\mathbb{P}}p-d_{\mathbb{P}})}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times d_{\mathbb{Q}}} & I_{(d_{\mathbb{P}}-d_{\mathbb{Q}})} & O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times(N-d_{\mathbb{Q}})} & O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times(d_{\mathbb{P}}p-d_{\mathbb{P}})}
+\end{array}\end{pmatrix}\begin{bmatrix}\mathcal{F}_{h}\\
+e_{\mathcal{O},h}\\
+\mathcal{F}_{h-1}\\
+\mathcal{F}_{h-2}\\
+\vdots\\
+\mathcal{F}_{h-p+1}
+\end{bmatrix},
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\mathcal{F}_{h}\\
+e_{\mathcal{O},h}\\
+\mathcal{F}_{h-1}\\
+\mathcal{F}_{h-2}\\
+\vdots\\
+\mathcal{F}_{h-p+1}
+\end{bmatrix} & =\begin{pmatrix}G_{\mathcal{FF},1}^{\mathbb{P}} & O_{d_{\mathbb{P}}\times(N-d_{\mathbb{Q}})} & G_{\mathcal{FF},2}^{\mathbb{P}} & \cdots & G_{\mathcal{FF},p-1}^{\mathbb{P}} & G_{\mathcal{FF},p}^{\mathbb{P}}\\
+O_{(N-d_{\mathbb{Q}})\times d_{\mathbb{P}}} & O_{(N-d_{\mathbb{Q}})\times(N-d_{\mathbb{Q}})} & O_{(N-d_{\mathbb{Q}})\times d_{\mathbb{P}}} & \cdots & O_{(N-d_{\mathbb{Q}})\times d_{\mathbb{P}}} & O_{(N-d_{\mathbb{Q}})\times d_{\mathbb{P}}}\\
+I_{d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times(N-d_{\mathbb{Q}})} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & \cdots & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}}\\
+O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times(N-d_{\mathbb{Q}})} & I_{d_{\mathbb{P}}} & \cdots & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}}\\
+\vdots & \vdots & \vdots & \ddots & \vdots & \vdots\\
+O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times(N-d_{\mathbb{Q}})} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & \cdots & I_{d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}}
+\end{pmatrix}\begin{bmatrix}\mathcal{F}_{h-1}\\
+e_{\mathcal{O},h-1}\\
+\mathcal{F}_{h-2}\\
+\mathcal{F}_{h-3}\\
+\vdots\\
+\mathcal{F}_{h-p}
+\end{bmatrix}\\
+ & +\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}\\
+O_{(N-d_{\mathbb{Q}})\times1}\\
+O_{d_{\mathbb{P}}\times1}\\
+O_{d_{\mathbb{P}}\times1}\\
+\vdots\\
+O_{d_{\mathbb{P}}\times1}
+\end{bmatrix}+\begin{bmatrix}\mathcal{N}(O_{d_{\mathbb{P}}\times1},\Omega_{\mathcal{FF}})\\
+\mathcal{N}(O_{(N-d_{\mathbb{Q}})\times1},\Sigma_{\mathcal{O}})\\
+O_{d_{\mathbb{P}}\times1}\\
+O_{d_{\mathbb{P}}\times1}\\
+\vdots\\
+O_{d_{\mathbb{P}}\times1}
+\end{bmatrix}.
+\end{align*}
+
+\end_inset
+
+Using the above state space and the Kalman filter,
+ we can derive a distribution of 
+\begin_inset Formula $\{\mathcal{P}_{h}-c,M_{h},e_{R,t},R_{h},TP_{\tau,h}\}_{h=T+1}^{\infty}$
+\end_inset
+
+.
+ From 
+\begin_inset Formula $h=T+d_{h}+1$
+\end_inset
+
+,
+ the posterior distribution is sampled by only using the predictive part in the Kalman filter.
+\end_layout
+
+\begin_layout Section
+\start_of_appendix
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:proof_JSZ"
+
+\end_inset
+
+Proof of Proposition 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "prop:JSZ"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The restricted JSZ form is 
+\begin_inset Formula 
+\begin{align*}
+r_{t} & =\iota^{\prime}X_{t},\\
+X_{t} & =\underbrace{\begin{bmatrix}k_{\infty}^{\mathbb{Q}}\\
+0\\
+0
+\end{bmatrix}}_{K_{X}^{\mathbb{Q}}}+\underbrace{\begin{pmatrix}1 & 0 & 0\\
+0 & \exp[-\kappa^{\mathbb{Q}}] & 1\\
+0 & 0 & \exp[-\kappa^{\mathbb{Q}}]
+\end{pmatrix}}_{G_{XX}^{\mathbb{Q}}}X_{t-1}+\epsilon_{X,t}^{\mathbb{Q}},\\
+X_{t} & =K_{X}^{\mathbb{P}}+\sum_{l=1}^{p}G_{XX,l}^{\mathbb{P}}X_{t-l}+\sum_{l=1}^{p}G_{XM,l}^{\mathbb{P}}M_{t-l}+\epsilon_{X,t}^{\mathbb{P}},\\
+M_{t} & =K_{M}^{\mathbb{P}}+\sum_{l=1}^{p}G_{MX,l}^{\mathbb{P}}X_{t-l}+\sum_{l=1}^{p}G_{MM,l}^{\mathbb{P}}M_{t-l}+\epsilon_{M,t}^{\mathbb{P}}.
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Rotating 
+\begin_inset Formula $X_{t}$
+\end_inset
+
+ using 
+\begin_inset Formula 
+\[
+X_{t}^{*}=\begin{pmatrix}1 & 0 & 0\\
+0 & \frac{\kappa^{\mathbb{Q}}}{1-\exp[-\kappa^{\mathbb{Q}}]} & \frac{1+2\kappa^{\mathbb{Q}}-\exp[\kappa^{\mathbb{Q}}]-\kappa^{\mathbb{Q}}\exp[-\kappa^{\mathbb{Q}}]}{(1-\exp[-\kappa^{\mathbb{Q}}])^{2}}\\
+0 & 0 & \frac{\exp[\kappa^{\mathbb{Q}}]}{1-\exp[-\kappa^{\mathbb{Q}}]}
+\end{pmatrix}X_{t}
+\]
+
+\end_inset
+
+yields
+\begin_inset Formula 
+\begin{align*}
+r_{t} & =\underbrace{\begin{bmatrix}1 & \frac{1-\exp(-\kappa^{\mathbb{Q}})}{\kappa^{\mathbb{Q}}} & \frac{1-\exp(-\kappa^{\mathbb{Q}})}{\kappa^{\mathbb{Q}}}-\exp(-\kappa^{\mathbb{Q}})\end{bmatrix}}_{\beta^{*\prime}}X_{t}^{*},\\
+X_{t}^{*} & =K_{X}^{\mathbb{Q}}+\underbrace{\begin{pmatrix}1 & 0 & 0\\
+0 & \exp[-\kappa^{\mathbb{Q}}] & \kappa^{\mathbb{Q}}\exp[-\kappa^{\mathbb{Q}}]\\
+0 & 0 & \exp[-\kappa^{\mathbb{Q}}]
+\end{pmatrix}}_{G_{X^{*}X^{*}}^{\mathbb{Q}}}X_{t-1}^{*}+\epsilon_{X^{*},t}^{\mathbb{Q}},
+\end{align*}
+
+\end_inset
+
+In a companion form,
+ the 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics is 
+\begin_inset Formula 
+\begin{align*}
+\begin{bmatrix}\begin{bmatrix}X_{t}^{*}\\
+M_{t}
+\end{bmatrix}\\
+\begin{bmatrix}X_{t-1}^{*}\\
+M_{t-1}
+\end{bmatrix}\\
+\vdots\\
+\begin{bmatrix}X_{t-p+1}^{*}\\
+M_{t-p+1}
+\end{bmatrix}
+\end{bmatrix} & =\underbrace{\begin{bmatrix}\begin{bmatrix}K_{X^{*}}^{\mathbb{P}}\\
+K_{M}^{\mathbb{P}}
+\end{bmatrix}\\
+O_{d_{\mathbb{P}}(p-1)\times1}
+\end{bmatrix}}_{K^{\mathbb{P}}}+G^{\mathbb{P}}\begin{bmatrix}\begin{bmatrix}X_{t-1}^{*}\\
+M_{t-1}
+\end{bmatrix}\\
+\begin{bmatrix}X_{t-2}^{*}\\
+M_{t-2}
+\end{bmatrix}\\
+\vdots\\
+\begin{bmatrix}X_{t-p}^{*}\\
+M_{t-p}
+\end{bmatrix}
+\end{bmatrix}+\begin{bmatrix}\begin{bmatrix}\epsilon_{X^{*},t}^{\mathbb{P}}\\
+\epsilon_{M,t}^{\mathbb{P}}
+\end{bmatrix}\\
+O_{d_{\mathbb{P}}(p-1)\times1}
+\end{bmatrix},\\
+\end{align*}
+
+\end_inset
+
+where 
+\size footnotesize
+
+\begin_inset Formula 
+\[
+G^{\mathbb{P}}\equiv\begin{pmatrix}\begin{pmatrix}G_{X^{*}X^{*},1}^{\mathbb{P}} & G_{X^{*}M,1}^{\mathbb{P}}\\
+G_{MX^{*},1}^{\mathbb{P}} & G_{MM,1}^{\mathbb{P}}
+\end{pmatrix} & \begin{pmatrix}G_{X^{*}X^{*},2}^{\mathbb{P}} & G_{X^{*}M,2}^{\mathbb{P}}\\
+G_{MX^{*},2}^{\mathbb{P}} & G_{MM,2}^{\mathbb{P}}
+\end{pmatrix} & \cdots & \begin{pmatrix}G_{X^{*}X^{*},p-1}^{\mathbb{P}} & G_{X^{*}M,p-1}^{\mathbb{P}}\\
+G_{MX^{*},p-1}^{\mathbb{P}} & G_{MM,p-1}^{\mathbb{P}}
+\end{pmatrix} & \begin{pmatrix}G_{X^{*}X^{*},p}^{\mathbb{P}} & G_{X^{*}M,p}^{\mathbb{P}}\\
+G_{MX^{*},p}^{\mathbb{P}} & G_{MM,p}^{\mathbb{P}}
+\end{pmatrix}\\
+I_{d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & \cdots & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}}\\
+O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & I_{d_{\mathbb{P}}} & \cdots & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}}\\
+\vdots & \vdots & \ddots & \vdots & \vdots\\
+O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}} & \cdots & I_{d_{\mathbb{P}}} & O_{d_{\mathbb{P}}\times d_{\mathbb{P}}}
+\end{pmatrix}.
+\]
+
+\end_inset
+
+
+\size default
+And then,
+ relocating the factors using 
+\begin_inset Formula 
+\[
+\underbrace{\begin{bmatrix}\begin{bmatrix}X_{t}^{**}\\
+M_{t}^{**}
+\end{bmatrix}\\
+\begin{bmatrix}X_{t-1}^{**}\\
+M_{t-1}^{**}
+\end{bmatrix}\\
+\vdots\\
+\begin{bmatrix}X_{t-p+1}^{**}\\
+M_{t-p+1}^{**}
+\end{bmatrix}
+\end{bmatrix}}_{F_{t}^{**}}=\begin{bmatrix}\begin{bmatrix}X_{t}^{*}\\
+M_{t}
+\end{bmatrix}\\
+\begin{bmatrix}X_{t-1}^{*}\\
+M_{t-1}
+\end{bmatrix}\\
+\vdots\\
+\begin{bmatrix}X_{t-p+1}^{*}\\
+M_{t-p+1}
+\end{bmatrix}
+\end{bmatrix}+\underbrace{(G^{\mathbb{P}}-I)^{-1}K^{\mathbb{P}}}_{z^{\mathbb{P}}}
+\]
+
+\end_inset
+
+leads to 
+\begin_inset Formula 
+\begin{align*}
+F_{t}^{**}-(G^{\mathbb{P}}-I)^{-1}K^{\mathbb{P}} & =K^{\mathbb{P}}+(G^{\mathbb{P}}-I+I)(F_{t-1}^{**}-(G^{\mathbb{P}}-I)^{-1}K^{\mathbb{P}})+\underbrace{\begin{bmatrix}\begin{bmatrix}\epsilon_{X^{*},t}^{\mathbb{P}}\\
+\epsilon_{M,t}^{\mathbb{P}}
+\end{bmatrix}\\
+O_{d_{\mathbb{P}}(p-1)\times1}
+\end{bmatrix}}_{\epsilon_{t}^{\mathbb{P}**}},\\
+F_{t}^{**} & =G^{\mathbb{P}}F_{t-1}^{**}+\epsilon_{t}^{\mathbb{P**}}.
+\end{align*}
+
+\end_inset
+
+Therefore,
+ we can erase the intercept in 
+\begin_inset Formula $\mathbb{P}$
+\end_inset
+
+-dynamics.
+ 
+\end_layout
+
+\begin_layout Standard
+Except for the case of a singularity,
+ 
+\begin_inset Formula $z^{\mathbb{P}}$
+\end_inset
+
+ would be a dense vector.
+ Then,
+ the transformation is
+\begin_inset Formula 
+\[
+X_{t}^{**}=X_{t}^{*}+\underbrace{\begin{bmatrix}z_{1}^{\mathbb{P}}\\
+z_{2}^{\mathbb{P}}\\
+z_{3}^{\mathbb{P}}
+\end{bmatrix}}_{z_{(1:3)}^{\mathbb{P}}}.
+\]
+
+\end_inset
+
+The short-term interest rate is 
+\begin_inset Formula 
+\begin{align*}
+r_{t} & =\beta^{*\prime}X_{t}^{*},\\
+ & =\underbrace{-\beta^{*\prime}z_{(1:3)}^{\mathbb{P}}}_{\delta^{**}}+\beta^{*\prime}X_{t}^{**}.
+\end{align*}
+
+\end_inset
+
+It is an affine form.
+ 
+\end_layout
+
+\begin_layout Standard
+Lastly,
+ 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics is 
+\begin_inset Formula 
+\begin{align*}
+X_{t}^{**}-z_{(1:3)}^{\mathbb{P}} & =K_{X}^{\mathbb{Q}}+G_{X^{*}X^{*}}^{\mathbb{Q}}(X_{t-1}^{**}-z_{(1:3)}^{\mathbb{P}})+\epsilon_{X^{*},t}^{\mathbb{Q}},\\
+X_{t}^{**} & =\underbrace{(K_{X}^{\mathbb{Q}}+(I_{d_{\mathbb{Q}}}-G_{X^{*}X^{*}}^{\mathbb{Q}})z_{(1:3)}^{\mathbb{P}})}_{K_{X^{**}}^{\mathbb{Q}}}+G_{X^{*}X^{*}}^{\mathbb{Q}}X_{t-1}^{**}+\epsilon_{X^{*},t}^{\mathbb{Q}}.
+\end{align*}
+
+\end_inset
+
+Vector 
+\begin_inset Formula $K_{X^{**}}^{\mathbb{Q}}$
+\end_inset
+
+ is a dense vector,
+ because 
+\begin_inset Formula 
+\begin{align*}
+K_{X^{**}}^{\mathbb{Q}} & =K_{X}^{\mathbb{Q}}+(I_{d_{\mathbb{Q}}}-G_{X^{*}X^{*}}^{\mathbb{Q}})z_{(1:3)}^{\mathbb{P}},\\
+ & =\begin{bmatrix}k_{\infty}^{\mathbb{Q}}\\
+0\\
+0
+\end{bmatrix}+\begin{pmatrix}0 & 0 & 0\\
+0 & 1-\exp(-\kappa^{\mathbb{Q}}) & -\kappa^{\mathbb{Q}}\exp(-\kappa^{\mathbb{Q}})\\
+0 & 0 & 1-\exp(-\kappa^{\mathbb{Q}})
+\end{pmatrix}\begin{bmatrix}z_{1}^{\mathbb{P}}\\
+z_{2}^{\mathbb{P}}\\
+z_{3}^{\mathbb{P}}
+\end{bmatrix}\\
+ & =\begin{bmatrix}k_{\infty}^{\mathbb{Q}}\\
+z_{2}^{\mathbb{P}}[1-\exp(-\kappa^{\mathbb{Q}})]-z_{3}^{\mathbb{P}}\kappa^{\mathbb{Q}}\exp(-\kappa^{\mathbb{Q}})\\
+z_{3}^{\mathbb{P}}[1-\exp(-\kappa^{\mathbb{Q}})]
+\end{bmatrix}.
+\end{align*}
+
+\end_inset
+
+Since there are sufficient degree of freedoms in expressions of 
+\begin_inset Formula $\delta^{**}$
+\end_inset
+
+ and 
+\begin_inset Formula $K_{X^{**}}^{\mathbb{Q}}$
+\end_inset
+
+,
+ these parameters are free-parameters.
+ Also,
+ check that we cannot make 
+\begin_inset Formula $K_{X^{**}}^{\mathbb{Q}}$
+\end_inset
+
+ to a zero vector,
+ because there is no such 
+\begin_inset Formula $z^{\mathbb{P}}$
+\end_inset
+
+ that make the first element in 
+\begin_inset Formula $K_{X^{**}}^{\mathbb{Q}}$
+\end_inset
+
+ zero.
+ In other words,
+ 
+\begin_inset Formula $K_{X^{**}}^{\mathbb{Q}}=O_{d_{\mathbb{Q}}\times1}$
+\end_inset
+
+ is an over-identification.
+\end_layout
+
+\begin_layout Section
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:proof_mSR"
+
+\end_inset
+
+Proof of Proposition 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "prop:mSR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ is non-diagonal
+\end_layout
+
+\begin_layout Standard
+Our market prices of risks specification 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:mpr"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+ is 
+\begin_inset Formula 
+\begin{align*}
+\lambda_{t} & =\Omega_{\mathcal{FF}}^{-1/2}[(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})+\sum_{l=1}^{p}(G_{\mathcal{FF},l}^{\mathbb{P}}-G_{\mathcal{FF},l}^{\mathbb{Q}})\mathcal{F}_{t+1-l}].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We first derive the conditional posterior distribution of 
+\begin_inset Formula $\{\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}},\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}}\}$
+\end_inset
+
+ using a likelihood of equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:structural_VAR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\underbrace{\begin{pmatrix}1 & 0 & 0 & \cdots & 0\\
+\mathcal{C}_{21} & 1 & 0 & \cdots & 0\\
+\mathcal{C}_{31} & \mathcal{C}_{32} & 1 & \cdots & 0\\
+\vdots & \vdots & \vdots & \ddots & \vdots\\
+\mathcal{C}_{d_{\mathbb{P}}1} & \mathcal{C}_{d_{\mathbb{P}}2} & \mathcal{C}_{d_{\mathbb{P}}3} & \cdots & 1
+\end{pmatrix}}_{\mathcal{C}}\mathcal{F}_{t}=\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}\mathcal{C}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+diag(\underbrace{\begin{bmatrix}\sigma_{\mathcal{FF},1}\\
+\vdots\\
+\sigma_{\mathcal{FF},d_{\mathbb{P}}}
+\end{bmatrix}}_{\tilde{\Omega}_{\mathcal{FF}}^{1/2}})v_{\mathcal{F},t}^{\mathbb{P}}.
+\]
+
+\end_inset
+
+Since we know 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ and 
+\begin_inset Formula $\{\mathcal{F}_{t}\}_{t=1}^{T}$
+\end_inset
+
+,
+ 
+\begin_inset Formula $\{\mathcal{C}\mathcal{F}_{t}\}_{t=1}^{T}$
+\end_inset
+
+ and 
+\begin_inset Formula $\{\sigma_{\mathcal{FF},i}\}_{i=1}^{d_{\mathbb{P}}}$
+\end_inset
+
+ are also known.
+ Since the above system has a diagonal covariance matrix,
+ parameters in
+\begin_inset Formula 
+\[
+\begin{bmatrix}\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}} & \mathcal{C}G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}_{(i,:)}\equiv\begin{bmatrix}\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}} & \mathcal{C}G_{\mathcal{FF},1}^{\mathbb{P}} & \cdots & \mathcal{C}G_{\mathcal{FF},p}^{\mathbb{P}}\end{bmatrix}_{(i,:)}
+\]
+
+\end_inset
+
+are posteriorly independent across 
+\begin_inset Formula $i$
+\end_inset
+
+.
+ By Normal-Normal update,
+ we can derive the conditional posterior distribution as
+\begin_inset Formula 
+\[
+p(\begin{bmatrix}\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}} & \mathcal{C}G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}_{(i,:)}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}})\backsim\mathcal{N}(\beta_{CKCG,i},B_{CKCG,i}),
+\]
+
+\end_inset
+
+where
+\begin_inset Formula 
+\begin{align*}
+B_{CKCG,i} & \equiv(diag[V_{i,(1:1+d_{\mathbb{P}}p)}]^{-1}+\sigma_{\mathcal{FF},i}^{-2}X_{\phi_{i},(1:1+d_{\mathbb{P}}p)}^{\prime}X_{\phi_{i},(1:1+d_{\mathbb{P}}p)})^{-1},\\
+\beta_{CKCG,i} & \equiv B_{CKCG,i}(diag[V_{i,(1:1+d_{\mathbb{P}}p)}]^{-1}m_{i,(1:1+d_{\mathbb{P}}p)}+\sigma_{\mathcal{FF},i}^{-2}X_{\phi_{i},(1:1+d_{\mathbb{P}}p)}^{\prime}\begin{bmatrix}(\mathcal{C}\mathcal{F}_{1})_{(i)}\\
+\vdots\\
+(\mathcal{C}\mathcal{F}_{T})_{(i)}
+\end{bmatrix}).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+And then,
+ we derive the posterior distribution of the reduced form parameters.
+ To do that,
+ we check the relationship between two types of parameters,
+\begin_inset Formula 
+\begin{align*}
+vec\left[\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}} & G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}^{\prime}\right] & =vec\left[\begin{bmatrix}\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}} & \mathcal{C}G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}^{\prime}\mathcal{C}^{-1\prime}\right],\\
+ & =(\mathcal{C}^{-1}\otimes I_{1+d_{\mathbb{P}}p})vec\left[\begin{bmatrix}\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}} & \mathcal{C}G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}^{\prime}\right],
+\end{align*}
+
+\end_inset
+
+where 
+\begin_inset Formula $G_{\mathcal{FF}}^{\mathbb{P}}\equiv\begin{pmatrix}G_{\mathcal{FF},1}^{\mathbb{P}} & \cdots & G_{\mathcal{FF},p}^{\mathbb{P}}\end{pmatrix}$
+\end_inset
+
+.
+ The distribution of 
+\begin_inset Formula $vec\left[\begin{bmatrix}\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}} & \mathcal{C}G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}^{\prime}\right]$
+\end_inset
+
+ conditional on 
+\begin_inset Formula $\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\[
+\mathcal{N}\left(\beta_{CKCG}\equiv\begin{bmatrix}\beta_{CKCG,1}\\
+\vdots\\
+\beta_{CKCG,d_{\mathbb{P}}}
+\end{bmatrix},B_{CKCG}\equiv\begin{pmatrix}B_{CKCG,1} & \cdots & O_{(d_{\mathbb{P}}p+1)\times(d_{\mathbb{P}}p+1)}\\
+\vdots & \ddots & \vdots\\
+O_{(d_{\mathbb{P}}p+1)\times(d_{\mathbb{P}}p+1)} & \cdots & B_{CKCG,d_{\mathbb{P}}}
+\end{pmatrix}\right).
+\]
+
+\end_inset
+
+Therefore,
+ the distribution of 
+\begin_inset Formula $vec\left[\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}} & G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}^{\prime}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}\right]$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\[
+\mathcal{N}\left(\beta_{KG}\equiv(\mathcal{C}^{-1}\otimes I_{1+d_{\mathbb{P}}p})\beta_{CKCG},B_{KG}\equiv(\mathcal{C}^{-1}\otimes I_{1+d_{\mathbb{P}}p})B_{CKCG}(\mathcal{C}^{-1\prime}\otimes I_{1+d_{\mathbb{P}}p})\right).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Next,
+ by the definition of the 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics,
+\begin_inset Formula 
+\begin{align*}
+ & vec\left[\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}} & G_{\mathcal{FF}}^{\mathbb{P}}-G_{\mathcal{FF}}^{\mathbb{Q}}\end{bmatrix}^{\prime}\right]\\
+= & vec\left[\begin{bmatrix}K_{\mathcal{P}}^{\mathbb{P}}-K_{\mathcal{P}}^{\mathbb{Q}} & G_{\mathcal{PP},1}^{\mathbb{P}}-G_{\mathcal{PP}}^{\mathbb{Q}} & G_{\mathcal{PM},1}^{\mathbb{P}} & \cdots & G_{\mathcal{PP},p}^{\mathbb{P}} & G_{\mathcal{PM},p}^{\mathbb{P}}\\
+ &  & O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})\times(d_{\mathbb{P}}p+1)}
+\end{bmatrix}^{\prime}\right].
+\end{align*}
+
+\end_inset
+
+Therefore,
+ it has a degenerated distribution.
+ The degenerated distribution is 
+\begin_inset Formula 
+\begin{align*}
+ & \begin{bmatrix}\mathcal{N}\left(\beta_{KG,(1:d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p)}-vec\left[\begin{bmatrix}K_{\mathcal{P}}^{\mathbb{Q}} & G_{\mathcal{PP}}^{\mathbb{Q}} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}p-d_{\mathbb{Q}})}\end{bmatrix}^{\prime}\right],B_{KG,(1:d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p,1:d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p)}\right)\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})(d_{\mathbb{P}}p+1)\times1}
+\end{bmatrix}\\
+= & \mathcal{N}\left(\beta_{KGPQ}\equiv\begin{bmatrix}\beta_{KG,(1:d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p)}-vec\left[\begin{bmatrix}K_{\mathcal{P}}^{\mathbb{Q}} & G_{\mathcal{PP}}^{\mathbb{Q}} & O_{d_{\mathbb{Q}}\times(d_{\mathbb{P}}p-d_{\mathbb{Q}})}\end{bmatrix}^{\prime}\right]\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})(d_{\mathbb{P}}p+1)\times1}
+\end{bmatrix},\right.\\
+ & \left.B_{KGPQ}\equiv\begin{pmatrix}B_{KG,(1:d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p,1:d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p)} & O_{(d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p)\times(d_{\mathbb{P}}-d_{\mathbb{Q}})(d_{\mathbb{P}}p+1)}\\
+O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})(d_{\mathbb{P}}p+1)\times(d_{\mathbb{Q}}+d_{\mathbb{Q}}d_{\mathbb{P}}p)} & O_{(d_{\mathbb{P}}-d_{\mathbb{Q}})(d_{\mathbb{P}}p+1)\times(d_{\mathbb{P}}-d_{\mathbb{Q}})(d_{\mathbb{P}}p+1)}
+\end{pmatrix}\right).
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Given 
+\begin_inset Formula $\{\mathcal{F}_{t}\}_{t=1}^{T}$
+\end_inset
+
+,
+ since
+\begin_inset Formula 
+\[
+(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})+\sum_{l=1}^{p}(G_{\mathcal{FF},l}^{\mathbb{P}}-G_{\mathcal{FF},l}^{\mathbb{Q}})\mathcal{F}_{t+1-l}=\underbrace{\left(I_{d_{\mathbb{P}}}\otimes\begin{bmatrix}1\\
+\mathcal{F}_{t}\\
+\vdots\\
+\mathcal{F}_{t+1-p}
+\end{bmatrix}^{\prime}\right)}_{\mathcal{F}_{kron,t}}vec\left[\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}} & G_{\mathcal{FF}}^{\mathbb{P}}-G_{\mathcal{FF}}^{\mathbb{Q}}\end{bmatrix}^{\prime}\right],
+\]
+
+\end_inset
+
+the distribution of 
+\begin_inset Formula $(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})+\sum_{l=1}^{p}(G_{\mathcal{FF},l}^{\mathbb{P}}-G_{\mathcal{FF},l}^{\mathbb{Q}})\mathcal{F}_{t+1-l}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\[
+\mathcal{N}(\mathcal{F}_{kron,t}\beta_{KGPQ},\mathcal{F}_{kron,t}B_{KGPQ}\mathcal{F}_{kron,t}').
+\]
+
+\end_inset
+
+Therefore,
+ the distribution of 
+\begin_inset Formula $\lambda_{t}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\[
+\mathcal{N}\left(\beta_{\lambda_{t}}\equiv\Omega_{\mathcal{FF}}^{-1/2}\mathcal{F}_{kron,t}\beta_{KGPQ},B_{\lambda_{t}}\equiv(\Omega_{\mathcal{FF}}^{-1/2}\mathcal{F}_{kron,t})B_{KGPQ}(\Omega_{\mathcal{FF}}^{-1/2}\mathcal{F}_{kron,t})^{\prime}\right).
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We want to derive 
+\begin_inset Formula $\mathbb{E}[\sqrt{\lambda_{t}'\lambda_{t}}]$
+\end_inset
+
+.
+ By the second-order Taylor approximation,
+ 
+\begin_inset Formula 
+\begin{align*}
+\mathbb{E}[\sqrt{\lambda_{t}'\lambda_{t}}] & =\mathbb{E}[\sum_{n=0}^{\infty}\frac{\sqrt{\pi}}{2}\frac{\mathbb{E}[\lambda_{t}'\lambda_{t}]^{0.5-n}(\lambda_{t}'\lambda_{t}-\mathbb{E}[\lambda_{t}'\lambda_{t}])^{n}}{\Gamma(1.5-n)n!}],\\
+ & \approx\frac{\sqrt{\pi}}{2}\frac{\mathbb{E}[\lambda_{t}'\lambda_{t}]^{0.5}}{\Gamma(1.5)}+\frac{\sqrt{\pi}}{2}\frac{\mathbb{E}[\lambda_{t}'\lambda_{t}]^{-1.5}Var[\lambda_{t}'\lambda_{t}]}{2\Gamma(-0.5)}.
+\end{align*}
+
+\end_inset
+
+By the formula for the quadratic form in statistics,
+ 
+\begin_inset Formula 
+\begin{align*}
+\mathbb{E}[\lambda_{t}'\lambda_{t}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}] & =tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}},\\
+Var[\lambda_{t}'\lambda_{t}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}] & =2tr[B_{\lambda_{t}}^{2}]+4\beta_{\lambda_{t}}^{\prime}B_{\lambda_{t}}\beta_{\lambda_{t}}.
+\end{align*}
+
+\end_inset
+
+Therefore,
+ we can calculate
+\begin_inset Formula 
+\begin{align*}
+ & \mathbb{E}[\sqrt{\lambda_{t}'\lambda_{t}}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}]\\
+\approx & \frac{\sqrt{\pi}}{2}\left[\frac{(tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}})^{0.5}}{\Gamma(1.5)}+\frac{(tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}})^{-1.5}(2tr[B_{\lambda_{t}}^{2}]+4\beta_{\lambda_{t}}^{\prime}B_{\lambda_{t}}\beta_{\lambda_{t}})}{2\Gamma(-0.5)}\right].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ is a diagonal
+\end_layout
+
+\begin_layout Standard
+If 
+\begin_inset Formula $\Omega_{\mathcal{FF}}$
+\end_inset
+
+ is a diagonal,
+ 
+\begin_inset Formula 
+\begin{align*}
+\Omega_{\mathcal{FF}}^{1/2} & =diag[\tilde{\Omega}_{\mathcal{FF}}^{1/2}].
+\end{align*}
+
+\end_inset
+
+and 
+\begin_inset Formula 
+\begin{align*}
+\lambda_{t} & =diag[\tilde{\Omega}_{\mathcal{FF}}^{-1/2}][(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})+\sum_{l=1}^{p}(G_{\mathcal{FF},l}^{\mathbb{P}}-G_{\mathcal{FF},l}^{\mathbb{Q}})\mathcal{F}_{t+1-l}].
+\end{align*}
+
+\end_inset
+
+Also,
+ since 
+\begin_inset Formula $\mathcal{C}$
+\end_inset
+
+ is an identity matrix,
+ the priors between 
+\begin_inset Formula $\{K_{\mathcal{F}}^{\mathbb{P}},G_{\mathcal{FF}}^{\mathbb{P}}\}$
+\end_inset
+
+ and 
+\begin_inset Formula $\{\mathcal{C}K_{\mathcal{F}}^{\mathbb{P}},\mathcal{C}G_{\mathcal{FF}}^{\mathbb{P}}\}$
+\end_inset
+
+ are the same.
+ Therefore,
+ we can use a likelihood of equation 
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:structural_VAR"
+plural "false"
+caps "false"
+noprefix "false"
+nolink "false"
+
+\end_inset
+
+,
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\mathcal{F}_{t}=K_{\mathcal{F}}^{\mathbb{P}}+\sum_{l=1}^{p}G_{\mathcal{FF},l}^{\mathbb{P}}\mathcal{F}_{t-l}+diag(\underbrace{\begin{bmatrix}\sigma_{\mathcal{FF},1}\\
+\vdots\\
+\sigma_{\mathcal{FF},d_{\mathbb{P}}}
+\end{bmatrix}}_{\tilde{\Omega}_{\mathcal{FF}}^{1/2}})v_{\mathcal{F},t}^{\mathbb{P}}
+\]
+
+\end_inset
+
+to use Normal-Normal update.
+ Specifically,
+ we can derive the conditional posterior distribution as
+\begin_inset Formula 
+\[
+p(\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}} & G_{\mathcal{FF}}^{\mathbb{P}}\end{bmatrix}_{(i,:)}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}})\backsim\mathcal{N}(\beta_{CKCG,i},B_{CKCG,i}),
+\]
+
+\end_inset
+
+where
+\begin_inset Formula 
+\begin{align*}
+B_{CKCG,i} & \equiv(diag[V_{i,(1:1+d_{\mathbb{P}}p)}]^{-1}+\sigma_{\mathcal{FF},i}^{-2}X_{\phi_{i},(:,1:1+d_{\mathbb{P}}p)}^{\prime}X_{\phi_{i},(:,1:1+d_{\mathbb{P}}p)})^{-1},\\
+\beta_{CKCG,i} & \equiv B_{CKCG,i}(diag[V_{i,(1:1+d_{\mathbb{P}}p)}]^{-1}m_{i,(1:1+d_{\mathbb{P}}p)}+\sigma_{\mathcal{FF},i}^{-2}X_{\phi_{i},(:,1:1+d_{\mathbb{P}}p)}^{\prime}\begin{bmatrix}\mathcal{F}_{1,(i)}\\
+\vdots\\
+\mathcal{F}_{T,(i)}
+\end{bmatrix}).
+\end{align*}
+
+\end_inset
+
+Because of the definition of 
+\begin_inset Formula $\mathbb{Q}$
+\end_inset
+
+-dynamics,
+ 
+\begin_inset Formula 
+\begin{align*}
+ & p(\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}} & G_{\mathcal{FF}}^{\mathbb{P}}-G_{\mathcal{FF}}^{\mathbb{Q}}\end{bmatrix}_{(i,:)}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}})\\
+\backsim & \mathcal{N}(\beta_{KGPQ,i}\equiv\beta_{CKCG,i}-\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{Q}} & G_{\mathcal{FF}}^{\mathbb{Q}}\end{bmatrix}_{(i,:)},B_{KGPQ,i}\equiv B_{CKCG,i})\text{ for \ensuremath{i\leq d_{\mathbb{Q}},}}
+\end{align*}
+
+\end_inset
+
+and for 
+\begin_inset Formula $i>d_{\mathbb{Q}}$
+\end_inset
+
+ the distribution 
+\begin_inset Formula $\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}} & G_{\mathcal{FF}}^{\mathbb{P}}-G_{\mathcal{FF}}^{\mathbb{Q}}\end{bmatrix}_{(i,:)}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}$
+\end_inset
+
+ degenerates to zero vector.
+ Then,
+ 
+\begin_inset Formula 
+\begin{align*}
+ & [(K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}})+\sum_{l=1}^{p}(G_{\mathcal{FF},l}^{\mathbb{P}}-G_{\mathcal{FF},l}^{\mathbb{Q}})\mathcal{F}_{t+1-l}]_{(i,:)}\\
+= & \begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}} & G_{\mathcal{FF}}^{\mathbb{P}}-G_{\mathcal{FF}}^{\mathbb{Q}}\end{bmatrix}_{(i,:)}\underbrace{\begin{bmatrix}1\\
+\mathcal{F}_{t}\\
+\vdots\\
+\mathcal{F}_{t+1-p}
+\end{bmatrix}}_{\mathcal{F}_{const,t}}\\
+\backsim & \mathcal{N}(\beta_{KGPQ,i}\mathcal{F}_{const,t},\mathcal{F}_{const,t}^{\prime}B_{KGPQ,i}\mathcal{F}_{const,t})\text{ }\text{for }\ensuremath{i\leq d_{\mathbb{Q}},}
+\end{align*}
+
+\end_inset
+
+or zero,
+ otherwise.
+ Finally,
+ 
+\begin_inset Formula 
+\begin{align*}
+\lambda_{t,(i)} & =\mathcal{N}(\beta_{\lambda_{t,(i)}}\equiv\sigma_{\mathcal{FF},i}^{-1}\beta_{KGPQ,i}\mathcal{F}_{const,t},B_{\lambda_{t,(i)}}\equiv\sigma_{\mathcal{FF},i}^{-2}\mathcal{F}_{const,t}^{\prime}B_{KGPQ,i}\mathcal{F}_{const,t})\text{ }\text{for }\ensuremath{i\leq d_{\mathbb{Q}},}
+\end{align*}
+
+\end_inset
+
+or zero,
+ otherwise.
+ Since,
+ the last elements are zeros,
+ 
+\begin_inset Formula 
+\begin{align*}
+\lambda_{t}^{\prime}\lambda_{t} & =\lambda_{t,(1:d_{\mathbb{Q}})}^{\prime}\lambda_{t,(1:d_{\mathbb{Q}})}.
+\end{align*}
+
+\end_inset
+
+Therefore,
+ it is enough to focus on 
+\begin_inset Formula $\lambda_{t,(1:d_{\mathbb{Q}})}$
+\end_inset
+
+.
+ The distribution of 
+\begin_inset Formula $\lambda_{t,(1:d_{\mathbb{Q}})}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is
+\begin_inset Formula 
+\begin{align*}
+ & \mathcal{N}\left(\beta_{\lambda_{t}}\equiv\begin{bmatrix}\beta_{\lambda_{t,(1)}}\\
+\vdots\\
+\beta_{\lambda_{t,(d_{\mathbb{Q}})}}
+\end{bmatrix},B_{\lambda_{t}}\equiv diag\begin{bmatrix}B_{\lambda_{t,(1)}}\\
+\vdots\\
+B_{\lambda_{t,(d_{\mathbb{Q}})}}
+\end{bmatrix}\right).
+\end{align*}
+
+\end_inset
+
+Using the above result,
+ we can derive 
+\begin_inset Formula 
+\begin{align*}
+ & \mathbb{E}[\sqrt{\lambda_{t}'\lambda_{t}}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}]\\
+\approx & \frac{\sqrt{\pi}}{2}\left[\frac{(tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}})^{0.5}}{\Gamma(1.5)}+\frac{(tr[B_{\lambda_{t}}]+\beta_{\lambda_{t}}^{\prime}\beta_{\lambda_{t}})^{-1.5}(2tr[B_{\lambda_{t}}^{2}]+4\beta_{\lambda_{t}}^{\prime}B_{\lambda_{t}}\beta_{\lambda_{t}})}{2\Gamma(-0.5)}\right].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For deriving the time invariant part 
+\begin_inset Formula 
+\begin{align*}
+ & \sqrt{\lambda_{t,const}'\lambda_{t,const}},\\
+\text{where }\lambda_{t,const} & :=diag[\tilde{\Omega}_{\mathcal{FF}}^{-1/2}](K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}}),
+\end{align*}
+
+\end_inset
+
+first check that 
+\begin_inset Formula 
+\begin{align*}
+ & p(\begin{bmatrix}K_{\mathcal{F}}^{\mathbb{P}}-K_{\mathcal{F}}^{\mathbb{Q}}\end{bmatrix}_{(i,:)}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}})\\
+\backsim & \mathcal{N}(\beta_{KGPQ,i,(1)},B_{KGPQ,i,(1,1)})\text{ for \ensuremath{i\leq d_{\mathbb{Q}},}}
+\end{align*}
+
+\end_inset
+
+and zero,
+ otherwise.
+ Therefore,
+ 
+\begin_inset Formula 
+\begin{align*}
+ & p(\lambda_{t,const,(i)}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}})\\
+\backsim & \mathcal{N}(\sigma_{\mathcal{FF},i}^{-1}\beta_{KGPQ,i,(1)},\sigma_{\mathcal{FF},i}^{-2}B_{KGPQ,i,(1,1)})\text{ for \ensuremath{i\leq d_{\mathbb{Q}},}}
+\end{align*}
+
+\end_inset
+
+and zero,
+ otherwise.
+ Similarly,
+ since the last elements are zeros,
+ 
+\begin_inset Formula 
+\[
+\lambda_{t,const}^{\prime}\lambda_{t,const}=\lambda_{t,const,(1:d_{\mathbb{Q}})}^{\prime}\lambda_{t,const,(1:d_{\mathbb{Q}})}.
+\]
+
+\end_inset
+
+With the same logic,
+ since the distribution of 
+\begin_inset Formula $\lambda_{t,const,(1:d_{\mathbb{Q}})}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\begin{align*}
+ & \mathcal{N}\left(\beta_{const}\equiv\begin{bmatrix}\sigma_{\mathcal{FF},1}^{-1}\beta_{KGPQ,1,(1)}\\
+\vdots\\
+\sigma_{\mathcal{FF},d_{\mathbb{Q}}}^{-1}\beta_{KGPQ,d_{\mathbb{Q}},(1)}
+\end{bmatrix},B_{const}\equiv diag\begin{bmatrix}\sigma_{\mathcal{FF},1}^{-2}B_{KGPQ,1,(1,1)}\\
+\vdots\\
+\sigma_{\mathcal{FF},d_{\mathbb{Q}}}^{-2}B_{KGPQ,d_{\mathbb{Q}},(1,1)}
+\end{bmatrix}\right),
+\end{align*}
+
+\end_inset
+
+the approximation is 
+\begin_inset Formula 
+\begin{align*}
+ & \mathbb{E}[\sqrt{\lambda_{t,const}^{\prime}\lambda_{t,const}}|\{\mathcal{F}_{t}\}_{t=1}^{T},\Omega_{\mathcal{FF}},k_{\infty}^{\mathbb{Q}},\kappa^{\mathbb{Q}}]\\
+\approx & \frac{\sqrt{\pi}}{2}\left[\frac{(tr[B_{const}]+\beta_{const}^{\prime}\beta_{\lambda})^{0.5}}{\Gamma(1.5)}+\frac{(tr[B_{const}]+\beta_{const}^{\prime}\beta_{const})^{-1.5}(2tr[B_{const}^{2}]+4\beta_{const}^{\prime}B_{const}\beta_{const})}{2\Gamma(-0.5)}\right].
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
