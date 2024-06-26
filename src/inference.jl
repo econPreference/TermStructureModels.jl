@@ -30,7 +30,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         upper_nu0 = size(yields, 1)
     end
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     if isempty(macros)
         dP = copy(dQ)
     else
@@ -76,7 +77,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         nu0 = input[9] + dP + 1
         p = Int(input[10])
 
-        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; spanned=yields[(upper_p-p)+1:end, end-dZ+1:end])
         if isempty(macros)
             factors = copy(PCs)
         else
@@ -108,7 +109,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     nu0 = best_candidate(opt)[9] + dP + 1
     p = best_candidate(opt)[10] |> Int
 
-    PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p; spanned=yields[(upper_p-p)+1:end, end-dZ+1:end])[1]
     if isempty(macros)
         factors = copy(PCs)
     else
@@ -157,7 +158,8 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     if isempty(macros)
         dP = copy(dQ)
     else
@@ -166,10 +168,10 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(kappaQ_prior_pr)
         kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
-    Wₚ = PCA(yields, p)[3]
+    Wₚ = PCA(yields, p; spanned=yields[:, end-dZ+1:end])[3]
     prior_kappaQ_ = prior_kappaQ(medium_tau, kappaQ_prior_pr)
     if isempty(gamma_bar)
-        gamma_bar = prior_gamma(yields, p)[1]
+        gamma_bar = prior_gamma(yields, p, dZ)[1]
     end
 
     if typeof(init_param) == Parameter
@@ -415,9 +417,11 @@ It calculates the MLE estimates of the error covariance matrix of the VAR(p) mod
 function mle_error_covariance(yields, macros, tau_n, p)
 
     ## Extracting PCs
-    PCs = PCA(yields, p)[1]
     N = length(tau_n)
-    dQ = dimQ() + size(yields, 2) - N
+    dZ = size(yields, 2) - N
+    dQ = dimQ() + dZ
+    PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])[1]
+
     if isempty(macros)
         dP = copy(dQ)
         factors = [PCs yields[:, end-(dQ-dimQ()-1):end]]

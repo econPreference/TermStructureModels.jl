@@ -7,13 +7,14 @@
 function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale)
 
     dP = length(varFF)
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :]
 
     N = length(tau_n) # of maturities
     T = size(yields, 1) # length of dependent variables
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; spanned=yields[:, end-dZ+1:end])
 
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
@@ -134,10 +135,11 @@ Full-conditional posterior sampler for `phi` and `varFF`
 """
 function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     dP = size(ψ, 1)
     p = Int(size(ψ)[2] / dP)
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
@@ -207,10 +209,11 @@ Posterior sampler for the measurement errors
 function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
     yields = yields[p+1:end, :]
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     N = length(tau_n)
     T = size(yields, 1)
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; spanned=yields[:, end-dZ+1:end])
 
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)

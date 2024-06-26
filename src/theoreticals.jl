@@ -254,10 +254,11 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
 
     prog = Progress(iteration; dt=5, desc="term_premium...")
     Threads.@threads for iter in 1:iteration
@@ -341,10 +342,11 @@ Notation `XF` is for the latent factor space and notation `F` is for the PC stat
 function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
 
     dP = size(OmegaFF, 1)
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     dM = dP - dQ # of macro variables
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
 
     # statistical Parameters
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)

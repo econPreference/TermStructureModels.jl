@@ -9,9 +9,10 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
     dP = length(varFF)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :] #excludes initial observations
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; spanned=yields[:, end-dZ+1:end])
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -42,9 +43,10 @@ This function is the same as `loglik_mea` but it requires ΩPP as an input.
 function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale)
 
     yields = yields[p+1:end, :] #excludes initial observations
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; spanned=yields[:, end-dZ+1:end])
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -252,10 +254,11 @@ It converts posterior samples in terms of the reduced form VAR parameters.
 """
 function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
     if isempty(macros)
         factors = copy(PCs)
     else
@@ -323,8 +326,9 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 """
 function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
 
-    dQ = dimQ() + size(yields, 2) - length(tau_n)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    dZ = size(yields, 2) - length(tau_n)
+    dQ = dimQ() + dZ
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; spanned=yields[:, end-dZ+1:end])
 
     if isempty(macros)
         factors = copy(PCs)
