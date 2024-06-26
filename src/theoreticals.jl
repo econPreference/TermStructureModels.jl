@@ -62,7 +62,8 @@ end
 - `T1X`
 """
 function T1X(Bₓ_, Wₚ)
-    return Wₚ * Bₓ_
+    dQ = size(Bₓ, 1)
+    return [Wₚ * Bₓ_; zeros(dQ - dimQ(), dimQ()) I(dQ - dimQ())]
 end
 
 """
@@ -139,7 +140,8 @@ end
 - `T0P`
 """
 function T0P(T1X_, Aₓ_, Wₚ, c)
-    return -T1X_ \ (Wₚ * Aₓ_ - c)
+    dQ = size(T1X, 1)
+    return -T1X_ \ [Wₚ * Aₓ_ - c; zeros(dQ - dimQ())]
 end
 
 """
