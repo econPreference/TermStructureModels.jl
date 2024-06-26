@@ -7,7 +7,8 @@ using TermStructureModels, ProgressMeter, Distributions, LinearAlgebra, Distribu
 
 ## Simulating sample data
 T = 1000
-dP = 4
+dQ = 4
+dP = 5
 tau_n = [1; 3; 6; 9; collect(12:6:60); collect(72:12:120)]
 p = 2
 
@@ -27,7 +28,7 @@ while ~isstationary(GPXFXF)
 end
 
 # Generating samples
-yields, latents, macros = generative(T, dP, tau_n, p, 0.0001; kappaQ=[0.99, 0.94, 0.9], kQ_infty, KPXF, GPXFXF, OmegaXFXF)
+yields, latents, macros = generative(T, dQ, dP, tau_n, p, 0.0001; kappaQ=[0.99, 0.94, 0.9], kQ_infty, KPXF, GPXFXF, OmegaXFXF)
 
 ## Turing hyper-parameters
 diag_G = diag_G[dimQ()+1:end]

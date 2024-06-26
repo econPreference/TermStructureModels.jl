@@ -432,24 +432,25 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
 end
 
 """
-    PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
+    PCA(yields, p; spanned=[], proxies=[], rescaling=false, n_PCs=[])
 It derives the principal components from `yields`.
 # Input
 - `yields[p+1:end, :]` is used to construct the affine transformation, and then all `yields[:,:]` are transformed into the principal components.
+- Each column vector in `spanned` are observable spanned factors. If all spanned factors are the first `n_PCs` principal components, let `spanned` be an empty matrix.
 - Since signs of `PCs` is not identified, we use proxies to identify the signs. We flip `PCs` to make `cor(proxies[:, i]. PCs[:,i]) > 0`. If `proxies` is not given, we use the following proxies as a default: `[yields[:, end] yields[:, end] - yields[:, 1] 2yields[:, Int(floor(size(yields, 2) / 3))] - yields[:, 1] - yields[:, end]]`.
-- `size(proxies) = (size(yields[p+1:end, :], 1), dQ)`
+- `size(proxies) = (size(yields[p+1:end, :], 1), n_PCs)`
 - If `rescaling == true`, all `PCs` and `OCs` are normalized to have an average std of yields.
 # Output(4)
 `PCs`, `OCs`, `Wₚ`, `Wₒ`, `mean_PCs`
-- `PCs`, `OCs`: first `dQ` and the remaining principal components
+- `PCs`, `OCs`: first `n_PCs` and the remaining principal components
 - `Wₚ`, `Wₒ`: the rotation matrix for `PCs` and `OCs`, respectively
 - `mean_PCs`: the mean of `PCs` before demeaned.
 - `PCs` are demeaned.
 """
-function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
+function PCA(yields, p; spanned=[], proxies=[], rescaling=false, n_PCs=[])
 
-    if isempty(dQ)
-        dQ = dimQ()
+    if isempty(n_PCs)
+        n_PCs = dimQ()
     end
     ## z-score case
     # std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
@@ -457,10 +458,10 @@ function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
     # V = reverse(eigen(cov(std_yields)).vectors, dims=2)
 
     V = reverse(eigen(cov(yields[(p+1):end, :])).vectors, dims=2)
-    Wₚ = V[:, 1:dQ]'
-    Wₒ = V[:, (dQ+1):end]'
+    Wₚ = V[:, 1:n_PCs]'
+    Wₒ = V[:, (n_PCs+1):end]'
 
-    PCs = (Wₚ * yields')' # Main dQ PCs
+    PCs = (Wₚ * yields')' # Main 'n_PCs' PCs
     OCs = (Wₒ * yields')' # remaining PCs
 
     #observables
@@ -473,11 +474,15 @@ function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
         Wₚ[i, :] *= sign_
     end
 
+    if isempty(spanned)
+        spanned = zeros(size(PCs, 1), 0)
+    end
+
     if rescaling == false
         mean_PCs = mean(PCs[p+1:end, :], dims=1)
         PCs .-= mean_PCs
 
-        return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ, mean_PCs[1, :]
+        return Matrix([PCs spanned]), Matrix(OCs), Wₚ, Wₒ, mean_PCs[1, :]
     else
         ## rescaling
         mean_std = mean(std(yields[(p+1):end, :], dims=1))
@@ -487,6 +492,6 @@ function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
         PCs = Matrix((scale_PCs .* PCs')')
         mean_PCs = mean(PCs[p+1:end, :], dims=1)
         PCs .-= mean_PCs
-        return PCs, Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ, mean_PCs[1, :]
+        return [PCs spanned], Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ, mean_PCs[1, :]
     end
 end

@@ -260,7 +260,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 end
 
 """
-    generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
+    generative(T, dQ, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
 This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
 # Input: 
 - noise = variance of the measurement errors
@@ -270,9 +270,8 @@ This function generate a simulation data given parameters. Note that all paramet
 - `latents = Matrix{Float64}(obs,T,dimQ())`
 - `macros = Matrix{Float64}(obs,T,dP - dimQ())`
 """
-function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
+function generative(T, dQ, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
     N = length(tau_n) # of observed maturities
-    dQ = dimQ() # of latent factors
 
     # Generating factors XF, where latents & macros ∈ XF
     XF = randn(p, dP)
