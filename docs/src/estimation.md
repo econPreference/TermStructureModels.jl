@@ -42,25 +42,23 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 `yields` is a `T` by `N` matrix, and `T` is the length of the sample period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains bond maturities in data. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in level, or it is set to 0 if the macro variable is differenced.
 
-!!! note "Yield-Only Model"
+### Several relevant points of the hyperparameter optimization
 
-    Users may want to use yield-only models in which `macros` is an empty set. In such instances, set `macros = []` and `rho = []` for all functions.
+#### Computational Cost of the Optimization
 
-!!! tip "Computational Cost of the Optimization"
+Since we adopt the Differential Evolutionary(DE) algorithm (Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
 
-    Since we adopt the Differential Evolutionary(DE) algorithm (Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
+The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
 
-    The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
+#### Range of Data over which the Marginal Likelihood is Calculated
 
-!!! note "Range of Data over which the Marginal Likelihood is Calculated"
+In Bayesian methodology, the standard criterion of the model comparison is the marginal likelihood. When we compare models using the marginal likelihood, the most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
 
-    In Bayesian methodology, the standard criterion of the model comparison is the marginal likelihood. When we compare models using the marginal likelihood, the most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
+For instance, let's say we have `data` with the number of rows being 100. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` is used as initial values. `tuning_hyperparameter` automatically reflects this fact by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
 
-    For instance, let's say we have `data` with the number of rows being 100. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` is used as initial values. `tuning_hyperparameter` automatically reflects this fact by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
+#### Prior Belief about the Expectation Hypothesis
 
-!!! note "Prior Belief about the Expectation Hypothesis"
-
-    Our algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the pure EH, where the term premium is zero, set `is_pure_EH=true`. However, note that using this option may take some initial time to numerically set the prior distribution.
+Our algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the pure EH, where the term premium is zero, set `is_pure_EH=true`. However, note that using this option may take some initial time to numerically set the prior distribution.
 
 ## Step 2. Sampling the Posterior Distribution of Parameters
 

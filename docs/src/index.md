@@ -52,3 +52,7 @@ Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abst
 !!! tip "Normalization of Data"
 
     Our package demeans the principal components of bond yields, which are spanned risk factors in the bond market. Therefore, we recommend using macro data after demeaning it. Of course, demeaning the macro variables is recommended but not mandatory.
+
+!!! note "Yield-Only Model"
+
+    Users may want to use yield-only models in which `macros` is an empty set. In such instances, set `macros = []` and `rho = []` for all functions.
