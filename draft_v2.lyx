@@ -776,31 +776,59 @@ Z_{t}
 \begin_layout Standard
 \begin_inset Formula 
 \begin{align*}
+\mathcal{O}_{t} & =\begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{O}} & O_{(N-3)\times d_{z}}\end{array}\end{pmatrix}\begin{bmatrix}R_{t}\\
+Z_{t}
+\end{bmatrix}=W_{\mathcal{O}}\mathcal{A}_{X}+W_{\mathcal{O}}\mathcal{B}{}_{X}X_{t}+e_{\mathcal{O},t},
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{align*}
 \begin{bmatrix}\mathcal{P}_{t}-c\\
-Z_{t}\\
-\mathcal{O}_{t}
-\end{bmatrix} & =\begin{pmatrix}\begin{array}{cc}
+Z_{t}
+\end{bmatrix}= & \begin{pmatrix}\begin{array}{cc}
 W_{\mathcal{P}} & O_{3\times d_{z}}\\
 O_{d_{z}\times N} & I_{d_{z}}
-\end{array}\\
-W_{\mathcal{O}}
-\end{pmatrix}\begin{bmatrix}R_{t}\\
+\end{array}\end{pmatrix}\begin{bmatrix}R_{t}\\
 Z_{t}
 \end{bmatrix}-\begin{bmatrix}c\\
--Z_{t}\\
-O_{(N-d_{\mathbb{Q}})\times1}
+O_{d_{Z}\times1}
 \end{bmatrix},\\
- & =\begin{pmatrix}W_{\mathcal{P}}\mathcal{A}_{X}-c\\
-O_{d_{z}\times1}\\
-W_{\mathcal{O}}\mathcal{A}_{X}
-\end{pmatrix}+\begin{pmatrix}W_{\mathcal{P}}\mathcal{B}{}_{X}\\
-\begin{array}{cc}
-O_{d_{z}\times3} & I_{d_{z}}\end{array}\\
-W_{\mathcal{O}}\mathcal{B}{}_{X}
-\end{pmatrix}X_{t}+\begin{bmatrix}O_{d_{\mathbb{Q}}\times1}\\
-O_{d_{z}\times1}\\
-e_{\mathcal{O},t}
-\end{bmatrix}.
+= & \begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\end{pmatrix}\begin{bmatrix}\mathcal{A}_{X}+\mathcal{B}{}_{X}X_{t}\\
+Z_{t}
+\end{bmatrix}-\begin{bmatrix}c\\
+O_{d_{Z}\times1}
+\end{bmatrix},\\
+= & \begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\end{pmatrix}\left(\begin{bmatrix}\mathcal{A}_{X}\\
+O_{d_{z}}
+\end{bmatrix}+\begin{pmatrix}\mathcal{B}{}_{X} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{pmatrix}X_{t}\right)-\begin{bmatrix}c\\
+O_{d_{z}\times1}
+\end{bmatrix},\\
+= & \begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\end{pmatrix}\begin{bmatrix}\mathcal{A}_{X}\\
+O_{d_{z}}
+\end{bmatrix}-\begin{bmatrix}c\\
+O_{d_{z}\times1}
+\end{bmatrix}\\
+ & +\begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\end{pmatrix}\begin{pmatrix}\mathcal{B}{}_{X} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{pmatrix}X_{t},
 \end{align*}
 
 \end_inset
@@ -814,12 +842,20 @@ The inverse of the transformation would be
 \begin{align*}
 \begin{bmatrix}\mathcal{P}_{t}-c\\
 Z_{t}
-\end{bmatrix} & =\begin{bmatrix}\mathcal{T}_{0,X}\\
+\end{bmatrix}= & \underbrace{\begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\end{pmatrix}\begin{bmatrix}\mathcal{A}_{X}\\
+O_{d_{z}}
+\end{bmatrix}-\begin{bmatrix}c\\
 O_{d_{z}\times1}
-\end{bmatrix}+\begin{pmatrix}\mathcal{T}_{1,X}\\
-\begin{array}{cc}
-O_{d_{z}\times3} & I_{d_{z}}\end{array}
-\end{pmatrix}X_{t},
+\end{bmatrix}}_{T_{0,X}^{*}}\\
+ & +\underbrace{\begin{pmatrix}\begin{array}{cc}
+W_{\mathcal{P}} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{array}\end{pmatrix}\begin{pmatrix}\mathcal{B}{}_{X} & O_{3\times d_{z}}\\
+O_{d_{z}\times N} & I_{d_{z}}
+\end{pmatrix}}_{T_{1,X}^{*}}X_{t},
 \end{align*}
 
 \end_inset
@@ -827,17 +863,9 @@ O_{d_{z}\times3} & I_{d_{z}}\end{array}
 and the transformation is 
 \begin_inset Formula 
 \begin{align*}
-X_{t}=-\begin{pmatrix}\mathcal{T}_{1,X}\\
-\begin{array}{cc}
-O_{d_{z}\times3} & I_{d_{z}}\end{array}
-\end{pmatrix}^{-1}\begin{bmatrix}\mathcal{T}_{0,X}\\
-O_{d_{z}\times1}
-\end{bmatrix}+\begin{pmatrix}\mathcal{T}_{1,X}\\
-\begin{array}{cc}
-O_{d_{z}\times3} & I_{d_{z}}\end{array}
-\end{pmatrix}^{-1}\begin{bmatrix}\mathcal{P}_{t}-c\\
+X_{t}=-T_{1,X}^{*-1}T_{0,X}^{*}+T_{1,X}^{*-1}\begin{bmatrix}\mathcal{P}_{t}-c\\
 Z_{t}
-\end{bmatrix}.
+\end{bmatrix}
 \end{align*}
 
 \end_inset
