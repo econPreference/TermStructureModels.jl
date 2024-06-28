@@ -11,6 +11,7 @@ makedocs(
         "Statistical Inference" => "inference.md",
         "Forecasting" => "scenario.md",
         "Utilization of the Output" => "output.md",
+        "Other Forms of the Model" => "others.md",
         "API" => "api.md"
     ]
 )
