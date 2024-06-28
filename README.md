@@ -18,6 +18,8 @@ The **main features** of the package is that it allows for the lag length of the
 - Decomposition of a bond yield into the expectation hypothesis component and the term premium component
 - Conditional Forecasting, including Scenario Analyses, to inspect interactions between bond yields and the macroeconomy
 
+Our package also provides the yield-only model and the standard JSZ model with three distinct eigenvalues, not restricted by the AFNS constraint.
+
 ## Installation
 
 Run
