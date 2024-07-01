@@ -350,8 +350,14 @@ function ineff_factor(saved_params)
     for i in 1:dP, j in i:dP
         phi_ineff[i, end-dP+j] = 0
     end
+
+    if length(init_kappaQ) == 1
+        kappaQ_ineff = ineff[1]
+    else
+        kappaQ_ineff = ineff[1:length(init_kappaQ)]
+    end
     return (;
-        kappaQ=ineff[1:length(init_kappaQ)],
+        kappaQ=kappaQ_ineff,
         kQ_infty=ineff[length(init_kappaQ)+1],
         gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
         SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],

@@ -121,7 +121,7 @@ ineff = ineff_factor(saved_params)
 You can calculate the maximum inefficiency factor by
 
 ```julia
-max_ineff = (ineff[1], ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum) |> maximum
+max_ineff = (ineff[1] |> maximum, ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum) |> maximum
 ```
 
 The value obtained by dividing the number of posterior samples by `max_ineff` is the effective number of posterior samples, taking into account the efficiency of the sampler. For example, let's say `max_ineff = 10`. Then, if 6,000 posterior samples are drawn and the first 1,000 samples are erased as burn-in, the remaining 5,000 posterior samples have the same efficiency as using 500 i.i.d samples, calculated as `(6000-1000)/max_ineff`. For reference, in [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628), the maximum inefficiency factor was `2.38`.
