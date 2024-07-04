@@ -86,7 +86,7 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 
 `iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
 
-`saved_params::Vector{Parameter}` has a length of `iteration` and each entry is a posterior sample. `acceptPrMH` is dQ-Vector, and the i-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR.
+`saved_params::Vector{Parameter}` has a length of `iteration` and each entry is a posterior sample. `acceptPrMH` is `dQ+1`-Vector, and the `i(<=dQ)`-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR. The last entry of `acceptPrMH` is the MH acceptance rate for `kappaQ` under the unrestricted JSZ model. It is zero under the AFNS restriction.
 
 After users get posterior samples(`saved_params`), they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
 

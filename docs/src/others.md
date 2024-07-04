@@ -19,3 +19,5 @@ The `kappaQ_prior_pr` containing the prior distributions is a vector of length 3
 After constructing `kappaQ_prior_pr`, it should be inputted as a keyword argument in functions that require the `kappaQ_prior_pr` variable (notably [`tuning_hyperparameter`](@ref) and [`posterior_sampler`](@ref)). If `kappaQ_prior_pr` is not provided, the model operates under the AFNS constraint automatically.
 
 A point to note when setting prior distributions is that "the prior expectation of `the slope matrix[1:3, 1:3]` of the first lag of the VAR model under the physical measure" is set to `diagm(mean.(kappaQ_prior_pr))` under the unrestricted JSZ model. Therefore, the prior distributions of the eigenvalues should be set to reflect the prior expectations under the physical measure to some extent.
+
+The notation for the three eigenvalues is `kappaQ`. Therefore, `kappaQ` is a three-dimensional vector under the unrestricted JSZ model. In contrast, `kappaQ` is a scalar that represents the DNS decay parameter under the AFNS restriction.
