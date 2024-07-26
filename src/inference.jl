@@ -511,5 +511,5 @@ function weights_for_unconditional(saved_params, yields, macros)
     end
     finish!(prog)
 
-    return exp.(logweights .+ minimum(logweights))
+    return exp.(logweights .- minimum(logweights))
 end
