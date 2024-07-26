@@ -461,3 +461,55 @@ function mle_error_covariance(yields, macros, tau_n, p)
 
     return Omega
 end
+
+function weights_for_unconditional(saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+
+    iteration = length(saved_params)
+    logweights = Vector{Float64}(undef, iteration)
+    prog = Progress(iteration; dt=5, desc="calculating the weights...")
+
+    Threads.@threads for iter in 1:iteration
+
+        phi = saved_params[:phi][iter]
+        varFF = saved_params[:varFF][iter]
+
+        ## Construct TSM parameters
+        phi0, C = phi_2_phi₀_C(; phi)
+        phi0 = C \ phi0 # reduced form parameters
+        KPF = phi0[:, 1]
+        GPFF = phi0[:, 2:end]
+        OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
+
+        dP = size(OmegaFF, 1)
+        p = Int(size(GPFF, 2) / dP)
+        PCs = PCA(yields, p)[1]
+
+        GPFF_companion = zeros(dP * p, dP * p)
+        GPFF_companion[1:dP, :] = GPFF
+        GPFF_companion[dP+1:end, 1:end-dP] = I(dP * (p - 1))
+
+        KPF_companion = zeros(dP * p)
+        KPF_companion[1:dP] = KPF
+        mean_VAR = (I(dP * p) - GPFF_companion) \ KPF_companion
+
+        OmegaFF_companion = zeros(dP * p, dP * p)
+        OmegaFF_companion[1:dP, 1:dP] = OmegaFF
+        cov_VAR = reshape((I(dP * p * dP * p) - kron(GPFF_companion, GPFF_companion)) \ vec(OmegaFF_companion), dP, dP) |> Symmetric
+
+        uncond_dist = MvNormal(mean_VAR, cov_VAR)
+
+        if isempty(macros)
+            factors = copy(PCs)
+        else
+            factors = [PCs macros]
+        end
+        init_factors = factors[p:-1:1, :]' |> vec
+
+        logweights[iter] = logpdf(uncond_dist, init_factors)
+
+        next!(prog)
+    end
+    finish!(prog)
+
+    return exp.(logweights .+ minimum(logweights))
+end
