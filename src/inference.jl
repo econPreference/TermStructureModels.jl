@@ -468,7 +468,7 @@ function weights_for_unconditional(saved_params, yields, macros)
     logweights = Vector{Float64}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="calculating the weights...")
 
-    Threads.@threads for iter in 1:iteration
+    for iter in 1:iteration
 
         phi = saved_params[:phi][iter]
         varFF = saved_params[:varFF][iter]
