@@ -462,7 +462,7 @@ function mle_error_covariance(yields, macros, tau_n, p)
     return Omega
 end
 
-function weights_for_unconditional(saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+function weights_for_unconditional(saved_params, yields, macros)
 
     iteration = length(saved_params)
     logweights = Vector{Float64}(undef, iteration)
