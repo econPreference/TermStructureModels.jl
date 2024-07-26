@@ -468,7 +468,7 @@ function weights_for_unconditional(saved_params, yields, macros)
     logweights = Vector{Float64}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="calculating the weights...")
 
-    for iter in 1:iteration
+    Threads.@threads for iter in 1:iteration
 
         phi = saved_params[:phi][iter]
         varFF = saved_params[:varFF][iter]
@@ -494,7 +494,7 @@ function weights_for_unconditional(saved_params, yields, macros)
 
         OmegaFF_companion = zeros(dP * p, dP * p)
         OmegaFF_companion[1:dP, 1:dP] = OmegaFF
-        cov_VAR = reshape((I(dP * p * dP * p) - kron(GPFF_companion, GPFF_companion)) \ vec(OmegaFF_companion), dP, dP) |> Symmetric
+        cov_VAR = reshape((I(dP * p * dP * p) - kron(GPFF_companion, GPFF_companion)) \ vec(OmegaFF_companion), dP * p, dP * p) |> Symmetric
 
         uncond_dist = MvNormal(mean_VAR, cov_VAR)
 
