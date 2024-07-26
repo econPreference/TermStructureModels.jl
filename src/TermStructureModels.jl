@@ -189,6 +189,7 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
+    weights_for_unconditional,
 
     # priors.jl
     prior_kappaQ,
