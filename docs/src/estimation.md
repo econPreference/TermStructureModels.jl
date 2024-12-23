@@ -108,7 +108,7 @@ All entries in the first output (`saved_params::Vector{Parameter}`) are posterio
 
 !!! note "Handling Non-Stationary Data"
 
-    When using non-stationary data, the eigenvalues of the VAR system exceeding `threshold` are discarded. Traditionally, we use a stationary VAR, so the default threshold is set to `1`. However, for non-stationary VAR models, it may be necessary to allow for a slightly higher threshold. In such cases, you can set `threshold` to a value greater than `1`, such as `1.05`.
+    The optional input `eigenvalue` is designed to discard posterior samples with eigenvalues of the VAR system exceeding the specified threshold. Traditionally, we use a stationary VAR, so the default threshold is set to `1`. However, for non-stationary VAR models, it may be necessary to allow for a slightly higher threshold. In such cases, you can set `threshold` to a value greater than `1`, such as `1.05`.
 
 ## Diagnostics for MCMC
 
