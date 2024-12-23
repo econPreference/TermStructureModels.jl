@@ -1,7 +1,7 @@
 name = "TermStructureModels"
 uuid = "7e9258e2-c4b0-4fc1-89eb-9ad7f6b40598"
 authors = ["Preference <econ.preference@gmail.com> and contributors"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
