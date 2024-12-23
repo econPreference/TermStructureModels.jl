@@ -97,14 +97,18 @@ saved_params = saved_params[burnin+1:end]
 Also, users might want to erase posterior samples that do not satisfies the stationary condition. It can be done by [`erase_nonstationary_param`](@ref).
 
 ```julia
-saved_params, Pr_stationary = erase_nonstationary_param(saved_params)
+saved_params, Pr_stationary = erase_nonstationary_param(saved_params; threshold=1)
 ```
 
-All entries in the above `saved_params::Vector{Parameter}` are posterior samples that satisfy the stationary condition.
+All entries in the first output (`saved_params::Vector{Parameter}`) are posterior samples that satisfy the stationary condition.
 
 !!! warning "Reduction in the Number of Posterior Samples"
 
     The vector length of `saved_params` decreases after the burn-in process and `erase_nonstationary_param`. Note that this leads to a gap between `iteration` and `length(saved_params)`.
+
+!!! note "Handling Non-Stationary Data"
+
+    When using non-stationary data, the eigenvalues of the VAR system exceeding `threshold` are discarded. Traditionally, we use a stationary VAR, so the default threshold is set to `1`. However, for non-stationary VAR models, it may be necessary to allow for a slightly higher threshold. In such cases, you can set `threshold` to a value greater than `1`, such as `1.05`.
 
 ## Diagnostics for MCMC
 
