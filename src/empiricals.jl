@@ -187,33 +187,35 @@ function phi_varFF_2_OmegaFF(; phi, varFF)
 end
 
 """
-    isstationary(GPFF)
+    isstationary(GPFF; threshold)
 It checks whether a reduced VAR matrix has unit roots. If there is at least one unit root, return is false.
 # Input
 - `GPFF` should not include intercepts. Also, `GPFF` is `dP` by `dP*p` matrix that the coefficient at lag 1 comes first, and the lag `p` slope matrix comes last. 
+- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. Typically, `threshold` is set to 1.
 # Output
 - `boolean`
 """
-function isstationary(GPFF)
+function isstationary(GPFF; threshold)
     dP = size(GPFF, 1)
     p = Int(size(GPFF, 2) / dP)
 
     G = [GPFF
         I(dP * (p - 1)) zeros(dP * (p - 1), dP)]
 
-    return maximum(abs.(eigen(G).values)) < 1 || maximum(abs.(eigen(G).values)) ≈ 1
+    return maximum(abs.(eigen(G).values)) < threshold || maximum(abs.(eigen(G).values)) ≈ threshold
 end
 
 """ 
-    erase_nonstationary_param(saved_params)
+    erase_nonstationary_param(saved_params; threshold=1)
 It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
+- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. 
 # Output(2): 
 stationary samples, acceptance rate(%)
 - The second output indicates how many posterior samples remain.
 """
-function erase_nonstationary_param(saved_params)
+function erase_nonstationary_param(saved_params; threshold=1)
 
     iteration = length(saved_params)
     stationary_saved_params = Vector{Parameter}(undef, 0)
@@ -232,7 +234,7 @@ function erase_nonstationary_param(saved_params)
         phi0 = C \ phi0
         GPFF = phi0[:, 2:end]
 
-        if isstationary(GPFF)
+        if isstationary(GPFF; threshold)
             push!(stationary_saved_params, Parameter(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma)))
         end
         next!(prog)
