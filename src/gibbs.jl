@@ -123,7 +123,7 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
 end
 
 """
-    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 Full-conditional posterior sampler for `phi` and `varFF` 
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -132,15 +132,15 @@ Full-conditional posterior sampler for `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
-    dP = size(ψ, 1)
-    p = Int(size(ψ)[2] / dP)
+    dP = size(psi, 1)
+    p = Int(size(psi)[2] / dP)
     PCs, ~, Wₚ = PCA(yields, p)
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
-    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
+    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
     prior_phi_ = [prior_phi0_ prior_C(; Omega0)]
     prior_varFF_ = prior_varFF(; nu0, Omega0)
 

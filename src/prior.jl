@@ -48,7 +48,7 @@ function prior_C(; Omega0::Vector)
 end
 
 """
-    prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
+    prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
 This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
 # Input 
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -59,9 +59,9 @@ This part derives the prior distribution for coefficients of the lagged regresso
 # Important note
 prior variance for `phi[i,:]` = `varFF[i]*var(output[i,:])`
 """
-function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
+function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
 
-    dP, dPp = size(ψ) # dimension & #{regressors}
+    dP, dPp = size(psi) # dimension & #{regressors}
     p = Int(dPp / dP) # the number of lags
     phi0 = Matrix{Any}(undef, dP, dPp + 1)
 
@@ -85,32 +85,32 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; ψ0
 
     for i in 1:dQ
         if i == 1 && fix_const_PC1
-            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * 1e-10))
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-10))
         else
-            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * q[4, 1]))
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 1]))
         end
         for l = 1:1
             for j in 1:dQ
-                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
             for j in (dQ+1):dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
         end
         for l = 2:p
             for j in 1:dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
             end
         end
     end
     for i in (dQ+1):dP
-        phi0[i, 1] = Normal(mean_phi_const[i], sqrt(ψ0[i] * q[4, 2]))
+        phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 2]))
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
-                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
                 else
-                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(ψ[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(0, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ)))
                 end
             end
         end

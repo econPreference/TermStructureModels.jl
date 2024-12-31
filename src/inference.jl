@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false)
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[])
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -19,11 +19,12 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 - When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
+- `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. 
 # Output(2)
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[])
 
 
     if isempty(upper_nu0) == true
@@ -38,6 +39,13 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
     if isempty(kappaQ_prior_pr)
         kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
+    end
+
+    if isempty(psi_common)
+        psi_common = ones(dP, dP)
+    end
+    if isempty(psi_const)
+        psi_const = ones(dP)
     end
 
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
@@ -89,9 +97,11 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
         if isempty(macros)
-            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
+            psi = kron(ones(1, p), psi_common)
+            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
         else
-            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1)
+            psi = kron(ones(1, p), psi_common)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
         end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -144,16 +154,17 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 This is a posterior distribution sampler.
 # Input
 - `iteration`: # of posterior samples
 - `tuned`: optimized hyperparameters used during estimation
 - `init_param`: starting point of the sampler. It should be a type of Parameter.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. 
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], ψ=[], ψ0=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -192,11 +203,11 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         gamma = 1 ./ fill(gamma_bar, N - dQ)
         ########################
     end
-    if isempty(ψ)
-        ψ = ones(dP, dP * p)
+    if isempty(psi)
+        psi = ones(dP, dP * p)
     end
-    if isempty(ψ0)
-        ψ0 = ones(dP)
+    if isempty(psi_const)
+        psi_const = ones(dP)
     end
     if !(typeof(kappaQ_prior_pr[1]) <: Real)
 
@@ -245,7 +256,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))
 
-        phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, ψ, ψ0, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+        phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
         isaccept_MH[1:dQ] += isaccept
 
         SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale))

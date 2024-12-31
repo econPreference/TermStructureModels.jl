@@ -1,29 +1,29 @@
 """
-    log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
+    log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; psi=[], psi_const=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
 This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
 # Input
 - tuned is a point where the marginal likelihood is evaluated. 	
-- `ψ0` and `ψ` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[ψ0 ψ][i,j]` is corresponds to `phi[i,j]`. 
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. 
 # Output
 - the log marginal likelihood of the VAR system.
 """
-function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; ψ=[], ψ0=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
+function log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; psi=[], psi_const=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
 
     p, nu0, Omega0, q, mean_phi_const = tuned.p, tuned.nu0, tuned.Omega0, tuned.q, tuned.mean_phi_const
 
     prior_kappaQ_ = prior_kappaQ(medium_tau, kappaQ_prior_pr)
     dP = length(Omega0)
 
-    if isempty(ψ)
-        ψ = ones(dP, dP * p)
+    if isempty(psi)
+        psi = ones(dP, dP * p)
     end
-    if isempty(ψ0)
-        ψ0 = ones(dP)
+    if isempty(psi_const)
+        psi_const = ones(dP)
     end
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     T = size(yphi, 1)
-    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; ψ0, ψ, q, nu0, Omega0, fix_const_PC1)
+    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
     prior_C_ = prior_C(; Omega0)
     prior_phi = hcat(prior_phi0_, prior_C_)
     m = mean.(prior_phi)

@@ -29,7 +29,9 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho;
                                         data_scale=1200,
                                         kappaQ_prior_pr=[],
                                         init_nu0=[],
-                                        is_pure_EH=false)
+                                        is_pure_EH=false,
+                                        psi_common=[],
+                                        psi_const=[])
 ```
 
 Note that the default upper bound of `p` is `upper_p=18`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
@@ -68,8 +70,8 @@ In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it f
 saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter;
                                             medium_tau=collect(24:3:48),
                                             init_param=[],
-                                            ψ=[],
-                                            ψ0=[],
+                                            psi=[],
+                                            psi_const=[],
                                             gamma_bar=[],
                                             kappaQ_prior_pr=[],
                                             mean_kQ_infty=0,
@@ -87,6 +89,8 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 `iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
 
 `saved_params::Vector{Parameter}` has a length of `iteration` and each entry is a posterior sample. `acceptPrMH` is `dQ+1`-Vector, and the `i(<=dQ)`-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR. The last entry of `acceptPrMH` is the MH acceptance rate for `kappaQ` under the unrestricted JSZ model. It is zero under the AFNS restriction.
+
+## Step 3. Discard Burn-in and Nonstationary Posterior Samples
 
 After users get posterior samples(`saved_params`), they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
 
