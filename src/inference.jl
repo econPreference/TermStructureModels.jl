@@ -216,7 +216,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             kappaQ_logpost = cumsum(x[1:dQ])
             kQ_infty_logpost = x[dQ+1]
             SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
-            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || minimum(SigmaO_logpost) < eps() || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= eps()))
+            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= eps()))
                 return -Inf
             end
 
