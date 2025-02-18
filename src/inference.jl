@@ -231,8 +231,11 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
         x = [kappaQ[1]; diff(kappaQ[1:end])]
         init = [x; kQ_infty; log.(SigmaO)]
-        ss = MixedPrecisionRectSearchSpace([0; -1 * ones(length(kappaQ) - 1); -1; fill(-1, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); 1; fill(1, length(tau_n) - dQ)], -1ones(Int64, length(init)))
-        minimizers = bboptimize(x -> -logpost(x), init; SearchSpace=ss) |> best_candidate
+        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
+                     Optim.minimizer |>
+                     y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(ConjugateGradient()), Optim.Options(show_trace=true)) |>
+                          Optim.minimizer
+
         x_mode = minimizers[1:dQ]
         x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
