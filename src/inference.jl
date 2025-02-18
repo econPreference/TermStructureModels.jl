@@ -233,7 +233,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         init = [x; kQ_infty; log.(SigmaO)]
         minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                      Optim.minimizer |>
-                     y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(ConjugateGradient()), Optim.Options(show_trace=true)) |>
+                     y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS()), Optim.Options(show_trace=true)) |>
                           Optim.minimizer
 
         x_mode = minimizers[1:dQ]
