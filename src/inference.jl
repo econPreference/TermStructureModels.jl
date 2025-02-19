@@ -216,7 +216,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             kappaQ_logpost = cumsum(x[1:dQ])
             kQ_infty_logpost = x[dQ+1]
             SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
-            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= 0.001))
+            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= eps()))
                 return -Inf
             end
 
@@ -231,7 +231,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
         x = [kappaQ[1]; diff(kappaQ[1:end])]
         init = [x; kQ_infty; log.(SigmaO)]
-        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
+        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                      Optim.minimizer |>
                      y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
                           Optim.minimizer
