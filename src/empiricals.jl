@@ -354,7 +354,12 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
         else
             ΩPP = (nu0 - dP - 1) * diagm(OmegaFF_mean) |> x -> InverseWishart(nu0, x) |> rand |> x -> x[1:dQ, 1:dQ]
         end
-        kappaQ = prior_kappaQ(medium_tau, kappaQ_prior_pr) |> rand
+
+        if typeof(kappaQ_prior_pr[1]) <: Real
+            kappaQ = prior_kappaQ(medium_tau, kappaQ_prior_pr) |> rand
+        else
+            kappaQ = rand.(kappaQ_prior_pr)
+        end
         kQ_infty = Normal(mean_kQ_infty, std_kQ_infty) |> rand
 
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
