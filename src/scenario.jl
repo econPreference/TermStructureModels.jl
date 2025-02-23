@@ -628,3 +628,39 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     end
     return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u
 end
+
+function Gpower(h; dQ, N, phi)
+
+    ## Construct TSM parameters
+    phi0, C = phi_2_phi₀_C(; phi)
+    phi0 = C \ phi0 # reduced form parameters
+    KPF = phi0[:, 1]
+    GPFF = phi0[:, 2:end]
+
+    dP = size(GPFF, 1)
+    k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
+    p = Int(size(GPFF, 2) / dP)
+
+    ## Construct the Kalman filter parameters
+    # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
+    if p == 1
+        G_sub = [GPFF zeros(dP, N - dQ)
+            zeros(N - dQ, dP + N - dQ)]
+    else
+        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
+            zeros(N - dQ, dP * p + N - dQ)
+            I(dP) zeros(dP, dP * p - dP + N - dQ)
+            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
+    end
+    G = zeros(k, k)
+    G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
+    G[1:dP, end-dP+1:end] = diagm(KPF)
+    G[end-dP+1:end, end-dP+1:end] = I(dP)
+
+    G_power = Array(size(G, 1), size(G, 2), h)
+    for i in axes(G_power, 3)
+        G_power[:, :, i] = G^i
+    end
+
+    return G_power
+end
