@@ -175,6 +175,50 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p)
         zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dQ)]
 
+    if !isempty(τ) # Measurement equation: term premiums
+        # Constant term
+        tp_const = Vector{Float64}(undef, length(τ))
+
+        jensen = 0 # Jensen's Ineqaulity term
+        for i = 1:(τ[end]-1)
+            jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+            if i + 1 in τ
+                idx_tau = findall(x -> x == i + 1, τ)[1]
+                tp_const[idx_tau] = -jensen / τ[idx_tau]
+            end
+        end
+
+        KQ_X = zeros(dQ)
+        KQ_X[1] = copy(kQ_infty)
+        KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
+        λₚ = KPF[1:dQ] - KQ_P
+        tp_const_2 = cumsum(bτ_[:, 1:(τ[end]-1)], dims=2) |> x -> x[:, τ.-1]'
+        tp_const_2 = tp_const_2 * (T1P_ * λₚ)
+        tp_const += -tp_const_2 ./ τ
+
+        μM = [μM; tp_const]
+
+        # Factor loadings for TP
+        GQ_PP = T1X_ * GQ_XX(; kappaQ) * T1P_
+        Λ_PF = GPFF[1:dQ, :]
+        Λ_PF[1:dQ, 1:dQ] -= GQ_PP
+        Λ_PF = [Λ_PF[:, 1:dP] zeros(dP, N - dQ) Λ_PF[:, dP+1:end] zeros(dP, dP)]
+
+        tp_fl = Matrix{Float64}(undef, length(τ), k)
+        G_power = I(dP)
+        fl = zeros(k)
+        for i = 1:(τ[end]-1)
+            fl += bτ_[:, τ-i]' * T1P_ |> x -> [x zeros(1, dP - dQ)] * Λ_PF * G_power
+            if i + 1 in τ
+                idx_tau = findall(x -> x == i + 1, τ)[1]
+                tp_fl[idx_tau, :] = fl
+            end
+            G_power *= G
+        end
+
+        H = [H; tp_fl]
+    end
+
     ## Kalman filtering & smoothing
     precFtm = Vector{Vector}(undef, dh)
     Ktm = Vector{Matrix}(undef, dh)
@@ -296,10 +340,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     if isempty(τ)
         predicted_TP = []
     else
-        predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
-        for i in eachindex(τ)
-            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
-        end
+        predicted_TP = tp_const .+ tp_fl * predicted_F' |> x -> x'
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
@@ -627,40 +668,4 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
         spanned_factors_u[:, dQ+i] .+= mean_macros[i]
     end
     return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u
-end
-
-function Gpower(h; dQ, N, phi)
-
-    ## Construct TSM parameters
-    phi0, C = phi_2_phi₀_C(; phi)
-    phi0 = C \ phi0 # reduced form parameters
-    KPF = phi0[:, 1]
-    GPFF = phi0[:, 2:end]
-
-    dP = size(GPFF, 1)
-    k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
-    p = Int(size(GPFF, 2) / dP)
-
-    ## Construct the Kalman filter parameters
-    # Transition equation: F(t) = μT + G*F(t-1) + N(0,Ω), where F(t): dP*p+N vector
-    if p == 1
-        G_sub = [GPFF zeros(dP, N - dQ)
-            zeros(N - dQ, dP + N - dQ)]
-    else
-        G_sub = [GPFF[:, 1:dP] zeros(dP, N - dQ) GPFF[:, dP+1:end]
-            zeros(N - dQ, dP * p + N - dQ)
-            I(dP) zeros(dP, dP * p - dP + N - dQ)
-            zeros(dP * p - 2dP, dP + N - dQ) I(dP * p - 2dP) zeros(dP * p - 2dP, dP)]
-    end
-    G = zeros(k, k)
-    G[1:dP*p+N-dQ, 1:dP*p+N-dQ] = G_sub
-    G[1:dP, end-dP+1:end] = diagm(KPF)
-    G[end-dP+1:end, end-dP+1:end] = I(dP)
-
-    G_power = Array(size(G, 1), size(G, 2), h)
-    for i in axes(G_power, 3)
-        G_power[:, :, i] = G^i
-    end
-
-    return G_power
 end
