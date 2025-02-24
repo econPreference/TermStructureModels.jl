@@ -462,6 +462,50 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p)
         zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dQ)]
 
+    if !isempty(τ) # Measurement equation: term premiums
+        # Constant term
+        tp_const = Vector{Float64}(undef, length(τ))
+
+        jensen = 0 # Jensen's Ineqaulity term
+        for i = 1:(τ[end]-1)
+            jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+            if i + 1 in τ
+                idx_tau = findall(x -> x == i + 1, τ)[1]
+                tp_const[idx_tau] = -jensen / τ[idx_tau]
+            end
+        end
+
+        KQ_X = zeros(dQ)
+        KQ_X[1] = copy(kQ_infty)
+        KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
+        λₚ = KPF[1:dQ] - KQ_P
+        tp_const_2 = cumsum(bτ_[:, 1:(τ[end]-1)], dims=2) |> x -> x[:, τ.-1]'
+        tp_const_2 = tp_const_2 * (T1P_ * λₚ)
+        tp_const += -tp_const_2 ./ τ
+
+        μM = [μM; tp_const]
+
+        # Factor loadings for TP
+        GQ_PP = T1X_ * GQ_XX(; kappaQ) * T1P_
+        Λ_PF = GPFF[1:dQ, :]
+        Λ_PF[1:dQ, 1:dQ] -= GQ_PP
+        Λ_PF = [Λ_PF[:, 1:dP] zeros(dP, N - dQ) Λ_PF[:, dP+1:end] zeros(dP, dP)]
+
+        tp_fl = Matrix{Float64}(undef, length(τ), k)
+        G_power = I(dP)
+        fl = zeros(k)
+        for i = 1:(τ[end]-1)
+            fl += bτ_[:, τ-i]' * T1P_ |> x -> [x zeros(1, dP - dQ)] * Λ_PF * G_power
+            if i + 1 in τ
+                idx_tau = findall(x -> x == i + 1, τ)[1]
+                tp_fl[idx_tau, :] = fl
+            end
+            G_power *= G
+        end
+
+        H = [H; tp_fl]
+    end
+
     ## initializing
     # for conditional prediction
     precFtm = Vector{Vector}(undef, dh)
@@ -551,10 +595,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     if isempty(τ)
         predicted_TP = []
     else
-        predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
-        for i in eachindex(τ)
-            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
-        end
+        predicted_TP = tp_const .+ tp_fl * predicted_F' |> x -> x'
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
