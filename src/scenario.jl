@@ -490,12 +490,13 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         Λ_PF = GPFF[1:dQ, :]
         Λ_PF[1:dQ, 1:dQ] -= GQ_PP
         Λ_PF = [Λ_PF[:, 1:dP] zeros(dP, N - dQ) Λ_PF[:, dP+1:end] zeros(dP, dP)]
+        T1P_Λ_PF = T1P_ * Λ_PF
 
         tp_fl = Matrix{Float64}(undef, length(τ), k)
         G_power = I(dP)
         fl = zeros(k)
         for i = 1:(τ[end]-1)
-            fl += bτ_[:, τ-i]' * T1P_ |> x -> [x zeros(1, dP - dQ)] * Λ_PF * G_power
+            fl += bτ_[:, τ-i]' * T1P_Λ_PF * G_power
             if i + 1 in τ
                 idx_tau = findall(x -> x == i + 1, τ)[1]
                 tp_fl[idx_tau, :] = fl
