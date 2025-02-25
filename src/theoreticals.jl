@@ -171,16 +171,16 @@ function Bₚ(Bₓ_, T1X_, Wₒ)
 end
 
 """
-    term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
 This function generates posterior samples of the term premiums.
 # Input 
-- maturity of interest `τ` for Calculating `TP`
+- maturity of interest `tau_interest` for Calculating `TP`
 - `saved_params` from function `posterior_sampler`
 # Output
 - `Vector{TermPremium}(, iteration)`
 - Outputs exclude initial observations.
 """
-function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
@@ -224,12 +224,12 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
                 I(dP * p - dP) zeros(dP * p - dP, 2dP)
                 zeros(dP, dP * p) I(dP)]
         end
-        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_n))
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
         Gpower_ind = I(dP)
         Gpower_sum = I(dP)
-        for i in 1:tau_n[end]
-            if i ∈ tau_n
-                idx = findall(x -> x == i, tau_n)
+        for i in 1:tau_interest[end]
+            if i ∈ tau_interest
+                idx = findall(x -> x == i, tau_interest)
                 Gpower[:, :, idx] = Gpower_sum ./ i
             end
             Gpower_ind *= GP
@@ -244,9 +244,9 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         Aₓ_ = Aₓ(aτ_, tau_n)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        const_EH = Matrix{Float64}(undef, T - p, length(tau_n))
-        timevarying_EH = Array{Float64}(undef, T - p, length(tau_n), dP)
-        fl_EH = Matrix{Float64}(undef, length(tau_n), dP)
+        const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
+        timevarying_EH = Array{Float64}(undef, T - p, length(tau_interest), dP)
+        fl_EH = Matrix{Float64}(undef, length(tau_interest), dP)
 
         const_EH .= aτ_[1]
         for i in axes(fl_EH, 1)
@@ -259,9 +259,9 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         fl_TP = -1 .* fl_EH
         timevarying_TP = -1 .* timevarying_EH
         for i in axes(const_TP, 2)
-            const_TP[:, i] .+= aτ_[Int(tau_n[i])] + bτ_[:, Int(tau_n[i])]' * T0P_ |> x -> x / tau_n[i]
+            const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
         end
-        fl_TP_sub = bτ_[:, Int.(tau_n)]' / T1X_ |> x -> x ./ tau_n
+        fl_TP_sub = bτ_[:, Int.(tau_interest)]' / T1X_ |> x -> x ./ tau_interest
         fl_TP[:, 1:dQ] += fl_TP_sub
         timevarying_TP[:, 1:dQ] += PCs[p+1:end, :] * fl_TP_sub'
         TP = const_TP + timevarying_TP
