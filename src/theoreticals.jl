@@ -171,79 +171,6 @@ function Bₚ(Bₓ_, T1X_, Wₒ)
 end
 
 """
-    _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
-This function calculates a term premium for maturity `τ`. 
-# Input
-- `data_scale::scalar` = In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
-# Output(4)
-`TP`, `timevarying_TP`, `const_TP`, `jensen`
-- `TP`: term premium of maturity `τ`
-- `timevarying_TP`: contributions of each `[PCs macros]` on `TP` at each time ``t`` (row: time, col: variable)
-- `const_TP`: Constant part of `TP`
-- `jensen`: Jensen's Ineqaulity part in `TP`
-- Output excludes the time period for the initial observations.  
-"""
-function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
-
-    T1P_ = inv(T1X_)
-    # Jensen's Ineqaulity term
-    jensen = 0
-    for i = 1:(τ-1)
-        jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP, data_scale)
-    end
-    jensen /= -τ
-
-    # Constant term
-    dQ = size(ΩPP, 1)
-    KQ_X = zeros(dQ)
-    KQ_X[1] = copy(kQ_infty)
-    KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
-    λₚ = KPF[1:dQ] - KQ_P
-    const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1P_ * λₚ)
-    const_TP = -const_TP[1] / τ
-
-    # Time-varying part
-    dP = size(GPFF, 1)
-    p = Int(size(GPFF, 2) / dP)
-    T = size(PCs, 1) # time series length including intial conditions
-    timevarying_TP = zeros(T - p, dP) # time-varying part is seperated to see the individual contribution of each priced factor. So, the column length is dP.
-
-    GQ_PP = T1X_ * GQ_XX(; kappaQ) * T1P_
-    Λ_PF = GPFF[1:dQ, :]
-    Λ_PF[1:dQ, 1:dQ] -= GQ_PP
-    T1P_Λ_PF = T1P_ * Λ_PF
-
-    if isempty(macros)
-        factors = copy(PCs)
-    else
-        factors = [PCs macros]
-    end
-    for t in (p+1):T # ranges for the dependent variables. The whole range includes initial observations.
-        # prediction part
-        predicted_X = factors[t:-1:1, :]
-        for horizon = 1:(τ-2)
-            regressors = vec(predicted_X[1:p, :]')
-            predicted = KPF + GPFF * regressors
-            predicted_X = vcat(predicted', predicted_X)
-        end
-        reverse!(predicted_X, dims=1)
-
-        # Calculate TP
-        for i = 1:(τ-1)
-            weight = bτ_[:, τ-i]' * (T1P_Λ_PF)
-            for l = 1:p, j = 1:dP
-                timevarying_TP[t-p, j] += weight[(l-1)*dP+j] * predicted_X[t+i-l, j] # first row in predicted_X = (time = t-p+1)
-            end
-        end
-    end
-    timevarying_TP /= -τ
-
-    TP = sum(timevarying_TP, dims=2) .+ jensen .+ const_TP
-
-    return TP, timevarying_TP, const_TP, jensen
-end
-
-"""
     term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
 This function generates posterior samples of the term premiums.
 # Input 
@@ -295,6 +222,135 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
     return saved_TP
 
 end
+
+####################################################################
+## OLD CODE: Calculate the term premium using the prices of risks ## 
+####################################################################
+# """
+#     _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
+# This function calculates a term premium for maturity `τ`. 
+# # Input
+# - `data_scale::scalar` = In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+# # Output(4)
+# `TP`, `timevarying_TP`, `const_TP`, `jensen`
+# - `TP`: term premium of maturity `τ`
+# - `timevarying_TP`: contributions of each `[PCs macros]` on `TP` at each time ``t`` (row: time, col: variable)
+# - `const_TP`: Constant part of `TP`
+# - `jensen`: Jensen's Ineqaulity part in `TP`
+# - Output excludes the time period for the initial observations.  
+# """
+# function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
+
+#     T1P_ = inv(T1X_)
+#     # Jensen's Ineqaulity term
+#     jensen = 0
+#     for i = 1:(τ-1)
+#         jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP, data_scale)
+#     end
+#     jensen /= -τ
+
+#     # Constant term
+#     dQ = size(ΩPP, 1)
+#     KQ_X = zeros(dQ)
+#     KQ_X[1] = copy(kQ_infty)
+#     KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
+#     λₚ = KPF[1:dQ] - KQ_P
+#     const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1P_ * λₚ)
+#     const_TP = -const_TP[1] / τ
+
+#     # Time-varying part
+#     dP = size(GPFF, 1)
+#     p = Int(size(GPFF, 2) / dP)
+#     T = size(PCs, 1) # time series length including intial conditions
+#     timevarying_TP = zeros(T - p, dP) # time-varying part is seperated to see the individual contribution of each priced factor. So, the column length is dP.
+
+#     GQ_PP = T1X_ * GQ_XX(; kappaQ) * T1P_
+#     Λ_PF = GPFF[1:dQ, :]
+#     Λ_PF[1:dQ, 1:dQ] -= GQ_PP
+#     T1P_Λ_PF = T1P_ * Λ_PF
+
+#     if isempty(macros)
+#         factors = copy(PCs)
+#     else
+#         factors = [PCs macros]
+#     end
+#     for t in (p+1):T # ranges for the dependent variables. The whole range includes initial observations.
+#         # prediction part
+#         predicted_X = factors[t:-1:1, :]
+#         for horizon = 1:(τ-2)
+#             regressors = vec(predicted_X[1:p, :]')
+#             predicted = KPF + GPFF * regressors
+#             predicted_X = vcat(predicted', predicted_X)
+#         end
+#         reverse!(predicted_X, dims=1)
+
+#         # Calculate TP
+#         for i = 1:(τ-1)
+#             weight = bτ_[:, τ-i]' * (T1P_Λ_PF)
+#             for l = 1:p, j = 1:dP
+#                 timevarying_TP[t-p, j] += weight[(l-1)*dP+j] * predicted_X[t+i-l, j] # first row in predicted_X = (time = t-p+1)
+#             end
+#         end
+#     end
+#     timevarying_TP /= -τ
+
+#     TP = sum(timevarying_TP, dims=2) .+ jensen .+ const_TP
+
+#     return TP, timevarying_TP, const_TP, jensen
+# end
+
+# """
+#     term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+# This function generates posterior samples of the term premiums.
+# # Input 
+# - maturity of interest `τ` for Calculating `TP`
+# - `saved_params` from function `posterior_sampler`
+# # Output
+# - `Vector{TermPremium}(, iteration)`
+# - Outputs exclude initial observations.
+# """
+# function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+
+#     iteration = length(saved_params)
+#     saved_TP = Vector{TermPremium}(undef, iteration)
+
+#     dQ = dimQ() + size(yields, 2) - length(tau_n)
+#     dP = size(saved_params[:phi][1], 1)
+#     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
+#     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+
+#     prog = Progress(iteration; dt=5, desc="term_premium...")
+#     Threads.@threads for iter in 1:iteration
+
+#         kappaQ = saved_params[:kappaQ][iter]
+#         kQ_infty = saved_params[:kQ_infty][iter]
+#         phi = saved_params[:phi][iter]
+#         varFF = saved_params[:varFF][iter]
+
+#         phi0, C = phi_2_phi₀_C(; phi)
+#         phi0 = C \ phi0
+#         KPF = phi0[:, 1]
+#         GPFF = phi0[:, 2:end]
+#         OmegaFF = (C \ diagm(varFF)) / C'
+
+#         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+#         Bₓ_ = Bₓ(bτ_, tau_n)
+#         T1X_ = T1X(Bₓ_, Wₚ)
+
+#         aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+#         Aₓ_ = Aₓ(aτ_, tau_n)
+#         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+#         TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+
+#         saved_TP[iter] = TermPremium(TP=copy(TP[:, 1]), timevarying_TP=copy(timevarying_TP), const_TP=copy(const_TP), jensen=copy(jensen))
+
+#         next!(prog)
+#     end
+#     finish!(prog)
+
+#     return saved_TP
+
+# end
 
 """
     latentspace(saved_params, yields, tau_n; data_scale=1200)
