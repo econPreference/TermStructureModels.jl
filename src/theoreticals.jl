@@ -189,11 +189,18 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    T = size(PCS, 1)
 
     if isempty(macros)
-        factors = copy(PCs)
+        indfactors = copy(PCs)
     else
-        factors = [PCs macros]
+        indfactors = [PCs macros]
+    end
+
+    factors = Matrix{Float64}(undef, T - p, dP + 1)
+    factors[:, end] .= 1
+    for i in 0:p-1
+        factors[:, dP*i+1:dP*(i+1)] = indfactors[p+1-i:end-i, :]
     end
 
     prog = Progress(iteration; dt=5, desc="term_premium...")
@@ -237,7 +244,37 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         Aₓ_ = Aₓ(aτ_, tau_n)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        saved_TP[iter] = TermPremium(TP=copy(TP[:, 1]), timevarying_TP=copy(timevarying_TP), const_TP=copy(const_TP), jensen=copy(jensen))
+        const_EH = Matrix{Float64}(undef, T - p, length(tau_n))
+        timevarying_EH = Array{Float64}(undef, T - p, length(tau_n), dP)
+        fl_EH = Matrix{Float64}(undef, length(tau_n), dP)
+
+        const_EH .= aτ_[1]
+        for i in axes(fl_EH, 1)
+            fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dP, p * dP + dP - dQ)] * Gpower[:, :, i]
+        end
+        timevarying_EH = factors * fl_EH'
+        EH = const_EH + timevarying_EH
+
+        const_TP = -1 .* const_EH
+        fl_TP = -1 .* fl_EH
+        timevarying_TP = -1 .* timevarying_EH
+        for i in axes(const_TP, 2)
+            const_TP[:, i] .+= aτ_[Int(tau_n[i])] + bτ_[:, Int(tau_n[i])]' * T0P_ |> x -> x / tau_n[i]
+        end
+        fl_TP_sub = bτ_[:, Int.(tau_n)]' / T1X_ |> x -> x ./ tau_n
+        fl_TP[:, 1:dQ] += fl_TP_sub
+        timevarying_TP[:, 1:dQ] += PCs[p+1:end, :] * fl_TP_sub'
+        TP = const_TP + timevarying_TP
+
+        saved_TP[iter] = TermPremium(TP=copy(TP),
+            EH=copy(EH),
+            factorloading_TP=copy(fl_TP),
+            factorloading_EH=copy(fl_EH),
+            timevarying_TP=copy(timevarying_TP),
+            timevarying_EH=copy(timevarying_EH),
+            const_TP=copy(const_TP),
+            const_EH=copy(const_EH)
+        )
 
         next!(prog)
     end
