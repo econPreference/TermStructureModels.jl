@@ -190,6 +190,12 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
 
+    if isempty(macros)
+        factors = copy(PCs)
+    else
+        factors = [PCs macros]
+    end
+
     prog = Progress(iteration; dt=5, desc="term_premium...")
     Threads.@threads for iter in 1:iteration
 
@@ -203,6 +209,25 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         KPF = phi0[:, 1]
         GPFF = phi0[:, 2:end]
         OmegaFF = (C \ diagm(varFF)) / C'
+        if p == 1
+            GP = [GPFF diagm(KPF)
+                zeros(dP, dP) I(dP)]
+        else
+            GP = [GPFF diagm(KPF)
+                I(dP * p - dP) zeros(dP * p - dP, 2dP)
+                zeros(dP, dP * p) I(dP)]
+        end
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_n))
+        Gpower_ind = I(dP)
+        Gpower_sum = I(dP)
+        for i in 1:tau_n[end]
+            if i ∈ tau_n
+                idx = findall(x -> x == i, tau_n)
+                Gpower[:, :, idx] = Gpower_sum ./ i
+            end
+            Gpower_ind *= GP
+            Gpower_sum += Gpower_ind
+        end
 
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
@@ -211,7 +236,6 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
         Aₓ_ = Aₓ(aτ_, tau_n)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
 
         saved_TP[iter] = TermPremium(TP=copy(TP[:, 1]), timevarying_TP=copy(timevarying_TP), const_TP=copy(const_TP), jensen=copy(jensen))
 

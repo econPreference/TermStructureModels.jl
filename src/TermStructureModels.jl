@@ -109,17 +109,15 @@ end
 
 """
     @kwdef struct TermPremium <: PosteriorSample 
-It contains a estimated time series of a term premium for one maturity.
-- `TP::Vector`: term premium estimates of a specific maturity bond. `TP = timevarying_TP + const_TP + jensen` holds.
-- `timevarying_TP::Matrix`: rows:time, cols:factors, values: contributions of factors on TP
-- `const_TP::Float64`: constant part in TP
-- `jensen::Float64`: the part due to the Jensen's inequality
+The yields are decomposed into the term premium(`TP`) and the expectation hypothesis component(`EH`). Each components have constant terms(`const_TP` and `const_EH`) and time-varying components(`timevarying_TP` and `timevarying_EH`).
 """
 @kwdef struct TermPremium <: PosteriorSample
-    TP::Vector
-    timevarying_TP::Matrix
-    const_TP::Float64
-    jensen::Float64
+    TP
+    EH
+    timevarying_TP
+    timevarying_EH
+    const_TP
+    const_EH
 end
 
 """
