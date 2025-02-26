@@ -250,7 +250,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
 
         const_EH .= aτ_[1]
         for i in axes(fl_EH, 1)
-            fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dP, p * dP + dP - dQ)] * Gpower[:, :, i]
+            fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
         end
         timevarying_EH = factors * fl_EH'
         for i in axes(const_EH, 2)
