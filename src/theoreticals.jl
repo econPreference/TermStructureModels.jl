@@ -13,7 +13,7 @@ function GQ_XX(; kappaQ)
             0 0 exp(-kappaQ)]
     else
         X = diagm(kappaQ)
-        idx = findall(x -> -x < 0.001, diff(kappaQ))
+        idx = findall(x -> -x < 0.005, diff(kappaQ))
         if !isempty(idx)
             for i in eachindex(idx)
                 X[idx[i], idx[i]+1] = 1
