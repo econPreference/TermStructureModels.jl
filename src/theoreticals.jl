@@ -232,7 +232,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         for i in 1:tau_interest[end]
             if i ∈ tau_interest
                 idx = findall(x -> x == i, tau_interest)
-                Gpower[:, :, idx] = Gpower_sum ./ tau_interest[i]
+                Gpower[:, :, idx] = Gpower_sum ./ i
             end
             Gpower_ind *= GP
             Gpower_sum += Gpower_ind
