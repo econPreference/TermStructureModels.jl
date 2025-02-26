@@ -232,7 +232,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         for i in 1:tau_interest[end]
             if i ∈ tau_interest
                 idx = findall(x -> x == i, tau_interest)
-                Gpower[:, :, idx] = Gpower_sum ./ i
+                Gpower[:, :, idx] = Gpower_sum ./ tau_interest[i]
             end
             Gpower_ind *= GP
             Gpower_sum += Gpower_ind
@@ -259,7 +259,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         end
         timevarying_EH = timevarying_EH[:, 1:dP*p, :]
         fl_EH = fl_EH[1:dP*p, :]
-        EH = const_EH .+ sum(timevarying_EH, dims=2)[:, 1, :]
+        EH = const_EH + sum(timevarying_EH, dims=2)[:, 1, :]
 
         const_TP = -1 .* const_EH
         fl_TP = -1 .* fl_EH
