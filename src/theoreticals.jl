@@ -256,7 +256,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         end
         timevarying_EH = timevarying_EH[:, 1:dP*p, :]
         fl_EH = fl_EH[1:dP*p, :]
-        EH = const_EH + sum(timevarying_EH, dims=2)[:, 1]
+        EH = const_EH .+ sum(timevarying_EH, dims=2)[:, 1, :]
 
         const_TP = -1 .* const_EH
         fl_TP = -1 .* fl_EH
@@ -269,7 +269,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         for i in axes(timevarying_TP, 3)
             timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
         end
-        TP = const_TP + timevarying_TP
+        TP = const_TP .+ sum(timevarying_TP, dims=2)[:, 1, :]
 
         saved_TP[iter] = TermPremium(TP=copy(TP),
             EH=copy(EH),
