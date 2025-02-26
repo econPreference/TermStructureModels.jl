@@ -225,8 +225,8 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
                 zeros(dP, dP * p) I(dP)]
         end
         Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
-        Gpower_ind = I(dP)
-        Gpower_sum = I(dP)
+        Gpower_ind = I(size(GP, 1))
+        Gpower_sum = I(size(GP, 1))
         for i in 1:tau_interest[end]
             if i ∈ tau_interest
                 idx = findall(x -> x == i, tau_interest)
