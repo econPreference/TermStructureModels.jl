@@ -265,7 +265,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
             const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
         end
         fl_TP_sub = bτ_[:, Int.(tau_interest)]' / T1X_ |> x -> x ./ tau_interest
-        fl_TP[1:dQ, :] += fl_TP_sub
+        fl_TP[1:dQ, :] += fl_TP_sub'
         for i in axes(timevarying_TP, 3)
             timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
         end
