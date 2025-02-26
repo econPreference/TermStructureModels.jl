@@ -245,20 +245,18 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
         const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
-        timevarying_EH = Array{Float64}(undef, T - p, length(tau_interest), p * dP + dP)
-        fl_EH = Matrix{Float64}(undef, length(tau_interest), p * dP + dP)
+        timevarying_EH = Array{Float64}(undef, T - p, p * dP + dP, length(tau_interest))
+        fl_EH = Matrix{Float64}(undef, p * dP + dP, length(tau_interest))
 
         const_EH .= aτ_[1]
-        for i in axes(fl_EH, 1)
-            fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
+        for i in axes(fl_EH, 2)
+            fl_EH[:, i] = bτ_[:, 1]' * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
+            timevarying_EH[:, :, i] = factors .* fl_EH[:, i]'
+            const_EH[:, i] += sum(timevarying_EH[:, end-dP+1:end, i][:, :], dims=2)[:, 1]
         end
-        timevarying_EH = factors * fl_EH'
-        for i in axes(const_EH, 2)
-            const_EH[:, i] += sum(timevarying_EH[:, i, end-dP+1:end][:, :], dims=2)[:, 1]
-        end
-        timevarying_EH = timevarying_EH[:, :, end-dP+1:end]
-        fl_EH = fl_EH[:, end-dP+1:end]
-        EH = const_EH + timevarying_EH
+        timevarying_EH = timevarying_EH[:, 1:dP*p, :]
+        fl_EH = fl_EH[1:dP*p, :]
+        EH = const_EH + sum(timevarying_EH, dims=2)[:, 1]
 
         const_TP = -1 .* const_EH
         fl_TP = -1 .* fl_EH
@@ -267,8 +265,10 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
             const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
         end
         fl_TP_sub = bτ_[:, Int.(tau_interest)]' / T1X_ |> x -> x ./ tau_interest
-        fl_TP[:, 1:dQ] += fl_TP_sub
-        timevarying_TP[:, 1:dQ] += PCs[p+1:end, :] * fl_TP_sub'
+        fl_TP[1:dQ, :] += fl_TP_sub
+        for i in axes(timevarying_TP, 3)
+            timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
+        end
         TP = const_TP + timevarying_TP
 
         saved_TP[iter] = TermPremium(TP=copy(TP),
