@@ -109,7 +109,15 @@ end
 
 """
     @kwdef struct TermPremium <: PosteriorSample 
-The yields are decomposed into the term premium(`TP`) and the expectation hypothesis component(`EH`). Each components have constant terms(`const_TP` and `const_EH`) and time-varying components(`timevarying_TP` and `timevarying_EH`). `factorloading_EH` and `factorloading_TP` are coefficients of the pricing factors for the time varying components. We do not store time-varying components in `TermPremium`, and the time-varying components are the separate outputs.
+The yields are decomposed into the term premium(`TP`) and the expectation hypothesis component(`EH`). Each components have constant terms(`const_TP` and `const_EH`) and time-varying components(`timevarying_TP` and `timevarying_EH`). `factorloading_EH` and `factorloading_TP` are coefficients of the pricing factors for the time varying components. Each column of the outputs indicates the results for each maturity.
+
+We do not store time-varying components in `TermPremium`, and the time-varying components are the separate outputs in function [`term_premium`](@ref). 
+- TP
+- EH
+- factorloading_TP
+- factorloading_EH
+- const_TP
+- const_EH
 """
 @kwdef struct TermPremium <: PosteriorSample
     TP
