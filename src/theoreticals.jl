@@ -197,8 +197,8 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         indfactors = [PCs macros]
     end
 
-    factors = Matrix{Float64}(undef, T - p, dP + 1)
-    factors[:, end] .= 1
+    factors = Matrix{Float64}(undef, T - p, dP * p + dP)
+    factors[:, end-dP+1:end] .= 1
     for i in 0:p-1
         factors[:, dP*i+1:dP*(i+1)] = indfactors[p+1-i:end-i, :]
     end
