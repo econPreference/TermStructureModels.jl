@@ -189,7 +189,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
-    T = size(PCS, 1)
+    T = size(PCs, 1)
 
     if isempty(macros)
         indfactors = copy(PCs)
