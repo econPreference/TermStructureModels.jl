@@ -184,6 +184,8 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
+    saved_tv_TP = Vector{Array}(undef, iteration)
+    saved_tv_EH = Vector{Array}(undef, iteration)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
@@ -275,17 +277,17 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
             EH=copy(EH),
             factorloading_TP=copy(fl_TP),
             factorloading_EH=copy(fl_EH),
-            timevarying_TP=copy(timevarying_TP),
-            timevarying_EH=copy(timevarying_EH),
             const_TP=copy(const_TP),
             const_EH=copy(const_EH)
         )
+        saved_tv_TP[iter] = copy(timevarying_TP)
+        saved_tv_EH[iter] = copy(timevarying_EH)
 
         next!(prog)
     end
     finish!(prog)
 
-    return saved_TP
+    return saved_TP, saved_tv_EH, saved_tv_TP
 
 end
 
