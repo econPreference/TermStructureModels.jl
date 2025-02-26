@@ -4,6 +4,7 @@ authors = ["Preference <econ.preference@gmail.com> and contributors"]
 version = "0.3.4"
 
 [deps]
+BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -20,6 +21,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
+BandedMatrices = "1.9.1"
 BlackBoxOptim = "0.6"
 Conda = "1"
 Distributions = "0.25"

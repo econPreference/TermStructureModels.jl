@@ -13,6 +13,12 @@ function GQ_XX(; kappaQ)
             0 0 exp(-kappaQ)]
     else
         X = diagm(kappaQ)
+        idx = findall(x -> -x < 0.005, diff(kappaQ))
+        if !isempty(idx)
+            for i in eachindex(idx)
+                X[idx[i], idx[i]+1] = 1
+            end
+        end
     end
     return X
 end
@@ -238,24 +244,40 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
 end
 
 """
-    term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
 This function generates posterior samples of the term premiums.
 # Input 
-- maturity of interest `τ` for Calculating `TP`
+- maturity of interest `tau_interest` for Calculating `TP`
 - `saved_params` from function `posterior_sampler`
-# Output
-- `Vector{TermPremium}(, iteration)`
-- Outputs exclude initial observations.
+# Output(3)
+- `saved_TP`, `saved_tv_TP`, `saved_tv_EH`
+- `saved_TP::Vector{TermPremium}(, iteration)`
+- Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]`, the time-varying parts are saved in `saved_tv_TP[:, :, i]` and `saved_tv_EH[:, :, i]. The time-varying parts driven by the `j`-th pricing factor is stored in `saved_tv_TP[:, j, i]` and `saved_tv_EH[:, j, i]`.
 """
-function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
+function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
+    saved_tv_TP = Vector{Array}(undef, iteration)
+    saved_tv_EH = Vector{Array}(undef, iteration)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    T = size(PCs, 1)
+
+    if isempty(macros)
+        indfactors = copy(PCs)
+    else
+        indfactors = [PCs macros]
+    end
+
+    factors = Matrix{Float64}(undef, T - p, dP * p + dP)
+    factors[:, end-dP+1:end] .= 1
+    for i in 0:p-1
+        factors[:, dP*i+1:dP*(i+1)] = indfactors[p+1-i:end-i, :]
+    end
 
     prog = Progress(iteration; dt=5, desc="term_premium...")
     Threads.@threads for iter in 1:iteration
@@ -270,23 +292,77 @@ function term_premium(τ, tau_n, saved_params, yields, macros; data_scale=1200)
         KPF = phi0[:, 1]
         GPFF = phi0[:, 2:end]
         OmegaFF = (C \ diagm(varFF)) / C'
+        if p == 1
+            GP = [GPFF diagm(KPF)
+                zeros(dP, dP) I(dP)]
+        else
+            GP = [GPFF diagm(KPF)
+                I(dP * p - dP) zeros(dP * p - dP, 2dP)
+                zeros(dP, dP * p) I(dP)]
+        end
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
+        Gpower_ind = I(size(GP, 1))
+        Gpower_sum = I(size(GP, 1))
+        for i in 1:tau_interest[end]
+            if i ∈ tau_interest
+                idx = findall(x -> x == i, tau_interest)
+                Gpower[:, :, idx] = Gpower_sum ./ i
+            end
+            Gpower_ind *= GP
+            Gpower_sum += Gpower_ind
+        end
 
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
+        T1P_ = inv(T1X_)
 
         aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
         Aₓ_ = Aₓ(aτ_, tau_n)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
-        TP, timevarying_TP, const_TP, jensen = _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
 
-        saved_TP[iter] = TermPremium(TP=copy(TP[:, 1]), timevarying_TP=copy(timevarying_TP), const_TP=copy(const_TP), jensen=copy(jensen))
+        const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
+        timevarying_EH = Array{Float64}(undef, T - p, p * dP + dP, length(tau_interest))
+        fl_EH = Matrix{Float64}(undef, p * dP + dP, length(tau_interest))
+
+        const_EH .= sum(T0P_)
+        for i in axes(fl_EH, 2)
+            fl_EH[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
+            timevarying_EH[:, :, i] = factors .* fl_EH[:, i]'
+            const_EH[:, i] += sum(timevarying_EH[:, end-dP+1:end, i][:, :], dims=2)[:, 1]
+        end
+        timevarying_EH = timevarying_EH[:, 1:dP*p, :]
+        fl_EH = fl_EH[1:dP*p, :]
+        EH = const_EH + sum(timevarying_EH, dims=2)[:, 1, :]
+
+        const_TP = -1 .* const_EH
+        fl_TP = -1 .* fl_EH
+        timevarying_TP = -1 .* timevarying_EH
+        for i in axes(const_TP, 2)
+            const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
+        end
+        fl_TP_sub = bτ_[:, Int.(tau_interest)]' * T1P_ |> x -> x ./ tau_interest
+        fl_TP[1:dQ, :] += fl_TP_sub'
+        for i in axes(timevarying_TP, 3)
+            timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
+        end
+        TP = const_TP .+ sum(timevarying_TP, dims=2)[:, 1, :]
+
+        saved_TP[iter] = TermPremium(TP=copy(TP),
+            EH=copy(EH),
+            factorloading_TP=copy(fl_TP),
+            factorloading_EH=copy(fl_EH),
+            const_TP=copy(const_TP),
+            const_EH=copy(const_EH)
+        )
+        saved_tv_TP[iter] = copy(timevarying_TP)
+        saved_tv_EH[iter] = copy(timevarying_EH)
 
         next!(prog)
     end
     finish!(prog)
 
-    return saved_TP
+    return saved_TP, saved_tv_TP, saved_tv_EH
 
 end
 
