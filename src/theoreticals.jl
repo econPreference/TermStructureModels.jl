@@ -241,6 +241,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
         Bₓ_ = Bₓ(bτ_, tau_n)
         T1X_ = T1X(Bₓ_, Wₚ)
+        T1P_ = inv(T1X_)
 
         aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
         Aₓ_ = Aₓ(aτ_, tau_n)
@@ -250,9 +251,9 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         timevarying_EH = Array{Float64}(undef, T - p, p * dP + dP, length(tau_interest))
         fl_EH = Matrix{Float64}(undef, p * dP + dP, length(tau_interest))
 
-        const_EH .= aτ_[1]
+        const_EH .= sum(T0P_)
         for i in axes(fl_EH, 2)
-            fl_EH[:, i] = bτ_[:, 1]' * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
+            fl_EH[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
             timevarying_EH[:, :, i] = factors .* fl_EH[:, i]'
             const_EH[:, i] += sum(timevarying_EH[:, end-dP+1:end, i][:, :], dims=2)[:, 1]
         end
@@ -266,7 +267,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         for i in axes(const_TP, 2)
             const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
         end
-        fl_TP_sub = bτ_[:, Int.(tau_interest)]' / T1X_ |> x -> x ./ tau_interest
+        fl_TP_sub = bτ_[:, Int.(tau_interest)]' * T1P_ |> x -> x ./ tau_interest
         fl_TP[1:dQ, :] += fl_TP_sub'
         for i in axes(timevarying_TP, 3)
             timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
