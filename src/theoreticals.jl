@@ -245,14 +245,19 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
         const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
-        timevarying_EH = Array{Float64}(undef, T - p, length(tau_interest), dP)
-        fl_EH = Matrix{Float64}(undef, length(tau_interest), dP)
+        timevarying_EH = Array{Float64}(undef, T - p, length(tau_interest), p * dP + dP)
+        fl_EH = Matrix{Float64}(undef, length(tau_interest), p * dP + dP)
 
         const_EH .= aτ_[1]
         for i in axes(fl_EH, 1)
             fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dP, p * dP + dP - dQ)] * Gpower[:, :, i]
         end
         timevarying_EH = factors * fl_EH'
+        for i in axes(const_EH, 2)
+            const_EH[:, i] += sum(timevarying_EH[:, i, end-dP+1:end][:, :], dims=2)[:, 1]
+        end
+        timevarying_EH = timevarying_EH[:, :, end-dP+1:end]
+        fl_EH = fl_EH[:, end-dP+1:end]
         EH = const_EH + timevarying_EH
 
         const_TP = -1 .* const_EH
