@@ -244,7 +244,27 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
         Aₓ_ = Aₓ(aτ_, tau_n)
         T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        TP, EH, fl_TP, fl_EH, timevarying_TP, timevarying_EH, const_TP, const_EH = _termPremium(tau_interest, factors, PCs, dQ, dP, T, p; aτ_, bτ_, T0P_, T1X_, Gpower)
+        const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
+        timevarying_EH = Array{Float64}(undef, T - p, length(tau_interest), dP)
+        fl_EH = Matrix{Float64}(undef, length(tau_interest), dP)
+
+        const_EH .= aτ_[1]
+        for i in axes(fl_EH, 1)
+            fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dP, p * dP + dP - dQ)] * Gpower[:, :, i]
+        end
+        timevarying_EH = factors * fl_EH'
+        EH = const_EH + timevarying_EH
+
+        const_TP = -1 .* const_EH
+        fl_TP = -1 .* fl_EH
+        timevarying_TP = -1 .* timevarying_EH
+        for i in axes(const_TP, 2)
+            const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
+        end
+        fl_TP_sub = bτ_[:, Int.(tau_interest)]' / T1X_ |> x -> x ./ tau_interest
+        fl_TP[:, 1:dQ] += fl_TP_sub
+        timevarying_TP[:, 1:dQ] += PCs[p+1:end, :] * fl_TP_sub'
+        TP = const_TP + timevarying_TP
 
         saved_TP[iter] = TermPremium(TP=copy(TP),
             EH=copy(EH),
@@ -265,33 +285,76 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
 end
 
 """
-    _termPremium(tau_interest, factors, PCs, dQ, dP, T, p; aτ_, bτ_, T0P_, T1X_, Gpower)
+    _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
+This function calculates a term premium for maturity `τ`. 
+# Input
+- `data_scale::scalar` = In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+# Output(4)
+`TP`, `timevarying_TP`, `const_TP`, `jensen`
+- `TP`: term premium of maturity `τ`
+- `timevarying_TP`: contributions of each `[PCs macros]` on `TP` at each time ``t`` (row: time, col: variable)
+- `const_TP`: Constant part of `TP`
+- `jensen`: Jensen's Ineqaulity part in `TP`
+- Output excludes the time period for the initial observations.  
 """
-function _termPremium(tau_interest, factors, PCs, dQ, dP, T, p; aτ_, bτ_, T0P_, T1X_, Gpower)
+function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
 
-    const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
-    timevarying_EH = Array{Float64}(undef, T - p, length(tau_interest), dP)
-    fl_EH = Matrix{Float64}(undef, length(tau_interest), dP)
-
-    const_EH .= aτ_[1]
-    for i in axes(fl_EH, 1)
-        fl_EH[i, :] = bτ_[:, 1]' * [I(dQ) zeros(dP, p * dP + dP - dQ)] * Gpower[:, :, i]
+    T1P_ = inv(T1X_)
+    # Jensen's Ineqaulity term
+    jensen = 0
+    for i = 1:(τ-1)
+        jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP, data_scale)
     end
-    timevarying_EH = factors * fl_EH'
-    EH = const_EH + timevarying_EH
+    jensen /= -τ
 
-    const_TP = -1 .* const_EH
-    fl_TP = -1 .* fl_EH
-    timevarying_TP = -1 .* timevarying_EH
-    for i in axes(const_TP, 2)
-        const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
+    # Constant term
+    dQ = size(ΩPP, 1)
+    KQ_X = zeros(dQ)
+    KQ_X[1] = copy(kQ_infty)
+    KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
+    λₚ = KPF[1:dQ] - KQ_P
+    const_TP = sum(bτ_[:, 1:(τ-1)], dims=2)' * (T1P_ * λₚ)
+    const_TP = -const_TP[1] / τ
+
+    # Time-varying part
+    dP = size(GPFF, 1)
+    p = Int(size(GPFF, 2) / dP)
+    T = size(PCs, 1) # time series length including intial conditions
+    timevarying_TP = zeros(T - p, dP) # time-varying part is seperated to see the individual contribution of each priced factor. So, the column length is dP.
+
+    GQ_PP = T1X_ * GQ_XX(; kappaQ) * T1P_
+    Λ_PF = GPFF[1:dQ, :]
+    Λ_PF[1:dQ, 1:dQ] -= GQ_PP
+    T1P_Λ_PF = T1P_ * Λ_PF
+
+    if isempty(macros)
+        factors = copy(PCs)
+    else
+        factors = [PCs macros]
     end
-    fl_TP_sub = bτ_[:, Int.(tau_interest)]' / T1X_ |> x -> x ./ tau_interest
-    fl_TP[:, 1:dQ] += fl_TP_sub
-    timevarying_TP[:, 1:dQ] += PCs[p+1:end, :] * fl_TP_sub'
-    TP = const_TP + timevarying_TP
+    for t in (p+1):T # ranges for the dependent variables. The whole range includes initial observations.
+        # prediction part
+        predicted_X = factors[t:-1:1, :]
+        for horizon = 1:(τ-2)
+            regressors = vec(predicted_X[1:p, :]')
+            predicted = KPF + GPFF * regressors
+            predicted_X = vcat(predicted', predicted_X)
+        end
+        reverse!(predicted_X, dims=1)
 
-    return TP, EH, fl_TP, fl_EH, timevarying_TP, timevarying_EH, const_TP, const_EH
+        # Calculate TP
+        for i = 1:(τ-1)
+            weight = bτ_[:, τ-i]' * (T1P_Λ_PF)
+            for l = 1:p, j = 1:dP
+                timevarying_TP[t-p, j] += weight[(l-1)*dP+j] * predicted_X[t+i-l, j] # first row in predicted_X = (time = t-p+1)
+            end
+        end
+    end
+    timevarying_TP /= -τ
+
+    TP = sum(timevarying_TP, dims=2) .+ jensen .+ const_TP
+
+    return TP, timevarying_TP, const_TP, jensen
 end
 
 """
