@@ -250,7 +250,7 @@ This function generates posterior samples of the term premiums.
 - maturity of interest `tau_interest` for Calculating `TP`
 - `saved_params` from function `posterior_sampler`
 # Output(3)
-- `saved_TP`, `saved_tv_TP`, `saved_tv_EH`
+`saved_TP`, `saved_tv_TP`, `saved_tv_EH`
 - `saved_TP::Vector{TermPremium}(, iteration)`
 - `saved_tv_TP::Vector{Array}(, iteration)`
 - `saved_tv_EH::Vector{Array}(, iteration)`
