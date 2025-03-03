@@ -254,7 +254,7 @@ This function generates posterior samples of the term premiums.
 - `saved_TP::Vector{TermPremium}(, iteration)`
 - `saved_tv_TP::Vector{Array}(, iteration)`
 - `saved_tv_EH::Vector{Array}(, iteration)`
-- Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]. The time-varying parts driven by the `k`-th pricing factor is stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
+- Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor is stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
 """
 function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
 
