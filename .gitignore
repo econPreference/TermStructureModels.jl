@@ -9,3 +9,5 @@ Manifest.toml
 docs/build/
 docs/src/notations.lyx
 docs/src/notations.pdf
+*.lyx#
+*.lyx~
