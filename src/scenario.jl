@@ -504,8 +504,12 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         if t > T + dh
             X = spanned_factors[t-1:-1:t-p, :] |> X -> vec(X')
             spanned_factors[t, :] = KPF + GPFF * X
+            mea_error = zeros(N)
+        else
+            mea_error = W_inv * [predicted_F[t-T, dP+1:dP+N-dQ]; zeros(dQ)]
         end
-        spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ]
+
+        spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
         predicted_TP = []
