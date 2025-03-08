@@ -329,7 +329,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         predicted_TP = []
     else
         idx_TP_tau = findall(x -> x ∈ τ, tau_n)
-        predicted_TP = eh_const .+ predicted_F * eh_fl' |> x-> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
+        predicted_TP = eh_const .+ predicted_F * eh_fl' |> x -> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
@@ -577,7 +577,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         predicted_TP = []
     else
         idx_TP_tau = findall(x -> x ∈ τ, tau_n)
-        predicted_TP = eh_const .+ predicted_F * eh_fl' |> x-> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
+        predicted_TP = eh_const .+ predicted_F * eh_fl' |> x -> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
