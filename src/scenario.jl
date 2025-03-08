@@ -197,13 +197,13 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
             Gpower_sum += Gpower_ind
         end
 
-        TP_const = sum(T0P_)
-        append!(μM, ones(length(τ)) * TP_const)
+        eh_const = sum(T0P_)
+        append!(μM, ones(length(τ)) * eh_const)
 
-        TP_FL = Matrix{Float64}(undef, length(τ), k)
-        for i in axes(fl_EH, 2)
-            TP_FL[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
-            H = vcat(H, TP_FL[:, i]')
+        eh_fl = Matrix{Float64}(undef, length(τ), k)
+        for i in axes(eh_fl, 2)
+            eh_fl[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
+            H = vcat(H, eh_fl[:, i]')
         end
     end
 
@@ -328,7 +328,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     if isempty(τ)
         predicted_TP = []
     else
-        predicted_TP = TP_const .+ predicted_F * TP_FL
+        predicted_TP = eh_const .+ predicted_F * eh_fl
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
@@ -472,13 +472,13 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
             Gpower_sum += Gpower_ind
         end
 
-        TP_const = sum(T0P_)
-        append!(μM, ones(length(τ)) * TP_const)
+        eh_const = sum(T0P_)
+        append!(μM, ones(length(τ)) * eh_const)
 
-        TP_FL = Matrix{Float64}(undef, length(τ), k)
-        for i in axes(fl_EH, 2)
-            TP_FL[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
-            H = vcat(H, TP_FL[:, i]')
+        eh_fl = Matrix{Float64}(undef, length(τ), k)
+        for i in axes(eh_fl, 2)
+            eh_fl[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
+            H = vcat(H, eh_fl[:, i]')
         end
     end
 
@@ -575,7 +575,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     if isempty(τ)
         predicted_TP = []
     else
-        predicted_TP = TP_const .+ predicted_F * TP_FL
+        predicted_TP = eh_const .+ predicted_F * eh_fl
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
