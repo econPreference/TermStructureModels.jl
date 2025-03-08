@@ -328,7 +328,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     if isempty(τ)
         predicted_TP = []
     else
-        idx_TP_tau = findall(x -> x ∈ TP_tau, tau_n)
+        idx_TP_tau = findall(x -> x ∈ τ, tau_n)
         predicted_TP = eh_const .+ predicted_F * eh_fl' |> x-> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
     end
 
@@ -576,7 +576,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     if isempty(τ)
         predicted_TP = []
     else
-        idx_TP_tau = findall(x -> x ∈ TP_tau, tau_n)
+        idx_TP_tau = findall(x -> x ∈ τ, tau_n)
         predicted_TP = eh_const .+ predicted_F * eh_fl' |> x-> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
     end
 
