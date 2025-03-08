@@ -201,9 +201,9 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         append!(μM, ones(length(τ)) * eh_const)
 
         eh_fl = Matrix{Float64}(undef, length(τ), k)
-        for i in axes(eh_fl, 2)
-            eh_fl[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, 1:dP]; zeros(N - dQ); x[1, dP+1:end]]
-            H = vcat(H, eh_fl[:, i]')
+        for i in axes(eh_fl, 1)
+            eh_fl[i, :] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, 1:dP]; zeros(N - dQ); x[1, dP+1:end]]
+            H = vcat(H, eh_fl[i, :]')
         end
     end
 
@@ -476,9 +476,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         append!(μM, ones(length(τ)) * eh_const)
 
         eh_fl = Matrix{Float64}(undef, length(τ), k)
-        for i in axes(eh_fl, 2)
-            eh_fl[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, 1:dP]; zeros(N - dQ); x[1, dP+1:end]]
-            H = vcat(H, eh_fl[:, i]')
+        for i in axes(eh_fl, 1)
+            eh_fl[i, :] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, 1:dP]; zeros(N - dQ); x[1, dP+1:end]]
+            H = vcat(H, eh_fl[i, :]')
         end
     end
 
