@@ -185,12 +185,12 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
                 I(dP * p - dP) zeros(dP * p - dP, 2dP)
                 zeros(dP, dP * p) I(dP)]
         end
-        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(τ))
         Gpower_ind = I(size(GP, 1))
         Gpower_sum = I(size(GP, 1))
-        for i in 1:tau_interest[end]
-            if i ∈ tau_interest
-                idx = findall(x -> x == i, tau_interest)
+        for i in 1:τ[end]
+            if i ∈ τ
+                idx = findall(x -> x == i, τ)
                 Gpower[:, :, idx] = Gpower_sum ./ i
             end
             Gpower_ind *= GP
@@ -202,11 +202,8 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 
         TP_FL = Matrix{Float64}(undef, length(τ), k)
         for i in axes(fl_EH, 2)
-            if i ∈ τ
-                tau_idx = findall(x -> x==τ[i], τ)[1]
-                TP_FL[:, tau_idx] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
-                H = vcat(H, TP_FL[:, tau_idx]')
-            end
+            TP_FL[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
+            H = vcat(H, TP_FL[:, i]')
         end
     end
 
@@ -463,12 +460,12 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
                 I(dP * p - dP) zeros(dP * p - dP, 2dP)
                 zeros(dP, dP * p) I(dP)]
         end
-        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(τ))
         Gpower_ind = I(size(GP, 1))
         Gpower_sum = I(size(GP, 1))
-        for i in 1:tau_interest[end]
-            if i ∈ tau_interest
-                idx = findall(x -> x == i, tau_interest)
+        for i in 1:τ[end]
+            if i ∈ τ
+                idx = findall(x -> x == i, τ)
                 Gpower[:, :, idx] = Gpower_sum ./ i
             end
             Gpower_ind *= GP
@@ -480,11 +477,8 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 
         TP_FL = Matrix{Float64}(undef, length(τ), k)
         for i in axes(fl_EH, 2)
-            if i ∈ τ
-                tau_idx = findall(x -> x==τ[i], τ)[1]
-                TP_FL[:, tau_idx] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
-                H = vcat(H, TP_FL[:, tau_idx]')
-            end
+            TP_FL[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, dP] zeros(N - dQ) x[dP+1:end]]
+            H = vcat(H, TP_FL[:, i]')
         end
     end
 
