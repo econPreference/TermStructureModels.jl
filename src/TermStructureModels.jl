@@ -201,8 +201,8 @@ export
     dcurvature_dτ,
 
     # scenario.jl
-    conditional_forecasts,
-    scenario_analysis,
+    conditional_forecast,
+    conditional_expectation,
 
     # theoreticals.jl
     GQ_XX,

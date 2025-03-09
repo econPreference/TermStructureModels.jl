@@ -340,7 +340,7 @@ function ineff_factor(saved_params)
     initial_θ = [init_kappaQ; init_kQ_infty; init_gamma; init_SigmaO; init_varFF; init_phi]
     vec_saved_params = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_params[1, :] = initial_θ
-    prog = Progress(iteration - 1; dt=5, desc="ineff_factor...")
+    prog = Progress(iteration - 1; dt=5, desc="ineff_factor(1.vectorization)...")
     Threads.@threads for iter in 2:iteration
         kappaQ = saved_params[:kappaQ][iter]
         kQ_infty = saved_params[:kQ_infty][iter]
@@ -355,7 +355,7 @@ function ineff_factor(saved_params)
     finish!(prog)
 
     ineff = Vector{Float64}(undef, size(vec_saved_params)[2])
-    prog = Progress(size(vec_saved_params, 2); dt=5, desc="ineff_factor...")
+    prog = Progress(size(vec_saved_params, 2); dt=5, desc="ineff_factor(2.calculation)...")
     Threads.@threads for i in axes(vec_saved_params, 2)
         ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
         next!(prog)

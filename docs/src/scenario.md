@@ -11,19 +11,20 @@ Baseline forecasts and scenario forecasts can be represented either as the poste
 
 1. Posterior Distribution of Predicted Objects
    - In other words, Distribution of future objects conditional on past observations and the scenario
-   - Function: [`conditional_forecasts`](@ref)
+   - Function: [`conditional_forecast`](@ref)
 2. Posterior Distribution of Conditional Expectations of Predicted Objects
    - In other words, Posterior Distribution of "E[future object|past obs, scenario, parameters]"
-   - Function: [`scenario_analysis`](@ref)
+   - Function: [`conditional_expectation`](@ref)
 
 In this summary, for baseline forecasts, the scenario is the empty set.
 
-The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when users make decisions based on the expected path of future variables. **We recommend the second version** (`scenario_analysis`).
+The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when users make decisions based on the expected path of future variables. **We recommend the second version** (`conditional_expectation`).
 
-The required inputs and the type of the output are the same between `conditional_forecasts` and `scenario_analysis`. That is,
+The required inputs and the type of the output are the same between `conditional_forecast` and `conditional_expectation`. That is,
 
 ```julia
-projections = conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
+projections = conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
+                                    baseline=[],
                                     mean_macros::Vector=[],
                                     data_scale=1200)
 ```
@@ -31,9 +32,10 @@ projections = conditional_forecasts(S::Vector, τ, horizon, saved_params, yields
 and
 
 ```julia
-projections = scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
-                                mean_macros::Vector=[],
-                                data_scale=1200)
+projections = conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
+                                       baseline=[],
+                                       mean_macros::Vector=[],
+                                       data_scale=1200)
 ```
 
 `projections::Vector{Forecast}` contains the results of the forecasting. `τ` is a vector, and the term premium of `τ[i]`-bond is forecasted for each `i`. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).

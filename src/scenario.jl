@@ -1,5 +1,5 @@
 """
-    conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+    conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -15,10 +15,10 @@ scenarios, a result of the posterior sampler, and data
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
 """
-function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="conditional_forecasts...")
+    prog = Progress(iteration; dt=5, desc="conditional_forecast...")
     Threads.@threads for iter in 1:iteration
 
         kappaQ = saved_params[:kappaQ][iter]
@@ -28,9 +28,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
         SigmaO = saved_params[:SigmaO][iter]
 
         if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP = _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP = _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
 
@@ -42,9 +42,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
 end
 
 """
-    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -107,9 +107,9 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
 end
 
 """
-    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
 """
-function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -340,7 +340,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
 end
 
 """
-    scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+    conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -355,10 +355,10 @@ scenarios, a result of the posterior sampler, and data
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
 """
-function scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="scenario_analysis...")
+    prog = Progress(iteration; dt=5, desc="conditional_expectation...")
     Threads.@threads for iter in 1:iteration
 
         kappaQ = saved_params[:kappaQ][iter]
@@ -368,9 +368,9 @@ function scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros,
         SigmaO = saved_params[:SigmaO][iter]
 
         if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP = _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP = _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
         next!(prog)
@@ -382,9 +382,9 @@ end
 
 
 """
-    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
 """
-function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -588,9 +588,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
