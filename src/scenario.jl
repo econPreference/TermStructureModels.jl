@@ -27,10 +27,18 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
+        if isempty(baseline)
+            baseline_forecast = []
+        else
+            dQ = dimQ() + size(yields, 2) - length(tau_n)
+            idx_τ = findall(x -> x ∈ τ, tau_n)
+            baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:yields][:, idx_τ] - baseline[iter][:TP]]
+        end
+
         if isempty(S)
             spanned_yield, spanned_F, predicted_TP = _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP = _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_forecast, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
 
@@ -109,7 +117,7 @@ end
 """
     _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
 """
-function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
+function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_forecast, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -227,7 +235,9 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
             # st = St*μM + St*H*F(t)
             St = S_[t].combinations
             st = S_[t].values
-
+            if !isempty(baseline_forecast)
+                st += St * baseline_forecast[t, :]
+            end
             if maximum(abs.(St)) > 0
                 var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
                 e_tl = st - St * μM - St * H * f_tl
@@ -367,10 +377,18 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
+        if isempty(baseline)
+            baseline_expectation = []
+        else
+            dQ = dimQ() + size(yields, 2) - length(tau_n)
+            idx_τ = findall(x -> x ∈ τ, tau_n)
+            baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:yields][:, idx_τ] - baseline[iter][:TP]]
+        end
+
         if isempty(S)
             spanned_yield, spanned_F, predicted_TP = _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP = _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_expectation, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
         next!(prog)
@@ -384,7 +402,7 @@ end
 """
     _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
 """
-function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
+function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_expectation, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -505,6 +523,9 @@ function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ,
             # st = St*μM + St*H*F(t)
             St = S_[t].combinations
             st = S_[t].values
+            if !isempty(baseline_expectation)
+                st += St * baseline_expectation[t, :]
+            end
 
             if maximum(abs.(St)) > 0
                 var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
