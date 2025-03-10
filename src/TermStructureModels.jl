@@ -147,11 +147,13 @@ It contains a result of the scenario analysis, the conditional prediction for yi
 - `yields`
 - `factors`
 - `TP`: term premium forecasts
+- `EH`: estimated expectation hypothesis component
 """
 @kwdef struct Forecast <: PosteriorSample
     yields
     factors
     TP
+    EH
 end
 
 include("utilities.jl") # utility functions

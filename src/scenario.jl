@@ -14,7 +14,7 @@ scenarios, a result of the posterior sampler, and data
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 # Output
 - `Vector{Forecast}(, iteration)`
-- `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
+- `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
 """
 function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
@@ -38,11 +38,11 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
         end
 
         if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_forecast, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_forecast, mean_macros, data_scale)
         end
-        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
+        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP), EH=copy(predicted_EH))
 
         next!(prog)
     end
@@ -102,18 +102,20 @@ function _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_
     end
     if isempty(τ)
         predicted_TP = []
+        predicted_EH = []
     else
         predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
             predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
         end
+        predicted_EH = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_TP
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP, predicted_EH
 end
 
 """
@@ -338,17 +340,18 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
+        predicted_EH = []
         predicted_TP = []
     else
-        idx_TP_tau = findall(x -> x ∈ τ, tau_n)
-        predicted_TP = eh_const .+ predicted_F * eh_fl' |> x -> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
+        predicted_EH = eh_const .+ predicted_F * eh_fl'
+        predicted_TP = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_EH
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP, predicted_EH
 end
 
 """
@@ -366,7 +369,7 @@ scenarios, a result of the posterior sampler, and data
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 # Output
 - `Vector{Forecast}(, iteration)`
-- `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
+- `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
 """
 function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
@@ -390,11 +393,11 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
         end
 
         if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_expectation, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline_expectation, mean_macros, data_scale)
         end
-        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
+        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP), EH=copy(predicted_EH))
         next!(prog)
     end
     finish!(prog)
@@ -599,17 +602,18 @@ function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ,
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
+        predicted_EH = []
         predicted_TP = []
     else
-        idx_TP_tau = findall(x -> x ∈ τ, tau_n)
-        predicted_TP = eh_const .+ predicted_F * eh_fl' |> x -> spanned_yield[(end-horizon+1):end, idx_TP_tau] - x
+        predicted_EH = eh_const .+ predicted_F * eh_fl'
+        predicted_TP = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_EH
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP, predicted_EH
 end
 
 """
@@ -704,16 +708,18 @@ function _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, 
 
     if isempty(τ)
         predicted_TP_u = []
+        predicted_EH_u = []
     else
         predicted_TP_u = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
             predicted_TP_u[:, i] = _termPremium(τ[i], spanned_factors_u[(T-p+1):end, 1:dQ], spanned_factors_u[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
         end
+        predicted_EH_u = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_TP
     end
 
     spanned_factors_u = spanned_factors_u[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors_u[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u
+    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u, predicted_EH_u
 end
