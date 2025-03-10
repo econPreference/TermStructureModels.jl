@@ -238,7 +238,7 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
             St = S_[t].combinations
             st = S_[t].values
             if !isempty(baseline_forecast)
-                st += St * (baseline_forecast[t, :] - mean_macros)
+                st += St * (baseline_forecast[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
             end
             if maximum(abs.(St)) > 0
                 var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
@@ -528,7 +528,7 @@ function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ,
             St = S_[t].combinations
             st = S_[t].values
             if !isempty(baseline_expectation)
-                st += St * (baseline_expectation[t, :] - mean_macros)
+                st += St * (baseline_expectation[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
             end
 
             if maximum(abs.(St)) > 0
