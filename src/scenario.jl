@@ -9,7 +9,9 @@ scenarios, a result of the posterior sampler, and data
     - If `τ` is set to `[]`, the term premium is not forecasted. 
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
+- `baseline::Vector{Forecast}`: the output of `conditional_forecast` when `S` is empty. 
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
+- If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
@@ -236,7 +238,7 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
             St = S_[t].combinations
             st = S_[t].values
             if !isempty(baseline_forecast)
-                st += St * baseline_forecast[t, :]
+                st += St * (baseline_forecast[t, :] - mean_macros)
             end
             if maximum(abs.(St)) > 0
                 var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
@@ -359,7 +361,9 @@ scenarios, a result of the posterior sampler, and data
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
+- `baseline::Vector{Forecast}`: the output of `conditional_expectation` when `S` is empty.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
+- If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
@@ -524,7 +528,7 @@ function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ,
             St = S_[t].combinations
             st = S_[t].values
             if !isempty(baseline_expectation)
-                st += St * baseline_expectation[t, :]
+                st += St * (baseline_expectation[t, :] - mean_macros)
             end
 
             if maximum(abs.(St)) > 0
