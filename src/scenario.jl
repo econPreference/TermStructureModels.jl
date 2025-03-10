@@ -714,7 +714,7 @@ function _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, 
         for i in eachindex(τ)
             predicted_TP_u[:, i] = _termPremium(τ[i], spanned_factors_u[(T-p+1):end, 1:dQ], spanned_factors_u[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
         end
-        predicted_EH_u = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_TP
+        predicted_EH_u = spanned_yield_u[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_TP_u
     end
 
     spanned_factors_u = spanned_factors_u[(end-horizon+1):end, :]
