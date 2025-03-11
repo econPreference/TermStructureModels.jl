@@ -29,26 +29,26 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
+        if isempty(mean_macros)
+            mean_macros = zeros(dP - dQ)
+        end
+
         if !isempty(baseline)
             dQ = dimQ() + size(yields, 2) - length(tau_n)
-            if isempty(mean_macros)
-                mean_macros = zeros(dP - dQ)
-            end
             baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]] |> deepcopy
 
-            S1 = similar(S)
-            for t = eachindex(S1)
+            for t = eachindex(S)
                 St1 = S[t].combinations
                 st1 = S[t].values + St1 * (baseline_forecast[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
 
-                S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
+                S[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
             end
         end
 
         if isempty(S)
             spanned_yield, spanned_F, predicted_TP, predicted_EH = _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_forecast(S1, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP), EH=copy(predicted_EH))
 
@@ -78,10 +78,6 @@ function _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -146,10 +142,6 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -247,6 +239,7 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
             # st = St*μM + St*H*F(t)
             St = S_[t].combinations
             st = S_[t].values
+
             if maximum(abs.(St)) > 0
                 var_tl = (St * H) * P_tl * (St * H)' |> Symmetric
                 e_tl = st - St * μM - St * H * f_tl
@@ -389,26 +382,26 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
+        if isempty(mean_macros)
+            mean_macros = zeros(dP - dQ)
+        end
+
         if !isempty(baseline)
             dQ = dimQ() + size(yields, 2) - length(tau_n)
-            if isempty(mean_macros)
-                mean_macros = zeros(dP - dQ)
-            end
             baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]]
 
-            S1 = similar(S)
-            for t = eachindex(S1)
+            for t = eachindex(S)
                 St1 = S[t].combinations
                 st1 = S[t].values + St1 * (baseline_expectation[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
 
-                S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
+                S[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
             end
         end
 
         if isempty(S)
             spanned_yield, spanned_F, predicted_TP, predicted_EH = _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_expectation(S1, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP), EH=copy(predicted_EH))
         next!(prog)
@@ -420,7 +413,7 @@ end
 
 
 """
-    _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
+    _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
 function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
@@ -441,10 +434,6 @@ function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ,
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -646,10 +635,6 @@ function _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, 
 
     PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
