@@ -33,8 +33,7 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
             baseline_forecast = []
         else
             dQ = dimQ() + size(yields, 2) - length(tau_n)
-            idx_τ = findall(x -> x ∈ τ, tau_n)
-            baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]]
+            baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]] |> deepcopy
         end
 
         if isempty(S)
@@ -388,8 +387,7 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
             baseline_expectation = []
         else
             dQ = dimQ() + size(yields, 2) - length(tau_n)
-            idx_τ = findall(x -> x ∈ τ, tau_n)
-            baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]]
+            baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]] |> deepcopy
         end
 
         if isempty(S)
