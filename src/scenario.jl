@@ -29,6 +29,8 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
+        dP = length(varFF)
+        dQ = dimQ() + size(yields, 2) - length(tau_n)
         if isempty(mean_macros)
             mean_macros = zeros(dP - dQ)
         end
@@ -36,7 +38,6 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
         if isempty(baseline)
             S1 = S
         else
-            dQ = dimQ() + size(yields, 2) - length(tau_n)
             baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]] |> deepcopy
 
             S1 = similar(S)
@@ -385,6 +386,8 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
+        dP = length(varFF)
+        dQ = dimQ() + size(yields, 2) - length(tau_n)
         if isempty(mean_macros)
             mean_macros = zeros(dP - dQ)
         end
@@ -392,7 +395,6 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
         if isempty(baseline)
             S1 = S
         else
-            dQ = dimQ() + size(yields, 2) - length(tau_n)
             baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]]
 
             S1 = similar(S)
