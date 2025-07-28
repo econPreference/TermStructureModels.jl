@@ -54,7 +54,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     if isempty(mean_phi_const) && is_pure_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
         for i in axes(mean_phi_const, 2)
-            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr)[1] |> x -> mean(x, dims=1)[1, :]
+            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr, pca_loadings)[1] |> x -> mean(x, dims=1)[1, :]
             if !isempty(mean_phi_const_PC1)
                 mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
             end
@@ -63,7 +63,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             else
                 mean_phi_const[:, i] = [mean_phi_const_PCs; zeros(size(macros, 2))]
             end
-            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, kappaQ_prior_pr, τ=120)[2]
+            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, kappaQ_prior_pr, τ=120, pca_loadings)[2]
             println("For lag $i, mean_phi_const[1:dQ] is $mean_phi_const_PCs ,")
             println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
             println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
@@ -213,7 +213,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     end
     if !(typeof(kappaQ_prior_pr[1]) <: Real)
 
-        ΩPP = mle_error_covariance(yields, [], tau_n, p)
+        ΩPP = mle_error_covariance(yields, [], tau_n, p; pca_loadings)
         function logpost(x)
             kappaQ_logpost = cumsum(x[1:dQ])
             kQ_infty_logpost = x[dQ+1]
