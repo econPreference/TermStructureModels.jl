@@ -28,9 +28,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
         SigmaO = saved_params[:SigmaO][iter]
 
         if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+            spanned_yield, spanned_F, predicted_TP = _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+            spanned_yield, spanned_F, predicted_TP = _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
 
@@ -42,9 +42,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
 end
 
 """
-    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -57,7 +57,7 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ, pca_loadings)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -107,9 +107,9 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
 end
 
 """
-    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -123,7 +123,7 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; pca_loadings)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -338,9 +338,9 @@ function scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros,
         SigmaO = saved_params[:SigmaO][iter]
 
         if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+            spanned_yield, spanned_F, predicted_TP = _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         else
-            spanned_yield, spanned_F, predicted_TP = _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+            spanned_yield, spanned_F, predicted_TP = _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
         end
         scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
         next!(prog)
@@ -352,9 +352,9 @@ end
 
 
 """
-    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -370,7 +370,7 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     p = Int(size(GPFF, 2) / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; pca_loadings)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
 
@@ -528,9 +528,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 """
-function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -545,7 +545,7 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; pca_loadings)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
     W = [Wₒ; Wₚ]
 
     if isempty(mean_macros)
