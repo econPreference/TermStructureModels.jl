@@ -209,10 +209,10 @@ There is a hierarchcal structure in the measurement equation. The prior means of
 # Output
 - hyperparameter `gamma_bar`
 """
-function prior_gamma(yields, p)
+function prior_gamma(yields, p; pca_loadings)
     yields = yields[p+1:end, :]
 
-    PCs, OCs = PCA(yields, 0)
+    PCs, OCs = PCA(yields, 0; pca_loadings)
     T = size(OCs, 1)
 
     res_var = Vector{Float64}(undef, size(OCs, 2))

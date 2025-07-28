@@ -244,11 +244,12 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
 end
 
 """
-    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
+    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[])
 This function generates posterior samples of the term premiums.
 # Input 
 - maturity of interest `tau_interest` for Calculating `TP`
 - `saved_params` from function `posterior_sampler`
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output(3)
 `saved_TP`, `saved_tv_TP`, `saved_tv_EH`
 - `saved_TP::Vector{TermPremium}(, iteration)`
@@ -256,7 +257,7 @@ This function generates posterior samples of the term premiums.
 - `saved_tv_EH::Vector{Array}(, iteration)`
 - Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor is stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
 """
-function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
+function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[])
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
@@ -266,7 +267,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
     T = size(PCs, 1)
 
     if isempty(macros)
@@ -373,11 +374,12 @@ end
 This function translates the principal components state space into the latent factor state space. 
 # Input
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output
 - `Vector{LatentSpace}(, iteration)`
 - latent factors contain initial observations.
 """
-function latentspace(saved_params, yields, tau_n; data_scale=1200)
+function latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
 
     iteration = length(saved_params)
     saved_params_latent = Vector{LatentSpace}(undef, iteration)
@@ -395,7 +397,7 @@ function latentspace(saved_params, yields, tau_n; data_scale=1200)
         GPFF = phi0[:, 2:end]
         OmegaFF = (C \ diagm(varFF)) / C'
 
-        latent, kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF = PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
+        latent, kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF = PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings)
         saved_params_latent[iter] = LatentSpace(latents=copy(latent), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPXF=copy(KPXF), GPXFXF=copy(GPXFXF), OmegaXFXF=copy(OmegaXFXF))
 
         next!(prog)
@@ -406,21 +408,22 @@ function latentspace(saved_params, yields, tau_n; data_scale=1200)
 end
 
 """
-    PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
+    PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale,pca_loadings=[])
 Notation `XF` is for the latent factor space and notation `F` is for the PC state space.
 # Input
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output(6)
 `latent`, `kappaQ`, `kQ_infty`, `KPXF`, `GPXFXF`, `OmegaXFXF`
 - latent factors contain initial observations.
 """
-function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale)
+function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings=[])
 
     dP = size(OmegaFF, 1)
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dM = dP - dQ # of macro variables
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
 
     # statistical Parameters
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
@@ -508,11 +511,11 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
 end
 
 """
-    PCA(yields, p; loadings=[], dQ=[])
+    PCA(yields, p; pca_loadings=[], dQ=[])
 It derives the principal components from `yields`.
 # Input
 - `yields[p+1:end, :]` is used to construct the affine transformation, and then all `yields[:,:]` are transformed into the principal components.
-- `loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*loadings'`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output(4)
 `PCs`, `OCs`, `Wₚ`, `Wₒ`, `mean_PCs`
 - `PCs`, `OCs`: first `dQ` and the remaining principal components
@@ -520,19 +523,19 @@ It derives the principal components from `yields`.
 - `mean_PCs`: the mean of `PCs` before demeaned.
 - `PCs` are demeaned.
 """
-function PCA(yields, p; loadings=[], dQ=[])
+function PCA(yields, p; pca_loadings=[], dQ=[])
 
     if isempty(dQ)
         dQ = dimQ()
     end
 
-    if isempty(loadings)
+    if isempty(pca_loadings)
         V = reverse(eigen(cov(yields[(p+1):end, :])).vectors, dims=2)
         Wₚ = V[:, 1:dQ]'
         Wₒ = V[:, (dQ+1):end]'
     else
-        Wₚ = loadings |> copy
-        Wₒ = nullspace(loadings)'
+        Wₚ = pca_loadings |> copy
+        Wₒ = nullspace(pca_loadings)'
     end
 
     PCs = (Wₚ * yields')' # Main dQ PCs

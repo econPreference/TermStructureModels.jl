@@ -20,11 +20,12 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
 - `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi_common` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output(2)
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[])
 
 
     if isempty(upper_nu0) == true
@@ -84,7 +85,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         nu0 = input[9] + dP + 1
         p = Int(input[10])
 
-        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p)
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)
         if isempty(macros)
             factors = copy(PCs)
         else
@@ -118,7 +119,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     nu0 = best_candidate(opt)[9] + dP + 1
     p = best_candidate(opt)[10] |> Int
 
-    PCs = PCA(yields[(upper_p-p)+1:end, :], p)[1]
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
     if isempty(macros)
         factors = copy(PCs)
     else
@@ -161,10 +162,11 @@ This is a posterior distribution sampler.
 - `tuned`: optimized hyperparameters used during estimation
 - `init_param`: starting point of the sampler. It should be a type of Parameter.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -177,10 +179,10 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(kappaQ_prior_pr)
         kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
     end
-    Wₚ = PCA(yields, p)[3]
+    Wₚ = PCA(yields, p; pca_loadings)[3]
     prior_kappaQ_ = prior_kappaQ(medium_tau, kappaQ_prior_pr)
     if isempty(gamma_bar)
-        gamma_bar = prior_gamma(yields, p)[1]
+        gamma_bar = prior_gamma(yields, p; pca_loadings)[1]
     end
 
     if typeof(init_param) == Parameter
@@ -225,7 +227,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
                 logprior += logpdf(prior_kappaQ_[i], kappaQ_logpost[i])
             end
 
-            return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale)
+            return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale, pca_loadings)
 
         end
 
@@ -254,18 +256,18 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
         if typeof(kappaQ_prior_pr[1]) <: Real
-            kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale))
+            kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings))
         else
-            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
             isaccept_MH[end] += isaccept
         end
 
-        kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale))
+        kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
 
-        phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+        phi, varFF, isaccept = post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
         isaccept_MH[1:dQ] += isaccept
 
-        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale))
+        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale, pca_loadings))
 
         gamma = rand.(post_gamma(; gamma_bar, SigmaO))
 
@@ -435,11 +437,12 @@ end
 """
     mle_error_covariance(yields, macros, tau_n, p)
 It calculates the MLE estimates of the error covariance matrix of the VAR(p) model.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 """
-function mle_error_covariance(yields, macros, tau_n, p)
+function mle_error_covariance(yields, macros, tau_n, p; pca_loadings=[])
 
     ## Extracting PCs
-    PCs = PCA(yields, p)[1]
+    PCs = PCA(yields, p; pca_loadings)[1]
     N = length(tau_n)
     dQ = dimQ() + size(yields, 2) - N
     if isempty(macros)
