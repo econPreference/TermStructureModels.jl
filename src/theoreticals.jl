@@ -508,13 +508,11 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
 end
 
 """
-    PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
+    PCA(yields, p; loadings=[], dQ=[])
 It derives the principal components from `yields`.
 # Input
 - `yields[p+1:end, :]` is used to construct the affine transformation, and then all `yields[:,:]` are transformed into the principal components.
-- Since signs of `PCs` is not identified, we use proxies to identify the signs. We flip `PCs` to make `cor(proxies[:, i]. PCs[:,i]) > 0`. If `proxies` is not given, we use the following proxies as a default: `[yields[:, end] yields[:, end] - yields[:, 1] 2yields[:, Int(floor(size(yields, 2) / 3))] - yields[:, 1] - yields[:, end]]`.
-- `size(proxies) = (size(yields[p+1:end, :], 1), dQ)`
-- If `rescaling == true`, all `PCs` and `OCs` are normalized to have an average std of yields.
+- `loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*loadings'`.
 # Output(4)
 `PCs`, `OCs`, `Wₚ`, `Wₒ`, `mean_PCs`
 - `PCs`, `OCs`: first `dQ` and the remaining principal components
@@ -522,47 +520,47 @@ It derives the principal components from `yields`.
 - `mean_PCs`: the mean of `PCs` before demeaned.
 - `PCs` are demeaned.
 """
-function PCA(yields, p, proxies=[]; rescaling=false, dQ=[])
+function PCA(yields, p; loadings=[], dQ=[])
 
     if isempty(dQ)
         dQ = dimQ()
     end
-    ## z-score case
-    # std_yields = yields[p+1:end, :] .- mean(yields[p+1:end, :], dims=1)
-    # std_yields ./= std(yields[p+1:end, :], dims=1)
-    # V = reverse(eigen(cov(std_yields)).vectors, dims=2)
 
-    V = reverse(eigen(cov(yields[(p+1):end, :])).vectors, dims=2)
-    Wₚ = V[:, 1:dQ]'
-    Wₒ = V[:, (dQ+1):end]'
+    if isempty(loadings)
+        V = reverse(eigen(cov(yields[(p+1):end, :])).vectors, dims=2)
+        Wₚ = V[:, 1:dQ]'
+        Wₒ = V[:, (dQ+1):end]'
+    else
+        Wₚ = loadings |> copy
+        Wₒ = nullspace(loadings)'
+    end
 
     PCs = (Wₚ * yields')' # Main dQ PCs
     OCs = (Wₒ * yields')' # remaining PCs
 
     #observables
-    if isempty(proxies)
-        proxies = [yields[:, end] yields[:, end] - yields[:, 1] 2yields[:, Int(floor(size(yields, 2) / 3))] - yields[:, 1] - yields[:, end]]
-    end
-    for i in axes(PCs, 2)
-        sign_ = cor(proxies[:, i], PCs[:, i]) |> sign
-        PCs[:, i] *= sign_
-        Wₚ[i, :] *= sign_
-    end
+    proxies = [yields[:, end] yields[:, end] - yields[:, 1] 2yields[:, Int(floor(size(yields, 2) / 3))] - yields[:, 1] - yields[:, end]]
+    right_order = []
+    available_pc_indices = collect(1:dQ)
+    for i in 1:min(dQ, size(proxies, 2))
+        proxy = proxies[:, i]
+        correlations = [cor(proxy, PCs[:, j]) for j in available_pc_indices]
+        _, best_idx_in_available = findmax(abs.(correlations))
+        pc_idx_to_modify = available_pc_indices[best_idx_in_available]
+        push!(right_order, pc_idx_to_modify)
 
-    if rescaling == false
-        mean_PCs = mean(PCs[p+1:end, :], dims=1)
-        PCs .-= mean_PCs
+        sign_ = sign(correlations[best_idx_in_available])
+        PCs[:, pc_idx_to_modify] *= sign_
+        Wₚ[pc_idx_to_modify, :] *= sign_
 
-        return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ, mean_PCs[1, :]
-    else
-        ## rescaling
-        mean_std = mean(std(yields[(p+1):end, :], dims=1))
-        scale_PCs = mean_std ./ std(PCs, dims=1)'
-        scale_OCs = mean_std ./ std(OCs, dims=1)'
-
-        PCs = Matrix((scale_PCs .* PCs')')
-        mean_PCs = mean(PCs[p+1:end, :], dims=1)
-        PCs .-= mean_PCs
-        return PCs, Matrix((scale_OCs .* OCs')'), scale_PCs .* Wₚ, scale_OCs .* Wₒ, mean_PCs[1, :]
+        deleteat!(available_pc_indices, best_idx_in_available)
     end
+    PCs = PCs[:, [right_order; available_pc_indices]]
+    Wₚ = Wₚ[[right_order; available_pc_indices], :]
+
+    mean_PCs = mean(PCs[p+1:end, :], dims=1)
+    PCs .-= mean_PCs
+
+    return Matrix(PCs), Matrix(OCs), Wₚ, Wₒ, mean_PCs[1, :]
+
 end
