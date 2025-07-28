@@ -4,14 +4,14 @@ This function generate a log likelihood of the measurement equation.
 # Output
 - the measurement equation part of the log likelihood
 """
-function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     dP = length(varFF)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :] #excludes initial observations
     dQ = dimQ() + size(yields, 2) - length(tau_n)
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -39,12 +39,12 @@ end
     loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
 This function is the same as `loglik_mea` but it requires ΩPP as an input.
 """
-function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale)
+function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale; pca_loadings)
 
     yields = yields[p+1:end, :] #excludes initial observations
     dQ = dimQ() + size(yields, 2) - length(tau_n)
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -249,15 +249,16 @@ end
 It converts posterior samples in terms of the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
-function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
+function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
     if isempty(macros)
         factors = copy(PCs)
     else
@@ -318,15 +319,16 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 - `iteration` is the number of prior samples.
 - `τ::scalar` is a maturity for calculating the constant part in the term premium.
     - If τ is empty, the function does not sampling the prior distribution of the constant part in the term premium.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output(2)
 `prior_λₚ`, `prior_TP`
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
-function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
+function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[], pca_loadings=[])
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
 
     if isempty(macros)
         factors = copy(PCs)
