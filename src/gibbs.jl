@@ -1,10 +1,10 @@
 
 """
-    post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale)
+    post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings)
 # Output
 - Full conditional posterior distribution
 """
-function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale; pca_loadings)
+function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     dP = length(varFF)
     dQ = dimQ() + size(yields, 2) - length(tau_n)
@@ -51,7 +51,7 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
 end
 
 """
-    post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+    post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
 # Output 
@@ -76,7 +76,7 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
 It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. `x_mode` and `inv_x_hess` constitute the mean and variance of the Normal proposal distribution.
 - Reparameterization:
     kappaQ[1] = x[1]
@@ -123,7 +123,7 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
 end
 
 """
-    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
 Full-conditional posterior sampler for `phi` and `varFF` 
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -199,7 +199,7 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 end
 
 """
-    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
+    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, pca_loadings)
 Posterior sampler for the measurement errors
 # Output
 - `Vector{Dist}(IG, N-dQ)`

@@ -204,7 +204,7 @@ function dcurvature_dτ(τ; kappaQ)
 end
 
 """
-    prior_gamma(yields, p)
+    prior_gamma(yields, p; pca_loadings)
 There is a hierarchcal structure in the measurement equation. The prior means of the measurement errors are `gamma[i]` and each `gamma[i]` follows Gamma(1,`gamma_bar`) distribution. This function decides `gamma_bar` empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturities. An inverse of the average residual variances is set to `gamma_bar`.
 # Output
 - hyperparameter `gamma_bar`

@@ -1,5 +1,5 @@
 """
-    loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+    loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 This function generate a log likelihood of the measurement equation.
 # Output
 - the measurement equation part of the log likelihood
@@ -36,10 +36,10 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
 end
 
 """
-    loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+    loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 This function is the same as `loglik_mea` but it requires ΩPP as an input.
 """
-function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale; pca_loadings)
+function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale, pca_loadings)
 
     yields = yields[p+1:end, :] #excludes initial observations
     dQ = dimQ() + size(yields, 2) - length(tau_n)
@@ -245,7 +245,7 @@ function erase_nonstationary_param(saved_params; threshold=1)
 end
 
 """
-    reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
+    reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
 It converts posterior samples in terms of the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
@@ -312,7 +312,7 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_l
 end
 
 """
-    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
+    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[], pca_loadings=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.

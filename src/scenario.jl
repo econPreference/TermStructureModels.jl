@@ -1,5 +1,5 @@
 """
-    conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
+    conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -12,12 +12,13 @@ scenarios, a result of the posterior sampler, and data
 - `baseline::Vector{Forecast}`: the output of `conditional_forecast` when `S` is empty. 
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
 """
-function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
+function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="conditional_forecast...")
@@ -64,7 +65,7 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
 end
 
 """
-    _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
 function _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
@@ -127,7 +128,7 @@ function _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_
 end
 
 """
-    _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale)
+    _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, baseline, mean_macros, data_scale, pca_loadings)
 """
 function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
@@ -357,7 +358,7 @@ function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ
 end
 
 """
-    conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
+    conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -369,12 +370,13 @@ scenarios, a result of the posterior sampler, and data
 - `baseline::Vector{Forecast}`: the output of `conditional_expectation` when `S` is empty.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
 """
-function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200)
+function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="conditional_expectation...")
@@ -421,7 +423,7 @@ end
 
 
 """
-    _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
 function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
@@ -624,7 +626,7 @@ function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ,
 end
 
 """
-    _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
 function _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 

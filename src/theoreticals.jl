@@ -370,7 +370,7 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
 end
 
 """
-    latentspace(saved_params, yields, tau_n; data_scale=1200)
+    latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
 This function translates the principal components state space into the latent factor state space. 
 # Input
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
