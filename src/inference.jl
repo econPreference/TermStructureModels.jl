@@ -163,10 +163,11 @@ This is a posterior distribution sampler.
 - `init_param`: starting point of the sampler. It should be a type of Parameter.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
+- `kappaQ_proposal_mode=Vector{, dQ}` contains the center of the proposal distribution for `kappaQ`. If it is empty, it is optimized by MLE.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[])
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -230,16 +231,22 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale, pca_loadings)
 
         end
-
-        # Construct the proposal distribution
-        #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
-        x = [kappaQ[1]; diff(kappaQ[1:end])]
-        init = [x; kQ_infty; log.(SigmaO)]
-        minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0.01 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
-                     Optim.minimizer |>
-                     y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
-                          Optim.minimizer
-
+        if isempty(kappaQ_proposal_mode)
+            # Construct the proposal distribution
+            #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
+            x = [kappaQ[1]; diff(kappaQ[1:end])]
+            init = [x; kQ_infty; log.(SigmaO)]
+            minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0.01 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
+                         Optim.minimizer |>
+                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
+                              Optim.minimizer
+        else
+            init = [kQ_infty; log.(SigmaO)]
+            minimizers = optimize(x -> -logpost([kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
+                         Optim.minimizer |>
+                         y -> optimize(x -> -logpost([kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
+                              Optim.minimizer |> x -> [kappaQ_proposal_mode; x]
+        end
         x_mode = minimizers[1:dQ]
         x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
