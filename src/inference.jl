@@ -241,11 +241,12 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
                          y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
                               Optim.minimizer
         else
+            diff_kappaQ_proposal_mode = [kappaQ_proposal_mode[1]; diff(kappaQ_proposal_mode[1:end])]
             init = [kQ_infty; log.(SigmaO)]
-            minimizers = optimize(x -> -logpost([kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
+            minimizers = optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                          Optim.minimizer |>
-                         y -> optimize(x -> -logpost([kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
-                              Optim.minimizer |> x -> [kappaQ_proposal_mode; x]
+                         y -> optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
+                              Optim.minimizer |> x -> [diff_kappaQ_proposal_mode; x]
         end
         x_mode = minimizers[1:dQ]
         x_hess = hessian(x -> -logpost([x; minimizers[dQ+1:end]]), x_mode)
