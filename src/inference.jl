@@ -248,7 +248,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
                               Optim.minimizer |> x -> [kappaQ_proposal_mode; x]
         end
         x_mode = minimizers[1:dQ]
-        x_hess = hessian(x -> -logpost(x), minimizers) |> x -> x[1:dQ, 1:dQ]
+        x_hess = hessian(x -> -logpost([x; minimizers[dQ+1:end]]), x_mode)
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
         if !isposdef(inv_x_hess)
             C, V = eigen(inv_x_hess)
