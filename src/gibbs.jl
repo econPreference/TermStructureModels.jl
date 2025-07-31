@@ -90,8 +90,7 @@ It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` u
 """
 function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
 
-    function logpost(x)
-        kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
+    function logpost(kappaQ)
         loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
@@ -100,26 +99,23 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
         return loglik + logprior
     end
 
-    # AR step
-    proposal_dist = MvNormal(x_mode, inv_x_hess)
+    # NUTS 샘플러 설정. acceptance rate 목표를 0.8로 설정 (NUTS의 표준)
+    sampler = NUTS(0.8)
+    @model function sample_kappaQ()
+        z ~ MvNormal(zeros(3), I)
+        x = similar(z)
+        x[1] = z[1]
+        x[2] = x[1] - exp(z[2])
+        x[3] = x[2] - exp(z[3])
+        kappaQ = logistic.(x)
+        Turing.@addlogprob! logpost(kappaQ)
+        return kappaQ # 생성된 theta1을 반환
+    end
 
-    is_cond = true
-    kappaQ_prop = similar(kappaQ)
-    x_prop = similar(kappaQ)
-    while is_cond
-        x_prop = rand(proposal_dist)
-        kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
-        if sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0
-            is_cond = false
-        end
-    end
-    x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
-    if log(rand()) < log_MHPr
-        return kappaQ_prop, true
-    else
-        return kappaQ, false
-    end
+    model_gq = sample_kappaQ()
+    chain_gq = sample(model_gq, sampler, 1; progress=false, verbose=false)
+
+    return generated_quantities(model_gq, chain_gq)[1][1]
 end
 
 """
