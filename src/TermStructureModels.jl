@@ -1,9 +1,10 @@
 module TermStructureModels
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim, Optim, LineSearches
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim, Optim, LineSearches, Turing
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
+import Logging, LoggingExtras
 
 """
     @kwdef struct Hyperparameter
@@ -197,6 +198,7 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
+    posterior_NUTS,
 
     # priors.jl
     prior_kappaQ,

@@ -174,6 +174,121 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
 end
 
 """
+    post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
+Full-conditional posterior sampler for `phi` and `varFF` 
+# Input
+- `prior_kappaQ_` is a output of function `prior_kappaQ`.
+- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+# Output(3) 
+`phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
+- It gives a posterior sample.
+"""
+function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
+
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dP = size(psi, 1)
+    p = Int(size(psi)[2] / dP)
+    PCs, ~, Wₚ = PCA(yields, p; pca_loadings)
+    dims_phi = [1 + p * dP + i - 1 for i in 1:dQ] |> cumsum
+
+    initial_params = [kappaQ[1]; diff(kappaQ)]
+    for i in 1:dQ
+        initial_params = [initial_params; phi[i, 1:(1+p*dP+i-1)]]
+    end
+    initial_params = [initial_params; varFF[1:dQ]]
+
+    yphi, Xphi = yphi_Xphi(PCs, macros, p)
+    prior_kappaQ_ = mean.([prior_diff_kappaQ[i].untruncated for i in eachindex(prior_diff_kappaQ)]) |> cumsum |> x -> [Dirac(x[i]) for i in eachindex(x)]
+    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+    prior_phi_ = [prior_phi0_ prior_C(; Omega0)]
+    prior_varFF_ = prior_varFF(; nu0, Omega0)
+
+    NUTS_model_ = NUTS_model(yields, PCs, tau_n, macros, dQ, dP, p, dims_phi, prior_diff_kappaQ, prior_phi_, prior_varFF_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+    sampler = NUTS(0.8)
+    logger = LoggingExtras.MinLevelLogger(Logging.SimpleLogger(stdout), Logging.Error)
+    chain = Logging.with_logger(logger) do
+        sample(NUTS_model_, sampler, 1; initial_params, progress=false, verbose=false)
+    end
+
+    kappaQ = generated_quantities(NUTS_model_, chain)[1][1] |> cumsum
+    phiQ = generated_quantities(NUTS_model_, chain)[1][2]
+    varFFQ = generated_quantities(NUTS_model_, chain)[1][3]
+    isaccept = chain[:acceptance_rate][1]
+
+    for i in 1:dP
+        if i <= dQ
+            if i == 1
+                phi[i, 1:(1+p*dP+i-1)], varFF[i] = copy(phiQ[1:dims_phi[i]]), copy(varFFQ[i])
+            else
+                phi[i, 1:(1+p*dP+i-1)], varFF[i] = copy(phiQ[dims_phi[i-1]+1:dims_phi[i]]), copy(varFFQ[i])
+            end
+        else
+            mᵢ = mean.(prior_phi_[i, 1:(1+p*dP+i-1)])
+            Vᵢ = var.(prior_phi_[i, 1:(1+p*dP+i-1)])
+            phi[i, 1:(1+p*dP+i-1)], varFF[i] = NIG_NIG(yphi[:, i], Xphi[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_varFF_[i]), scale(prior_varFF_[i]))
+        end
+    end
+
+    return kappaQ, phi, varFF, isaccept
+
+end
+
+@model function NUTS_model(yields, PCs, tau_n, macros, dQ, dP, p, dims_phi, prior_diff_kappaQ_, prior_phi_, prior_varFF_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    diff_kappaQ ~ product_distribution(prior_diff_kappaQ_)
+
+    phiQ_mean = Vector{Float64}(undef, dims_phi[end])
+    phiQ_var_diag = Vector{Float64}(undef, dims_phi[end])
+    for i in 1:dQ
+        mᵢ = mean.(prior_phi_[i, 1:(1+p*dP+i-1)])
+        Vᵢ = var.(prior_phi_[i, 1:(1+p*dP+i-1)])
+        start_idx = (i == 1) ? 1 : dims_phi[i-1] + 1
+        end_idx = dims_phi[i]
+        phiQ_mean[start_idx:end_idx] = mᵢ
+        phiQ_var_diag[start_idx:end_idx] = Vᵢ
+    end
+    phiQ ~ MvNormal(phiQ_mean, diagm(phiQ_var_diag))
+    varFFQ ~ product_distribution(prior_varFF_)
+
+    log_lik = try
+        loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+    catch
+        -Inf
+    end
+    Turing.@addlogprob! log_lik
+
+    return diff_kappaQ, phiQ, varFFQ
+end
+
+function loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    phi_full = similar(phi, promote_type(eltype(phi), eltype(phiQ)))
+    varFF_full = similar(varFF, promote_type(eltype(varFF), eltype(varFFQ)))
+
+    phi_full[length(varFFQ)+1:end, :] = phi[length(varFFQ)+1:end, :]
+    varFF_full[length(varFFQ)+1:end] = varFF[length(varFFQ)+1:end]
+
+    yphi, Xphi = yphi_Xphi(PCs, macros, p)
+
+    T = size(yphi, 1)
+    log_pdf = 0.0
+    for i in eachindex(varFFQ)
+        if i == 1
+            phi_full[i, 1:dims_phi[i]] = phiQ[1:dims_phi[i]]
+            varFF_full[i] = varFFQ[i]
+            log_pdf += logpdf(MvNormal(Xphi * (phi_full[i, :]), varFF_full[i] * I(T)), yphi[:, i])
+        else
+            phi_full[i, 1:diff(dims_phi)[i-1]] = phiQ[dims_phi[i-1]+1:dims_phi[i]]
+            varFF_full[i] = varFFQ[i]
+            log_pdf += logpdf(MvNormal(Xphi * (phi_full[i, :]), varFF_full[i] * I(T)), yphi[:, i])
+        end
+    end
+    log_pdf += loglik_mea_NUTS(yields, tau_n; kappaQ=cumsum(diff_kappaQ), kQ_infty, phi=phi_full, varFF=varFF_full, SigmaO, data_scale, pca_loadings)
+
+    return log_pdf
+end
+
+"""
     NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 Normal-InverseGamma-Normal-InverseGamma update
 - prior: `β|σ² ~ MvNormal(β₀,σ²B₀)`, `σ² ~ InverseGamma(α₀,δ₀)`

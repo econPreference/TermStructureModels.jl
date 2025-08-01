@@ -36,6 +36,43 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
 end
 
 """
+    loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+This function generate a log likelihood of the measurement equation.
+# Output
+- the measurement equation part of the log likelihood
+"""
+function loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    dP = length(varFF)
+    p = Int(((size(phi, 2) - 1) / dP) - 1)
+    yields = yields[p+1:end, :] #excludes initial observations
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
+    bτ_ = btau(tau_n[end]; kappaQ)
+    Bₓ_ = Bₓ(bτ_, tau_n)
+    T1X_ = T1X(Bₓ_, Wₚ)
+    Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
+
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
+    aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
+    Aₓ_ = Aₓ(aτ_, tau_n)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+    Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
+
+    T = size(OCs, 1)
+    dist_mea = MvNormal(diagm(SigmaO))
+    residuals = (OCs' - (Aₚ_ .+ Bₚ_ * PCs'))'
+
+    logpdf_ = 0
+    for t = 1:T
+        logpdf_ += logpdf(dist_mea, residuals[t, :])
+    end
+
+    return logpdf_
+end
+
+"""
     loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 This function is the same as `loglik_mea` but it requires ΩPP as an input.
 """

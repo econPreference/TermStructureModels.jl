@@ -6,15 +6,8 @@ We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (
 - Each element in the output follows Inverse-Gamma priors.
 """
 function prior_varFF(; nu0, Omega0::Vector)
-
     dP = length(Omega0) # dimension
-    varFF = Vector{Any}(undef, dP) # Diagonal matrix in the LDLt decomposition that follows a IG distribution
-
-    for i in eachindex(varFF)
-        varFF[i] = InverseGamma((nu0 + i - dP) / 2, Omega0[i] / 2)
-    end
-
-    return varFF
+    return [InverseGamma((nu0 + i - dP) / 2, Omega0[i] / 2) for i in 1:dP]
 end
 
 """

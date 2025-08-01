@@ -50,6 +50,16 @@ function bτ(N; kappaQ, dQ)
 end
 
 """
+    btau(N; kappaQ)
+It solves the difference equation for `btau`.
+# Output
+- for maturity `i`, `btau[:, i]` is a vector of factor loadings.
+"""
+function btau(N; kappaQ)
+    return [(1 .- kappaQ[i] .^ j) ./ (1 .- kappaQ[i]) for i in 1:length(kappaQ), j in 1:N]
+end
+
+"""
     Bₓ(bτ_, tau_n)
 # Input
 - `bτ_` is an output of function `bτ`.

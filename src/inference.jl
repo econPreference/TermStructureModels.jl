@@ -287,6 +287,77 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 end
 
 """
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
+This is a posterior distribution sampler.
+# Input
+- `iteration`: # of posterior samples
+- `tuned`: optimized hyperparameters used during estimation
+- `init_param`: starting point of the sampler. It should be a type of Parameter.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
+- `kappaQ_proposal_mode=Vector{, dQ}` contains the center of the proposal distribution for `kappaQ`. If it is empty, it is optimized by MLE.
+# Output(2)
+`Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
+"""
+function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
+
+    p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
+    N = size(yields, 2) # of maturities
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    if isempty(macros)
+        dP = copy(dQ)
+    else
+        dP = dQ + size(macros, 2)
+    end
+    Wₚ = PCA(yields, p; pca_loadings)[3]
+    if isempty(gamma_bar)
+        gamma_bar = prior_gamma(yields, p; pca_loadings)[1]
+    end
+
+    if typeof(init_param) == Parameter
+        kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
+    else
+        ## initial parameters ##
+        kappaQ = [0.99, 0.95, 0.9]
+        kQ_infty = 0.0
+        phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
+        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+        Bₓ_ = Bₓ(bτ_, tau_n)
+        T1X_ = T1X(Bₓ_, Wₚ)
+        phi[1:dQ, 2:(dQ+1)] = T1X_ * GQ_XX(; kappaQ) / T1X_
+        varFF = [Omega0[i] / (nu0 + i - dP) for i in eachindex(Omega0)]
+        SigmaO = 1 ./ fill(gamma_bar, N - dQ)
+        gamma = 1 ./ fill(gamma_bar, N - dQ)
+        ########################
+    end
+    if isempty(psi)
+        psi = ones(dP, dP * p)
+    end
+    if isempty(psi_const)
+        psi_const = ones(dP)
+    end
+
+    isaccept_MH = 0.0
+    saved_params = Vector{Parameter}(undef, iteration)
+    @showprogress 5 "posterior_sampler..." for iter in 1:iteration
+
+        kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
+
+        kappaQ, phi, varFF, isaccept = post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
+        isaccept_MH += isaccept
+
+        SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale, pca_loadings))
+
+        gamma = rand.(post_gamma(; gamma_bar, SigmaO))
+
+        saved_params[iter] = Parameter(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma))
+
+    end
+
+    return saved_params, 100isaccept_MH / iteration
+end
+
+"""
     generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
 This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
 # Input: 
