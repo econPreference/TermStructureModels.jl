@@ -213,9 +213,9 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
     initial_params = vcat(initial_params, varFF[1:dQ])
 
     if chain == []
-        current_chain = Turing.sample(NUTS_model_, sampler, 1; initial_params, progress=false, verbose=false, save_state=true)
+        current_chain = Turing.sample(NUTS_model_, sampler, 1; initial_params, save_state=true, progress=false, verbose=false)
     else
-        current_chain = Turing.sample(NUTS_model_, sampler, 1; resume_from=chain, progress=false, verbose=false, save_state=true)
+        current_chain = Turing.sample(NUTS_model_, sampler, 1; resume_from=chain, save_state=true, progress=false, verbose=false)
     end
     diff_kappaQ_chain = group(current_chain, :diff_kappaQ)
     phiQ_chain = group(current_chain, :phiQ)
@@ -270,7 +270,7 @@ end
 
 function loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
-    phi_full = similar(phi, promote_type(eltype(phi), eltype(phiQ)))
+    phi_full = similar(phi, promote_type(eltype(phi), eltype(phiQ))) |> x -> x .= 0.0
     varFF_full = similar(varFF, promote_type(eltype(varFF), eltype(varFFQ)))
 
     phi_full[length(varFFQ)+1:end, :] = phi[length(varFFQ)+1:end, :]

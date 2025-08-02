@@ -299,7 +299,7 @@ This is a posterior distribution sampler.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], sampler=NUTS(1000, 0.65))
+function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_nadapt=-1, NUTS_target_accept=0.65)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -338,6 +338,7 @@ function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparam
     end
 
     chain = []
+    sampler = NUTS(NUTS_nadapt, NUTS_target_accept; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=12)
     isaccept_MH = 0.0
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration

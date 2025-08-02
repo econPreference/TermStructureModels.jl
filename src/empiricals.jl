@@ -51,25 +51,13 @@ function loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, da
     PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
     bτ_ = btau(tau_n[end]; kappaQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
-    T1X_ = T1X(Bₓ_, Wₚ)
-    Bₚ_ = try
-        Bₚ(Bₓ_, T1X_, Wₒ)
-    catch
-        []
-    end
-    ΩPP = try
-        phi_varFF_2_ΩPP(; phi, varFF, dQ)
-    catch
-        []
-    end
-    aτ_ = try
-        aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
-    catch
-        []
-    end
-    if isempty(ΩPP) || isempty(Bₚ_) || isempty(aτ_)
-        return -Inf
-    end
+
+    T1X_ = T1X(Bₓ_, Wₚ) |> x -> x + clamp(norm(x) * sqrt(eps(real(eltype(x)))), 1e-10, 1e-4)I
+
+    Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
+
+    aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
     Aₓ_ = Aₓ(aτ_, tau_n)
     T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
     Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
