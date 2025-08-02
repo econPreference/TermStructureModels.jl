@@ -299,7 +299,7 @@ This is a posterior distribution sampler.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
+function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], sampler=NUTS(1000, 0.65))
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -337,13 +337,14 @@ function posterior_NUTS(yields, macros, tau_n, rho, iteration, tuned::Hyperparam
         psi_const = ones(dP)
     end
 
+    chain = []
     isaccept_MH = 0.0
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
 
-        kappaQ, phi, varFF, isaccept = post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
+        chain, kappaQ, phi, varFF, isaccept = post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain)
         isaccept_MH += isaccept
 
         SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale, pca_loadings))

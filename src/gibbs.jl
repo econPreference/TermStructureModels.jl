@@ -183,7 +183,7 @@ Full-conditional posterior sampler for `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
+function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(psi, 1)
@@ -204,16 +204,28 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
     prior_varFF_ = prior_varFF(; nu0, Omega0)
 
     NUTS_model_ = NUTS_model(yields, PCs, tau_n, macros, dQ, dP, p, dims_phi, prior_diff_kappaQ, prior_phi_, prior_varFF_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-    sampler = NUTS(0.8)
-    logger = LoggingExtras.MinLevelLogger(Logging.SimpleLogger(stdout), Logging.Error)
-    chain = Logging.with_logger(logger) do
-        sample(NUTS_model_, sampler, 1; initial_params, progress=false, verbose=false)
-    end
 
-    kappaQ = generated_quantities(NUTS_model_, chain)[1][1] |> cumsum
-    phiQ = generated_quantities(NUTS_model_, chain)[1][2]
-    varFFQ = generated_quantities(NUTS_model_, chain)[1][3]
-    isaccept = chain[:acceptance_rate][1]
+    local current_chain
+    initial_params = [kappaQ[1]; diff(kappaQ)]
+    for i in 1:dQ
+        initial_params = vcat(initial_params, phi[i, 1:(1+p*dP+i-1)])
+    end
+    initial_params = vcat(initial_params, varFF[1:dQ])
+
+    if chain == []
+        current_chain = Turing.sample(NUTS_model_, sampler, 1; initial_params, progress=false, verbose=false, save_state=true)
+    else
+        current_chain = Turing.sample(NUTS_model_, sampler, 1; resume_from=chain, progress=false, verbose=false, save_state=true)
+    end
+    diff_kappaQ_chain = group(current_chain, :diff_kappaQ)
+    phiQ_chain = group(current_chain, :phiQ)
+    varFFQ_chain = group(current_chain, :varFFQ)
+    diff_kappaQ = diff_kappaQ_chain.value |> x -> x[end, :, 1]
+    phiQ = phiQ_chain.value |> x -> x[end, :, 1]
+    varFFQ = varFFQ_chain.value |> x -> x[end, :, 1]
+
+    is_accept = kappaQ[1] !== diff_kappaQ[1]
+    kappaQ = diff_kappaQ |> cumsum
 
     for i in 1:dP
         if i <= dQ
@@ -229,7 +241,7 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
         end
     end
 
-    return kappaQ, phi, varFF, isaccept
+    return current_chain, kappaQ, phi, varFF, is_accept
 
 end
 
@@ -250,11 +262,7 @@ end
     phiQ ~ MvNormal(phiQ_mean, diagm(phiQ_var_diag))
     varFFQ ~ product_distribution(prior_varFF_)
 
-    log_lik = try
-        loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-    catch
-        -Inf
-    end
+    log_lik = loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
     Turing.@addlogprob! log_lik
 
     return diff_kappaQ, phiQ, varFFQ
