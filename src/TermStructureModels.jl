@@ -4,7 +4,7 @@ using Base: @kwdef
 using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim, Optim, LineSearches, Turing
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
-import AxisArrays
+import AdvancedHMC, AxisArrays
 
 """
     @kwdef struct Hyperparameter
