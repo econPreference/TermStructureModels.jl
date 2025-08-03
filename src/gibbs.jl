@@ -223,7 +223,7 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
             discard_adapt=false,
             discard_initial=0,
             save_state=true,
-            progress=false, verbose=false
+            verbose=false
         )
     end
 
