@@ -43,7 +43,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         if isempty(prior_mean_diff_kappaQ)
             kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
         else
-            kappaQ_prior_pr = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())
+            kappaQ_prior_pr = [truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())]
             for i in 2:length(prior_mean_diff_kappaQ)
                 kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1])), eps(), 1 - eps())]
             end
