@@ -3,7 +3,12 @@
 For `struct <: PosteriorSample`, `struct[:name]` calls objects in `struct`. `Output[i]` = ``i'``th posterior sample
 """
 function getindex(x::Vector{<:PosteriorSample}, c::Symbol)
-    return getproperty.(x, c)
+    props = getproperty.(x, c)
+    if !isempty(props) && first(props) isa AxisArrays.AxisArray
+        return getfield.(props, :data)
+    else
+        return props
+    end
 end
 
 """
@@ -11,7 +16,13 @@ end
 For `struct <: PosteriorSample`, `struct[:name]` calls objects in struct.
 """
 function getindex(x::PosteriorSample, c::Symbol)
-    return getproperty(x, c)
+    prop = getproperty(x, c)
+
+    if prop isa AxisArrays.AxisArray
+        return prop.data
+    else
+        return prop
+    end
 end
 
 """
