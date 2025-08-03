@@ -306,10 +306,10 @@ This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with 
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
 - `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ` are vectors that contain the means and standard deviations of the Normal distributions for `[kappaQ[1]; diff(kappaQ)]`. Once normal priors are assigned to these parameters, the prior for `kappaQ[1]` is truncated to (0, 1), and the priors for `diff(KappaQ)` are truncated to (−1, 0).
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
-- `NUTS_target_acceptance_rate`, `NUTS_max_depth` are the arguments of the NUTS sampler in `AdvancedHMC.jl`.
 # Output
 `Vector{Parameter}(posterior, iteration)`
 """
+#- `NUTS_target_acceptance_rate`, `NUTS_max_depth` are the arguments of the NUTS sampler in `AdvancedHMC.jl`.
 function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])#, NUTS_target_acceptance_rate=0.65, NUTS_max_depth=12)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
