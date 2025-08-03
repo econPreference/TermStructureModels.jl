@@ -183,7 +183,7 @@ Full-conditional posterior sampler for `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain)
+function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(psi, 1)
@@ -215,8 +215,21 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
     if chain == []
         current_chain = Turing.sample(NUTS_model_, sampler, 1; initial_params, save_state=true, progress=false, verbose=false)
     else
-        current_chain = Turing.sample(NUTS_model_, sampler, 1; resume_from=chain, save_state=true, progress=false, verbose=false)
+        current_chain = Turing.AbstractMCMC.mcmcsample(
+            Random.default_rng(),
+            NUTS_model_,
+            Turing.DynamicPPL.Sampler(sampler),
+            1;
+            chain_type=Turing.DynamicPPL.default_chain_type(Turing.DynamicPPL.Sampler(sampler)),
+            initial_state=Turing.DynamicPPL.loadstate(chain),
+            progress=Turing.PROGRESS[],
+            nadapts=is_warmup ? Turing.DynamicPPL.loadstate(chain).i + 1 : 0,
+            discard_adapt=false,
+            discard_initial=0,
+            save_state=true
+        )
     end
+
     diff_kappaQ_chain = group(current_chain, :diff_kappaQ)
     phiQ_chain = group(current_chain, :phiQ)
     varFFQ_chain = group(current_chain, :varFFQ)
