@@ -353,7 +353,7 @@ function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tune
     end
 
     chain = []
-    sampler = NUTS(1, NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth)
+    sampler = externalsampler(DynamicHMC.NUTS())
     is_warmup = true
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
