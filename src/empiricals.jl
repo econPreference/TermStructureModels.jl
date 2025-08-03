@@ -37,7 +37,7 @@ end
 
 """
     loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-This function generate a log likelihood of the measurement equation.
+This function generate a log likelihood of the measurement equation. It is used for `posterior_NUTS`.
 # Output
 - the measurement equation part of the log likelihood
 """

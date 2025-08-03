@@ -174,11 +174,13 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
 end
 
 """
-    post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
-Full-conditional posterior sampler for `phi` and `varFF` 
+    post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
+Full-conditional posterior sampler for `kappaQ`, `phi` and `varFF` 
 # Input
-- `prior_kappaQ_` is a output of function `prior_kappaQ`.
+- `prior_diff_kappaQ` is a vector of the truncated normals(`Distributions.truncated(Distributions.Normal(), lower, upper)`). It has a prior for `[kappaQ[1]; diff(kappaQ)]`.
 - When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+- `sampler` and `chain` are the objects in `Turing.jl`.
+- If the current step is in the warming up phrase, set `is_warmup=true`.
 # Output(3) 
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
@@ -206,12 +208,6 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
     NUTS_model_ = NUTS_model(yields, PCs, tau_n, macros, dQ, dP, p, dims_phi, prior_diff_kappaQ, prior_phi_, prior_varFF_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     local current_chain
-    initial_params = [kappaQ[1]; diff(kappaQ)]
-    for i in 1:dQ
-        initial_params = vcat(initial_params, phi[i, 1:(1+p*dP+i-1)])
-    end
-    initial_params = vcat(initial_params, varFF[1:dQ])
-
     if chain == []
         current_chain = Turing.sample(NUTS_model_, sampler, 1; initial_params, save_state=true, progress=false, verbose=false)
     else
@@ -233,12 +229,10 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
     diff_kappaQ_chain = group(current_chain, :diff_kappaQ)
     phiQ_chain = group(current_chain, :phiQ)
     varFFQ_chain = group(current_chain, :varFFQ)
-    diff_kappaQ = diff_kappaQ_chain.value |> x -> x[end, :, 1]
+
+    kappaQ = diff_kappaQ_chain.value |> x -> x[end, :, 1] |> cumsum
     phiQ = phiQ_chain.value |> x -> x[end, :, 1]
     varFFQ = varFFQ_chain.value |> x -> x[end, :, 1]
-
-    is_accept = kappaQ[1] !== diff_kappaQ[1]
-    kappaQ = diff_kappaQ |> cumsum
 
     for i in 1:dP
         if i <= dQ
@@ -254,9 +248,14 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
         end
     end
 
-    return current_chain, kappaQ, phi, varFF, is_accept
+    return current_chain, kappaQ, phi, varFF
 
 end
+
+"""
+    function NUTS_model(yields, PCs, tau_n, macros, dQ, dP, p, dims_phi, prior_diff_kappaQ_, prior_phi_, prior_varFF_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+It makes a model in the syntax of `Turing.jl`.
+"""
 
 @model function NUTS_model(yields, PCs, tau_n, macros, dQ, dP, p, dims_phi, prior_diff_kappaQ_, prior_phi_, prior_varFF_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
@@ -281,6 +280,10 @@ end
     return diff_kappaQ, phiQ, varFFQ
 end
 
+"""
+    loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+The function calculate the likelihood of the NUTS block.
+"""
 function loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     phi_full = similar(phi, promote_type(eltype(phi), eltype(phiQ))) |> x -> x .= 0.0

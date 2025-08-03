@@ -51,7 +51,7 @@ end
 
 """
     btau(N; kappaQ)
-It solves the difference equation for `btau`.
+It solves the difference equation for `bτ` in the closed form expression, assuming the distinct eigenvalues under the JSZ model.
 # Output
 - for maturity `i`, `btau[:, i]` is a vector of factor loadings.
 """

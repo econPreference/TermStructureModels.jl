@@ -287,19 +287,21 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
-This is a posterior distribution sampler.
+    posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=12)
+This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with the conjugate prior, are sampled using the NUTS sampler. 
 # Input
+- `NUTS_nadapt`: # of iterations for tuning settings in the NUTS sampler. The samples for warming up the sampler are included in the output, so you should burn it.
 - `iteration`: # of posterior samples
 - `tuned`: optimized hyperparameters used during estimation
 - `init_param`: starting point of the sampler. It should be a type of Parameter.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
+- `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ` are vectors that contain the means and standard deviations of the Normal distributions for `[kappaQ[1]; diff(kappaQ)]`. Once normal priors are assigned to these parameters, the prior for `kappaQ[1]` is truncated to (0, 1), and the priors for `diff(KappaQ)` are truncated to (−1, 0).
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
-- `kappaQ_proposal_mode=Vector{, dQ}` contains the center of the proposal distribution for `kappaQ`. If it is empty, it is optimized by MLE.
-# Output(2)
-`Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
+- `NUTS_target_acceptance_rate`, `NUTS_max_depth` are the arguments of the NUTS sampler in `AdvancedHMC.jl`.
+# Output
+`Vector{Parameter}(posterior, iteration)`
 """
-function posterior_NUTS(yields, macros, tau_n, rho, iteration, NUTS_nadapt, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_accept=0.65)
+function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=12)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -313,12 +315,16 @@ function posterior_NUTS(yields, macros, tau_n, rho, iteration, NUTS_nadapt, tune
     if isempty(gamma_bar)
         gamma_bar = prior_gamma(yields, p; pca_loadings)[1]
     end
+    prior_diff_kappaQ = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())
+    for i in 2:length(prior_mean_diff_kappaQ)
+        prior_diff_kappaQ = [prior_diff_kappaQ; truncated(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), -1 + eps(), -eps())]
+    end
 
     if typeof(init_param) == Parameter
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
-        kappaQ = [0.99, 0.95, 0.9]
+        kappaQ = prior_mean_diff_kappaQ |> cumsum
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
         bτ_ = bτ(tau_n[end]; kappaQ, dQ)
@@ -338,8 +344,7 @@ function posterior_NUTS(yields, macros, tau_n, rho, iteration, NUTS_nadapt, tune
     end
 
     chain = []
-    sampler = NUTS(1, NUTS_target_accept; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=12)
-    isaccept_MH = 0.0
+    sampler = NUTS(1, NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth)
     is_warmup = true
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
@@ -348,8 +353,7 @@ function posterior_NUTS(yields, macros, tau_n, rho, iteration, NUTS_nadapt, tune
         end
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
 
-        chain, kappaQ, phi, varFF, isaccept = post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
-        isaccept_MH += isaccept
+        chain, kappaQ, phi, varFF = post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
 
         SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale, pca_loadings))
 
@@ -359,7 +363,7 @@ function posterior_NUTS(yields, macros, tau_n, rho, iteration, NUTS_nadapt, tune
 
     end
 
-    return saved_params, 100isaccept_MH / iteration
+    return saved_params
 end
 
 """
