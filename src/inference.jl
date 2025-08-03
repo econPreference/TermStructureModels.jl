@@ -18,6 +18,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 - `mean_phi_const[:,i]` is a prior mean for the VAR(`i`) constant. Therefore `mean_phi_const` is a matrix only in this function. In other functions, `mean_phi_const` is a vector for the orthogonalized VAR system with your selected lag.
 - When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `kappaQ_prior_pr` is a vector containing the prior distributions for `kappaQ` under the JSZ model. Each element of `kappaQ_prior_pr` specifies the prior for the corresponding `kappaQ[i]` and must be supplied as a `Distributions.jl` object. Alternatively, you can set these priors by providing the options `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ`, which are vectors of means and standard deviations for a Normal prior on the vector `[kappaQ[1]; diff(kappaQ)]`. In this case, each Normal distribution is truncated to (0, 1).
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
 - `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi_common` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
@@ -25,7 +26,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
 
 
     if isempty(upper_nu0) == true
@@ -39,7 +40,14 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         dP = dQ + size(macros, 2)
     end
     if isempty(kappaQ_prior_pr)
-        kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
+        if isempty(prior_mean_diff_kappaQ)
+            kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
+        else
+            kappaQ_prior_pr = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())
+            for i in 2:length(prior_mean_diff_kappaQ)
+                kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1])), eps(), 1 - eps())]
+            end
+        end
     end
 
     if isempty(psi_common)
@@ -162,6 +170,7 @@ This is a posterior distribution sampler.
 - `tuned`: optimized hyperparameters used during estimation
 - `init_param`: starting point of the sampler. It should be a type of Parameter.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
+- `kappaQ_prior_pr` is a vector containing the prior distributions for `kappaQ` under the JSZ model. Each element of `kappaQ_prior_pr` specifies the prior for the corresponding `kappaQ[i]` and must be supplied as a `Distributions.jl` object.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 - `kappaQ_proposal_mode=Vector{, dQ}` contains the center of the proposal distribution for `kappaQ`. If it is empty, it is optimized by MLE.
 # Output(2)
