@@ -222,7 +222,8 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
             nadapts=is_warmup ? Turing.DynamicPPL.loadstate(chain).i + 1 : 0,
             discard_adapt=false,
             discard_initial=0,
-            save_state=true
+            save_state=true,
+            progress=false, verbose=false
         )
     end
 
