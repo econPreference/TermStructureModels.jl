@@ -310,7 +310,7 @@ This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with 
 # Output
 `Vector{Parameter}(posterior, iteration)`
 """
-function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=12)
+function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])#, NUTS_target_acceptance_rate=0.65, NUTS_max_depth=12)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -353,7 +353,7 @@ function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tune
     end
 
     chain = []
-    sampler = externalsampler(DynamicHMC.NUTS())
+    sampler = externalsampler(DynamicHMC.NUTS()) # NUTS(1, NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth)
     is_warmup = true
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
