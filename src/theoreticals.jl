@@ -98,7 +98,7 @@ function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
 
     dQ = size(ΩPP, 1)
 
-    a = zeros(promote_type(eltype(bτ_), typeof(kQ_infty), Float64), N)
+    a = zeros(promote_type(eltype(bτ_), eltype(ΩPP), typeof(kQ_infty), Float64), N)
     T1X_ = T1X(Bₓ(bτ_, tau_n), Wₚ) |> x -> x + clamp(norm(x) * sqrt(eps(real(eltype(x)))), 1e-10, 1e-4)I
     for i in 2:N
         a[i] = a[i-1] - jensens_inequality(i, bτ_, T1X_; ΩPP, data_scale) + bτ_[:, i-1]' * [kQ_infty; zeros(dQ - 1)]
