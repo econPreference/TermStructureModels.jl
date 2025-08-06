@@ -204,10 +204,10 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
         for i in eachindex(sampler)
             if i == 1
                 NUTS_model_ = diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-                chain[i] = Turing.sample(NUTS_model_, sampler[i], 1; initial_params=[kappaQ[1]; diff(kappaQ)], save_state=true)
+                chain[i] = Turing.sample(NUTS_model_, sampler[i], 2; initial_params=[kappaQ[1]; diff(kappaQ)], save_state=true)
             else
                 NUTS_model_ = VAR_NUTS_model(i - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-                chain[i] = Turing.sample(NUTS_model_, sampler[i], 1; initial_params=[phi[i-1, 1:(1+p*dP+(i-1)-1)]; varFF[i-1]], save_state=true)
+                chain[i] = Turing.sample(NUTS_model_, sampler[i], 2; initial_params=[phi[i-1, 1:(1+p*dP+(i-1)-1)]; varFF[i-1]], save_state=true)
             end
         end
     else
@@ -222,7 +222,7 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
                 Random.default_rng(),
                 NUTS_model_,
                 Turing.DynamicPPL.Sampler(sampler[i]),
-                1;
+                2;
                 chain_type=Turing.DynamicPPL.default_chain_type(Turing.DynamicPPL.Sampler(sampler[i])),
                 initial_state=Turing.DynamicPPL.loadstate(chain[i]),
                 progress=false,#Turing.PROGRESS[],
