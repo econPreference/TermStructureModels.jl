@@ -353,11 +353,11 @@ function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tune
     end
 
     chain = []
-    sampler = fill(NUTS(ceil(Int, 0.5NUTS_nadapt), NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth), dQ + 1)
+    sampler = fill(NUTS(ceil(Int, 0.1NUTS_nadapt), NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth), dQ + 1)
     is_warmup = true
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
-        if iter > ceil(Int, 0.5NUTS_nadapt)
+        if iter > NUTS_nadapt
             is_warmup = false
         end
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
