@@ -299,16 +299,18 @@ end
     posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=12)
 This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with the conjugate prior, are sampled using the NUTS sampler. 
 # Input
+- `p`: The lag length of the VAR system
 - `NUTS_nadapt`: # of iterations for tuning settings in the NUTS sampler. The samples for warming up the sampler are included in the output, so you should burn it.
 - `iteration`: # of posterior samples
-- `tuned`: optimized hyperparameters used during estimation
-- `init_param`: starting point of the sampler. It should be a type of Parameter.
+- `init_param`: starting point of the sampler. It should be a type of Parameter_NUTS.
+- `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`.
+- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be the object in `Distributions.jl`.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
 - `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ` are vectors that contain the means and standard deviations of the Normal distributions for `[kappaQ[1]; diff(kappaQ)]`. Once normal priors are assigned to these parameters, the prior for `kappaQ[1]` is truncated to (0, 1), and the priors for `diff(KappaQ)` are truncated to (−1, 0).
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
 - `NUTS_target_acceptance_rate`, `NUTS_max_depth` are the arguments of the NUTS sampler in `AdvancedHMC.jl`.
 # Output
-`Vector{Parameter}(posterior, iteration)`
+`Vector{Parameter_NUTS}(posterior, iteration)`
 """
 function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; init_param=[], prior_q, prior_nu0, psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=10)
 
@@ -331,7 +333,7 @@ function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; i
         prior_diff_kappaQ = [prior_diff_kappaQ; truncated(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), -1 + eps(), -eps())]
     end
 
-    if typeof(init_param) == Parameter
+    if typeof(init_param) == Parameter_NUTS
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
@@ -427,7 +429,7 @@ function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPX
 end
 
 """
-    ineff_factor(saved_params)
+    ineff_factor(saved_params::Vector{Parameter})
 It returns inefficiency factors of each parameter.
 # Input
 - `Vector{Parameter}` from `posterior_sampler`
@@ -435,7 +437,7 @@ It returns inefficiency factors of each parameter.
 - Estimated inefficiency factors are in Tuple(`kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to load an inefficiency factor of `phi`, you can use `Output.phi`.
 - If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.phi[1,1]` can be weird. So you should ignore it.
 """
-function ineff_factor(saved_params)
+function ineff_factor(saved_params::Vector{Parameter})
 
     iteration = length(saved_params)
 
@@ -488,6 +490,76 @@ function ineff_factor(saved_params)
         gamma=ineff[length(init_kappaQ)+1+1:length(init_kappaQ)+1+length(init_gamma)],
         SigmaO=ineff[length(init_kappaQ)+1+length(init_gamma)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
         varFF=ineff[length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
+        phi=copy(phi_ineff)
+    )
+end
+
+"""
+    ineff_factor(saved_params::Vector{Parameter_NUTS})
+It returns inefficiency factors of each parameter.
+# Input
+- `Vector{Parameter_NUTS}` from `posterior_NUTS`
+# Output
+- Estimated inefficiency factors are in Tuple(`q`, `nu0`, `kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to load an inefficiency factor of `phi`, you can use `Output.phi`.
+- If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.phi[1,1]` can be weird. So you should ignore it.
+"""
+function ineff_factor(saved_params::Vector{Parameter_NUTS})
+
+    iteration = length(saved_params)
+
+    init_q = saved_params[:q][1] |> vec
+    init_nu0 = saved_params[:nu0][1]
+    init_kappaQ = saved_params[:kappaQ][1]
+    init_kQ_infty = saved_params[:kQ_infty][1]
+    init_phi = saved_params[:phi][1] |> vec
+    init_varFF = saved_params[:varFF][1]
+    init_SigmaO = saved_params[:SigmaO][1]
+    init_gamma = saved_params[:gamma][1]
+
+    initial_θ = [init_q; init_nu0; init_kappaQ; init_kQ_infty; init_gamma; init_SigmaO; init_varFF; init_phi]
+    vec_saved_params = Matrix{Float64}(undef, iteration, length(initial_θ))
+    vec_saved_params[1, :] = initial_θ
+    prog = Progress(iteration - 1; dt=5, desc="ineff_factor(1.vectorization)...")
+    Threads.@threads for iter in 2:iteration
+        q = saved_params[:q][iter] |> vec
+        nu0 = saved_params[:nu0][iter]
+        kappaQ = saved_params[:kappaQ][iter]
+        kQ_infty = saved_params[:kQ_infty][iter]
+        phi = saved_params[:phi][iter] |> vec
+        varFF = saved_params[:varFF][iter]
+        SigmaO = saved_params[:SigmaO][iter]
+        gamma = saved_params[:gamma][iter]
+
+        vec_saved_params[iter, :] = [q; nu0; kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
+        next!(prog)
+    end
+    finish!(prog)
+
+    ineff = Vector{Float64}(undef, size(vec_saved_params)[2])
+    prog = Progress(size(vec_saved_params, 2); dt=5, desc="ineff_factor(2.calculation)...")
+    Threads.@threads for i in axes(vec_saved_params, 2)
+        ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
+        next!(prog)
+    end
+    finish!(prog)
+
+    phi_ineff = ineff[length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)+1:end] |> x -> reshape(x, size(saved_params[:phi][1], 1), size(saved_params[:phi][1], 2))
+    dP = size(phi_ineff, 1)
+    for i in 1:dP, j in i:dP
+        phi_ineff[i, end-dP+j] = 0
+    end
+
+    if length(init_kappaQ) == 1
+        kappaQ_ineff = ineff[length(init_q)+1+1]
+    else
+        kappaQ_ineff = ineff[length(init_q)+1+1:length(init_q)+1+length(init_kappaQ)]
+    end
+    return (;
+        kappaQ=kappaQ_ineff,
+        kQ_infty=ineff[length(init_q)+1+length(init_kappaQ)+1],
+        gamma=ineff[length(init_q)+1+length(init_kappaQ)+1+1:length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)],
+        SigmaO=ineff[length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)+1:length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)],
+        varFF=ineff[length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+1:length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)+length(init_SigmaO)+length(init_varFF)],
         phi=copy(phi_ineff)
     )
 end

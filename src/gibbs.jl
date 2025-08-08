@@ -174,16 +174,17 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
 end
 
 """
-    post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
+    post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
 Full-conditional posterior sampler for `kappaQ`, `phi` and `varFF` 
 # Input
+- `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`.
+- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be the object in `Distributions.jl`.
 - `prior_diff_kappaQ` is a vector of the truncated normals(`Distributions.truncated(Distributions.Normal(), lower, upper)`). It has a prior for `[kappaQ[1]; diff(kappaQ)]`.
 - When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 - `sampler` and `chain` are the objects in `Turing.jl`.
 - If the current step is in the warming up phrase, set `is_warmup=true`.
-# Output(3) 
-`phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
-- It gives a posterior sample.
+# Output(6) 
+chain, q, nu0, kappaQ, phi, varFF
 """
 function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
 

@@ -245,7 +245,7 @@ function isstationary(GPFF; threshold)
 end
 
 """ 
-    erase_nonstationary_param(saved_params; threshold=1)
+    erase_nonstationary_param(saved_params::Vector{Parameter}; threshold=1)
 It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
@@ -254,7 +254,7 @@ It filters out posterior samples that implies an unit root VAR system. Only stat
 stationary samples, acceptance rate(%)
 - The second output indicates how many posterior samples remain.
 """
-function erase_nonstationary_param(saved_params; threshold=1)
+function erase_nonstationary_param(saved_params::Vector{Parameter}; threshold=1)
 
     iteration = length(saved_params)
     stationary_saved_params = Vector{Parameter}(undef, 0)
@@ -275,6 +275,47 @@ function erase_nonstationary_param(saved_params; threshold=1)
 
         if isstationary(GPFF; threshold)
             push!(stationary_saved_params, Parameter(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma)))
+        end
+        next!(prog)
+    end
+    finish!(prog)
+
+    return stationary_saved_params, 100length(stationary_saved_params) / iteration
+end
+
+""" 
+    erase_nonstationary_param(saved_params::Vector{Parameter_NUTS}; threshold=1)
+It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
+# Input
+- `saved_params` is the output of function `posterior_NUTS`.
+- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. 
+# Output(2): 
+stationary samples, acceptance rate(%)
+- The second output indicates how many posterior samples remain.
+"""
+function erase_nonstationary_param(saved_params::Vector{Parameter_NUTS}; threshold=1)
+
+    iteration = length(saved_params)
+    stationary_saved_params = Vector{Parameter_NUTS}(undef, 0)
+    prog = Progress(iteration; dt=5, desc="erase_nonstationary_param...")
+    #Threads.@threads 
+    for iter in 1:iteration
+
+        q = saved_params[:q][iter]
+        nu0 = saved_params[:nu0][iter]
+        kappaQ = saved_params[:kappaQ][iter]
+        kQ_infty = saved_params[:kQ_infty][iter]
+        phi = saved_params[:phi][iter]
+        varFF = saved_params[:varFF][iter]
+        SigmaO = saved_params[:SigmaO][iter]
+        gamma = saved_params[:gamma][iter]
+
+        phi0, C = phi_2_phi₀_C(; phi)
+        phi0 = C \ phi0
+        GPFF = phi0[:, 2:end]
+
+        if isstationary(GPFF; threshold)
+            push!(stationary_saved_params, Parameter_NUTS(q=copy(q), nu0=copy(nu0), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma)))
         end
         next!(prog)
     end

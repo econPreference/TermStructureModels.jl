@@ -11,11 +11,8 @@ function prior_varFF(; nu0, Omega0::Vector)
 end
 
 """
-    prior_varFF(; nu0, Omega0::Vector)
-We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Inverse-Gamma priors.  
-# Output: 
-- prior of `varFF` in the LDLt decomposition,` OmegaFF = inv(C)*diagm(varFF)*inv(C)'`
-- Each element in the output follows Inverse-Gamma priors.
+    logprior_varFF(varFF; nu0, Omega0::Vector)
+It is a companion function of `prior_varFF`. It calculates the log density of the prior distribution for `varFF`.
 """
 function logprior_varFF(varFF; nu0, Omega0::Vector)
     dP = length(Omega0) # dimension
@@ -59,12 +56,8 @@ function prior_C(; Omega0::Vector)
 end
 
 """
-    prior_C(; Omega0::Vector)
-We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Normal priors.  
-# Output: 
-- unscaled prior of `C` in the LDLt decomposition, `OmegaFF = inv(C)*diagm(varFF)*inv(C)'`
-# Important note
-prior variance for `C[i,:] = varFF[i]*variance of output[i,:]`
+    logprior_C(C; Omega0::Vector)
+It is a companion function of `prior_C`. It calculates the log density of the prior distribution for `C`.
 """
 function logprior_C(C; Omega0::Vector)
 
@@ -153,16 +146,8 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
 end
 
 """
-    prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
-This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
-# Input 
-- `prior_kappaQ_` is a output of function `prior_kappaQ`.
-- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
-# Output
-- Normal prior distributions on the slope coefficient of lagged variables and intercepts in the orthogonalized equation. 
-- `Output[:,1]` for intercepts, `Output[:,1+1:1+dP]` for the first lag, `Output[:,1+dP+1:1+2*dP]` for the second lag, and so on.
-# Important note
-prior variance for `phi[i,:]` = `varFF[i]*var(output[i,:])`
+    logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+It is a companion function of `prior_phi0`. It calculates the log density of the prior distribution for `phi0`.
 """
 function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
 
