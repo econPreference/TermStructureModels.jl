@@ -310,17 +310,19 @@ This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with 
 # Output
 `Vector{Parameter}(posterior, iteration)`
 """
-function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tuned::Hyperparameter; init_param=[], psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=10)
+function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; init_param=[], prior_q, prior_nu0, psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=10)
 
-    p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
     dQ = dimQ() + size(yields, 2) - length(tau_n)
+    PCs, _, Wₚ = PCA(yields, p; pca_loadings)
     if isempty(macros)
         dP = copy(dQ)
+        factors = copy(PCs)
     else
         dP = dQ + size(macros, 2)
+        factors = [PCs macros]
     end
-    Wₚ = PCA(yields, p; pca_loadings)[3]
+
     if isempty(gamma_bar)
         gamma_bar = prior_gamma(yields, p; pca_loadings)[1]
     end
@@ -333,6 +335,14 @@ function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tune
         kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
+        q = mean.(prior_q)
+        net_nu0 = mean.(prior_nu0)
+        nu0 = net_nu0 + (dP + 1)
+        Omega0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Omega0)
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
+        end
+
         kappaQ = prior_mean_diff_kappaQ |> cumsum
         kQ_infty = 0.0
         phi = [zeros(dP) diagm(Float64.([0.9ones(dQ); rho])) zeros(dP, dP * (p - 1)) zeros(dP, dP)] # The last dP by dP block matrix in phi should always be a lower triangular matrix whose diagonals are also always zero.
@@ -353,22 +363,22 @@ function posterior_NUTS(yields, macros, tau_n, rho, NUTS_nadapt, iteration, tune
     end
 
     chain = []
-    sampler = fill(NUTS(ceil(Int, 0.1NUTS_nadapt), NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth), dQ + 1)
+    sampler = fill(NUTS(ceil(Int, 0.1NUTS_nadapt), NUTS_target_acceptance_rate; metricT=AdvancedHMC.DenseEuclideanMetric, max_depth=NUTS_max_depth), dQ + 1 + 1)
     is_warmup = true
-    saved_params = Vector{Parameter}(undef, iteration)
+    saved_params = Vector{Parameter_NUTS}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
         if iter > NUTS_nadapt
             is_warmup = false
         end
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
 
-        chain, kappaQ, phi, varFF = post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
+        chain, q, nu0, kappaQ, phi, varFF = post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, zeros(dP), rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
 
         SigmaO = rand.(post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP=phi_varFF_2_ΩPP(; phi, varFF, dQ), gamma, p, data_scale, pca_loadings))
 
         gamma = rand.(post_gamma(; gamma_bar, SigmaO))
 
-        saved_params[iter] = Parameter(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma))
+        saved_params[iter] = Parameter_NUTS(q=copy(q), nu0=copy(nu0), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma))
 
     end
 

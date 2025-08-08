@@ -185,48 +185,66 @@ Full-conditional posterior sampler for `kappaQ`, `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_kappaQ, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
+function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(psi, 1)
     p = Int(size(psi)[2] / dP)
     PCs, ~, Wₚ = PCA(yields, p; pca_loadings)
     dims_phi = [1 + p * dP + i - 1 for i in 1:dQ] |> cumsum
+    net_nu0 = nu0 - (dP + 1)
+
+    if isempty(macros)
+        factors = copy(PCs)
+    else
+        factors = [PCs macros]
+    end
+
+    Omega0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Omega0)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
+    end
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     prior_kappaQ_ = mean.([prior_diff_kappaQ[i].untruncated for i in eachindex(prior_diff_kappaQ)]) |> cumsum |> x -> [Dirac(x[i]) for i in eachindex(x)]
     prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
     prior_phi_ = [prior_phi0_ prior_C(; Omega0)]
     prior_varFF_ = prior_varFF(; nu0, Omega0)
+    GQ_XX_mean = prior_kappaQ_ |> x -> mean.(x) |> diagm
 
     if chain == []
         chain = Vector{MCMCChains.Chains}(undef, length(sampler))
-        for i in eachindex(sampler)
-            if i == 1
+        for j in eachindex(sampler)
+            if j == 1
                 NUTS_model_ = diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-                chain[i] = Turing.sample(NUTS_model_, sampler[i], 2; initial_params=[kappaQ[1]; diff(kappaQ)], save_state=true)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[kappaQ[1]; diff(kappaQ)], save_state=true)
+            elseif j <= dQ + 1
+                NUTS_model_ = VAR_NUTS_model(j - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[phi[j-1, 1:(1+p*dP+(j-1)-1)]; varFF[j-1]], save_state=true)
             else
-                NUTS_model_ = VAR_NUTS_model(i - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-                chain[i] = Turing.sample(NUTS_model_, sampler[i], 2; initial_params=[phi[i-1, 1:(1+p*dP+(i-1)-1)]; varFF[i-1]], save_state=true)
+                NUTS_model_ = q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0=phi[:, 1:end-dP], C=phi[:, end-dP+1:end], varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[vec(q); net_nu0], save_state=true)
             end
         end
     else
-        for i in eachindex(sampler)
-            if i == 1
+        for j in eachindex(sampler)
+            if j == 1
                 NUTS_model_ = diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+            elseif j <= dQ + 1
+                NUTS_model_ = VAR_NUTS_model(j - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
             else
-                NUTS_model_ = VAR_NUTS_model(i - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+                NUTS_model_ = q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0=phi[:, 1:end-dP], C=phi[:, end-dP+1:end], varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
             end
 
-            chain[i] = Turing.AbstractMCMC.mcmcsample(
+            chain[j] = Turing.AbstractMCMC.mcmcsample(
                 Random.default_rng(),
                 NUTS_model_,
-                Turing.DynamicPPL.Sampler(sampler[i]),
+                Turing.DynamicPPL.Sampler(sampler[j]),
                 2;
-                chain_type=Turing.DynamicPPL.default_chain_type(Turing.DynamicPPL.Sampler(sampler[i])),
-                initial_state=Turing.DynamicPPL.loadstate(chain[i]),
+                chain_type=Turing.DynamicPPL.default_chain_type(Turing.DynamicPPL.Sampler(sampler[j])),
+                initial_state=Turing.DynamicPPL.loadstate(chain[j]),
                 progress=false,#Turing.PROGRESS[],
-                nadapts=is_warmup ? Turing.DynamicPPL.loadstate(chain[i]).i + 1 : 0,
+                nadapts=is_warmup ? Turing.DynamicPPL.loadstate(chain[j]).i + 1 : 0,
                 discard_adapt=false,
                 discard_initial=0,
                 save_state=true,
@@ -245,8 +263,10 @@ function post_kappaQ_phi_varFF(yields, macros, mean_phi_const, rho, prior_diff_k
             phi[i, 1:(1+p*dP+i-1)], varFF[i:i] = NIG_NIG(yphi[:, i], Xphi[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_varFF_[i]), scale(prior_varFF_[i]))
         end
     end
+    q = group(chain[end], :q).value |> x -> x[end, :, 1] |> x -> reshape(x, 4, 2)
+    nu0 = group(chain[end], :net_nu0).value |> x -> x[end, :, 1][end] |> x -> x + (dP + 1)
 
-    return chain, kappaQ, phi, varFF
+    return chain, q, nu0, kappaQ, phi, varFF
 
 end
 
@@ -284,6 +304,28 @@ It makes a model for `phi` and `varFF` in the syntax of `Turing.jl`.
     Turing.@addlogprob! log_lik
 
     return phiQ, varFFQ
+end
+
+"""
+    function q_nu0_NUTS_model(p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
+"""
+
+@model function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+
+    q ~ product_distribution(vec(prior_q))
+    net_nu0 ~ prior_nu0
+
+    Omega0 = Vector{promote_type(Float64, eltype(net_nu0))}(undef, dP)
+    for i in eachindex(Omega0)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
+    end
+
+    Turing.@addlogprob! logprior_varFF(varFF; nu0=net_nu0 + (dP + 1), Omega0)
+    Turing.@addlogprob! logprior_C(C; Omega0)
+    Turing.@addlogprob! logprior_phi0(phi0, mean_phi_const, rho, GQ_XX_mean, p, dQ, dP; psi_const, psi, q=reshape(q, 4, 2), nu0=net_nu0 + (dP + 1), Omega0, fix_const_PC1)
+
+    return q, net_nu0
 end
 
 """

@@ -48,6 +48,29 @@ It contains statistical parameters of the model that are sampled from function `
 end
 
 """
+    @kwdef struct Parameter_NUTS <: PosteriorSample
+It contains statistical parameters of the model that are sampled from function `posterior_NUTS`.
+- `q`
+- `nu0`
+- `kappaQ`
+- `kQ_infty::Float64`
+- `phi::Matrix{Float64}`
+- `varFF::Vector{Float64}`
+- `SigmaO::Vector{Float64}`
+- `gamma::Vector{Float64}`
+"""
+@kwdef struct Parameter_NUTS <: PosteriorSample
+    q
+    nu0
+    kappaQ
+    kQ_infty::Float64
+    phi::Matrix{Float64}
+    varFF::Vector{Float64}
+    SigmaO::Vector{Float64}
+    gamma::Vector{Float64}
+end
+
+"""
     @kwdef struct ReducedForm <: PosteriorSample
 It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `lambdaP` and `LambdaPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
 - `kappaQ`
@@ -185,6 +208,7 @@ export
     Hyperparameter,
     PosteriorSample,
     Parameter,
+    Parameter_NUTS,
     ReducedForm,
     LatentSpace,
     YieldCurve,
