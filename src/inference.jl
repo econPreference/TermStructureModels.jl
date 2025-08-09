@@ -555,6 +555,8 @@ function ineff_factor(saved_params::Vector{Parameter_NUTS})
         kappaQ_ineff = ineff[length(init_q)+1+1:length(init_q)+1+length(init_kappaQ)]
     end
     return (;
+        q=ineff[1:length(init_q)],
+        nu0=ineff[length(init_q)+1],
         kappaQ=kappaQ_ineff,
         kQ_infty=ineff[length(init_q)+1+length(init_kappaQ)+1],
         gamma=ineff[length(init_q)+1+length(init_kappaQ)+1+1:length(init_q)+1+length(init_kappaQ)+1+length(init_gamma)],
