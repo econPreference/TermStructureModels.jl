@@ -212,6 +212,7 @@ function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho,
     prior_phi_ = [prior_phi0_ prior_C(; Omega0)]
     prior_varFF_ = prior_varFF(; nu0, Omega0)
     GQ_XX_mean = prior_kappaQ_ |> x -> mean.(x) |> diagm
+    updated_q_idx = findall(x -> !(x isa Dirac), prior_q)
 
     if chain == []
         chain = Vector{MCMCChains.Chains}(undef, length(sampler))
@@ -223,8 +224,11 @@ function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho,
                 NUTS_model_ = VAR_NUTS_model(j - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
                 chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[phi[j-1, 1:(1+p*dP+(j-1)-1)]; varFF[j-1]], save_state=true)
             else
+                init_q_nu0 = q[updated_q_idx]
+                push!(init_q_nu0, net_nu0)
+
                 NUTS_model_ = q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0=phi[:, 1:end-dP], C=phi[:, end-dP+1:end], varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
-                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[vec(q); net_nu0], save_state=true)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=init_q_nu0, save_state=true)
             end
         end
     else
@@ -264,7 +268,7 @@ function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho,
             phi[i, 1:(1+p*dP+i-1)], varFF[i:i] = NIG_NIG(yphi[:, i], Xphi[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_varFF_[i]), scale(prior_varFF_[i]))
         end
     end
-    q = group(chain[end], :q).value |> x -> x[end, :, 1] |> x -> reshape(x, 4, 2)
+    q[updated_q_idx] = group(chain[end], :updated_q).value |> x -> x[end, :, 1]
     nu0 = group(chain[end], :net_nu0).value |> x -> x[end, :, 1][end] |> x -> x + (dP + 1)
 
     return chain, q, nu0, kappaQ, phi, varFF
@@ -314,7 +318,15 @@ It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
 
 @model function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
 
-    q ~ product_distribution(vec(prior_q))
+    updated_q_idx = findall(x -> !(x isa Dirac), prior_q)
+    updated_q ~ product_distribution(prior_q[updated_q_idx])
+    fix_q_idx = findall(x -> x isa Dirac, prior_q)
+    fix_q = mean.(prior_q[fix_q_idx])
+
+    q = Matrix{promote_type(eltype(fix_q), eltype(updated_q))}(undef, 4, 2)
+    q[updated_q_idx] = updated_q
+    q[fix_q_idx] = fix_q
+
     net_nu0 ~ prior_nu0
 
     Omega0 = Vector{promote_type(Float64, eltype(net_nu0))}(undef, dP)
@@ -324,9 +336,9 @@ It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
 
     Turing.@addlogprob! logprior_varFF(varFF; nu0=net_nu0 + (dP + 1), Omega0)
     Turing.@addlogprob! logprior_C(C; Omega0)
-    Turing.@addlogprob! logprior_phi0(phi0, mean_phi_const, rho, GQ_XX_mean, p, dQ, dP; psi_const, psi, q=reshape(q, 4, 2), nu0=net_nu0 + (dP + 1), Omega0, fix_const_PC1)
+    Turing.@addlogprob! logprior_phi0(phi0, mean_phi_const, rho, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0=net_nu0 + (dP + 1), Omega0, fix_const_PC1)
 
-    return q, net_nu0
+    return updated_q, net_nu0
 end
 
 """

@@ -303,7 +303,7 @@ This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with 
 - `NUTS_nadapt`: # of iterations for tuning settings in the NUTS sampler. The samples for warming up the sampler are included in the output, so you should burn it.
 - `iteration`: # of posterior samples
 - `init_param`: starting point of the sampler. It should be a type of Parameter_NUTS.
-- `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`.
+- `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`. For hyperparameters that do not need to be optimized, assigning a `Dirac(::Float64)` prior to the corresponding entry fixes that hyperparameter and optimizes only the remaining hyperparameters.
 - `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be the object in `Distributions.jl`.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
 - `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ` are vectors that contain the means and standard deviations of the Normal distributions for `[kappaQ[1]; diff(kappaQ)]`. Once normal priors are assigned to these parameters, the prior for `kappaQ[1]` is truncated to (0, 1), and the priors for `diff(KappaQ)` are truncated to (−1, 0).
@@ -334,7 +334,7 @@ function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; i
     end
 
     if typeof(init_param) == Parameter_NUTS
-        kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
+        q, nu0, kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = init_param.q, init_param.nu0, init_param.kappaQ, init_param.kQ_infty, init_param.phi, init_param.varFF, init_param.SigmaO, init_param.gamma
     else
         ## initial parameters ##
         q = mean.(prior_q)
