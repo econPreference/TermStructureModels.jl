@@ -101,7 +101,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
         Omega0 = Vector{Float64}(undef, dP)
         for i in eachindex(Omega0)
-            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9] |> x -> max(x, 1e-10)
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9] |> x -> max(x, 1e-8)
         end
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
@@ -135,7 +135,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
     Omega0 = Vector{Float64}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9] |> x -> max(x, 1e-10)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9] |> x -> max(x, 1e-8)
     end
 
     return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt
@@ -342,7 +342,7 @@ function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; i
         nu0 = net_nu0 + (dP + 1)
         Omega0 = Vector{Float64}(undef, dP)
         for i in eachindex(Omega0)
-            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0 |> x -> max(x, 1e-10)
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0 |> x -> max(x, 1e-8)
         end
 
         kappaQ = prior_mean_diff_kappaQ |> cumsum

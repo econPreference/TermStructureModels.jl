@@ -418,7 +418,7 @@ function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macr
     dP = size(factors, 2)
     OmegaFF_mean = Vector{Float64}(undef, dP)
     for i in eachindex(OmegaFF_mean)
-        OmegaFF_mean[i] = AR_res_var(factors[:, i], p)[1] |> x -> max(x, 1e-10)
+        OmegaFF_mean[i] = AR_res_var(factors[:, i], p)[1] |> x -> max(x, 1e-8)
     end
 
     if isempty(mean_phi_const_PCs)
