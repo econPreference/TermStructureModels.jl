@@ -43,9 +43,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         if isempty(prior_mean_diff_kappaQ)
             kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
         else
-            kappaQ_prior_pr = [truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())]
+            kappaQ_prior_pr = [truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), 1e-10, 1 - 1e-10)]
             for i in 2:length(prior_mean_diff_kappaQ)
-                kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1].untruncated)), eps(), 1 - eps())]
+                kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1].untruncated)), 1e-10, 1 - 1e-10)]
             end
         end
     end
@@ -228,7 +228,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             kappaQ_logpost = cumsum(x[1:dQ])
             kQ_infty_logpost = x[dQ+1]
             SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
-            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= eps()))
+            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= 1e-10))
                 return -Inf
             end
 
@@ -247,7 +247,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             init = [x; kQ_infty; log.(SigmaO)]
             minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0.01 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                          Optim.minimizer |>
-                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
+                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 1e-10 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
                               Optim.minimizer
         else
             diff_kappaQ_proposal_mode = [kappaQ_proposal_mode[1]; diff(kappaQ_proposal_mode[1:end])]
@@ -262,7 +262,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
         if !isposdef(inv_x_hess)
             C, V = eigen(inv_x_hess)
-            C = max.(eps(), C) |> diagm
+            C = max.(1e-10, C) |> diagm
             inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
         end
 
@@ -328,9 +328,9 @@ function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; i
     if isempty(gamma_bar)
         gamma_bar = prior_gamma(yields, p; pca_loadings)[1]
     end
-    prior_diff_kappaQ = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())
+    prior_diff_kappaQ = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), 1e-10, 1 - 1e-10)
     for i in 2:length(prior_mean_diff_kappaQ)
-        prior_diff_kappaQ = [prior_diff_kappaQ; truncated(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), -1 + eps(), -eps())]
+        prior_diff_kappaQ = [prior_diff_kappaQ; truncated(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), -1 + 1e-10, -1e-10)]
     end
 
     if typeof(init_param) == Parameter_NUTS
