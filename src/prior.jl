@@ -111,7 +111,7 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
 
     for i in 1:dQ
         if i == 1 && fix_const_PC1
-            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-8))
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-10))
         else
             phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 1]))
         end
@@ -154,7 +154,7 @@ function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP;
     logpdf_ = 0.0
     for i in 1:dQ
         if i == 1 && fix_const_PC1
-            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-8)), phi0[i, 1])
+            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-10)), phi0[i, 1])
         else
             logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 1])), phi0[i, 1])
         end
