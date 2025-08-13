@@ -43,9 +43,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         if isempty(prior_mean_diff_kappaQ)
             kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
         else
-            kappaQ_prior_pr = [truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), 1e-10, 1 - 1e-10)]
+            kappaQ_prior_pr = [truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())]
             for i in 2:length(prior_mean_diff_kappaQ)
-                kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1].untruncated)), 1e-10, 1 - 1e-10)]
+                kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1].untruncated)), eps(), 1 - eps())]
             end
         end
     end
@@ -101,7 +101,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
         Omega0 = Vector{Float64}(undef, dP)
         for i in eachindex(Omega0)
-            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9] |> x -> max(x, 1e-10)
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
         end
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
@@ -135,7 +135,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
     Omega0 = Vector{Float64}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9] |> x -> max(x, 1e-10)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
     end
 
     return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt
@@ -228,7 +228,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             kappaQ_logpost = cumsum(x[1:dQ])
             kQ_infty_logpost = x[dQ+1]
             SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
-            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= 1e-10))
+            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= eps()))
                 return -Inf
             end
 
@@ -247,7 +247,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             init = [x; kQ_infty; log.(SigmaO)]
             minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0.01 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                          Optim.minimizer |>
-                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 1e-10 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
+                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true)) |>
                               Optim.minimizer
         else
             diff_kappaQ_proposal_mode = [kappaQ_proposal_mode[1]; diff(kappaQ_proposal_mode[1:end])]
@@ -262,7 +262,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
         if !isposdef(inv_x_hess)
             C, V = eigen(inv_x_hess)
-            C = max.(1e-10, C) |> diagm
+            C = max.(eps(), C) |> diagm
             inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
         end
 
@@ -328,9 +328,9 @@ function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; i
     if isempty(gamma_bar)
         gamma_bar = prior_gamma(yields, p; pca_loadings)[1]
     end
-    prior_diff_kappaQ = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), 1e-10, 1 - 1e-10)
+    prior_diff_kappaQ = truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())
     for i in 2:length(prior_mean_diff_kappaQ)
-        prior_diff_kappaQ = [prior_diff_kappaQ; truncated(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), -1 + 1e-10, -1e-10)]
+        prior_diff_kappaQ = [prior_diff_kappaQ; truncated(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), -1 + eps(), -eps())]
     end
 
     if typeof(init_param) == Parameter_NUTS
@@ -342,7 +342,7 @@ function posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; i
         nu0 = net_nu0 + (dP + 1)
         Omega0 = Vector{Float64}(undef, dP)
         for i in eachindex(Omega0)
-            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0 |> x -> max(x, 1e-10)
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
         end
 
         kappaQ = prior_mean_diff_kappaQ |> cumsum

@@ -203,7 +203,7 @@ function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho,
 
     Omega0 = Vector{Float64}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0 |> x -> max(x, 1e-10)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
     end
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
@@ -331,7 +331,7 @@ It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
 
     Omega0 = Vector{promote_type(Float64, eltype(net_nu0))}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0 |> x -> max(x, 1e-10)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
     end
 
     Turing.@addlogprob! logprior_varFF(varFF; nu0=net_nu0 + (dP + 1), Omega0)
