@@ -312,7 +312,7 @@ It makes a model for `phi` and `varFF` in the syntax of `Turing.jl`.
 end
 
 """
-    function q_nu0_NUTS_model(p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+    function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
 It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
 """
 
@@ -342,7 +342,7 @@ It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
 end
 
 """
-    loglik_NUTS(yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+    loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 The function calculate the likelihood of the NUTS block.
 """
 function loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)

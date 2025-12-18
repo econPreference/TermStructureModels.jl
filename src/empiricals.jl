@@ -75,7 +75,7 @@ function loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, da
 end
 
 """
-    loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+    loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale, pca_loadings)
 This function is the same as `loglik_mea` but it requires ΩPP as an input.
 """
 function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale, pca_loadings)
@@ -329,7 +329,7 @@ end
 It converts posterior samples in terms of the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
-- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
@@ -399,7 +399,7 @@ The purpose of the function is to calibrate a prior mean of the first `dQ` const
 - `iteration` is the number of prior samples.
 - `τ::scalar` is a maturity for calculating the constant part in the term premium.
     - If τ is empty, the function does not sampling the prior distribution of the constant part in the term premium.
-- `pca_loadings=Matrix{, dQ, size(yields, 2)}` is loadings for the fisrt dQ principal components. That is, `principal_components = yields*pca_loadings'`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output(2)
 `prior_λₚ`, `prior_TP`
 - samples from the prior distribution of `λₚ` 
