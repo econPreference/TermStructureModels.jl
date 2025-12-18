@@ -1,9 +1,10 @@
 module TermStructureModels
 
 using Base: @kwdef
-using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim, Optim, LineSearches
+using LinearAlgebra, Statistics, Distributions, SpecialFunctions, ProgressMeter, Distributed, Random, Roots, BlackBoxOptim, Optim, LineSearches, Turing, MCMCChains
 import Base: getindex
 import Statistics: mean, median, std, var, quantile
+import AdvancedHMC, AxisArrays
 
 """
     @kwdef struct Hyperparameter
@@ -38,6 +39,29 @@ It contains statistical parameters of the model that are sampled from function `
 - `gamma::Vector{Float64}`
 """
 @kwdef struct Parameter <: PosteriorSample
+    kappaQ
+    kQ_infty::Float64
+    phi::Matrix{Float64}
+    varFF::Vector{Float64}
+    SigmaO::Vector{Float64}
+    gamma::Vector{Float64}
+end
+
+"""
+    @kwdef struct Parameter_NUTS <: PosteriorSample
+It contains statistical parameters of the model that are sampled from function `posterior_NUTS`.
+- `q`
+- `nu0`
+- `kappaQ`
+- `kQ_infty::Float64`
+- `phi::Matrix{Float64}`
+- `varFF::Vector{Float64}`
+- `SigmaO::Vector{Float64}`
+- `gamma::Vector{Float64}`
+"""
+@kwdef struct Parameter_NUTS <: PosteriorSample
+    q
+    nu0
     kappaQ
     kQ_infty::Float64
     phi::Matrix{Float64}
@@ -147,11 +171,13 @@ It contains a result of the scenario analysis, the conditional prediction for yi
 - `yields`
 - `factors`
 - `TP`: term premium forecasts
+- `EH`: estimated expectation hypothesis component
 """
 @kwdef struct Forecast <: PosteriorSample
     yields
     factors
     TP
+    EH
 end
 
 include("utilities.jl") # utility functions
@@ -182,6 +208,7 @@ export
     Hyperparameter,
     PosteriorSample,
     Parameter,
+    Parameter_NUTS,
     ReducedForm,
     LatentSpace,
     YieldCurve,
@@ -195,14 +222,15 @@ export
     generative,
     ineff_factor,
     posterior_sampler,
+    posterior_NUTS,
 
     # priors.jl
     prior_kappaQ,
     dcurvature_dτ,
 
     # scenario.jl
-    conditional_forecasts,
-    scenario_analysis,
+    conditional_forecast,
+    conditional_expectation,
 
     # theoreticals.jl
     GQ_XX,

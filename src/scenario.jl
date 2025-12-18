@@ -1,5 +1,5 @@
 """
-    conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+    conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -9,16 +9,19 @@ scenarios, a result of the posterior sampler, and data
     - If `τ` is set to `[]`, the term premium is not forecasted. 
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
+- `baseline::Vector{Forecast}`: the output of `conditional_forecast` when `S` is empty. 
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
+- If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - `Vector{Forecast}(, iteration)`
-- `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
+- `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
 """
-function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="conditional_forecasts...")
+    prog = Progress(iteration; dt=5, desc="conditional_forecast...")
     Threads.@threads for iter in 1:iteration
 
         kappaQ = saved_params[:kappaQ][iter]
@@ -27,12 +30,32 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
-        if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
-        else
-            spanned_yield, spanned_F, predicted_TP = _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+        dP = length(varFF)
+        dQ = dimQ() + size(yields, 2) - length(tau_n)
+        if isempty(mean_macros)
+            mean_macros = zeros(dP - dQ)
         end
-        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
+
+        if isempty(baseline)
+            S1 = S
+        else
+            baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]] |> deepcopy
+
+            S1 = similar(S)
+            for t = eachindex(S1)
+                St1 = S[t].combinations
+                st1 = S[t].values + St1 * (baseline_forecast[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
+
+                S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
+            end
+        end
+
+        if isempty(S1)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+        else
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_forecast(S1, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+        end
+        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP), EH=copy(predicted_EH))
 
         next!(prog)
     end
@@ -42,9 +65,9 @@ function conditional_forecasts(S::Vector, τ, horizon, saved_params, yields, mac
 end
 
 """
-    _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
-function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _unconditional_forecast(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -57,13 +80,9 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(OmegaFF, 1)
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; dQ, pca_loadings)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -92,24 +111,26 @@ function _unconditional_forecasts(τ, horizon, yields, macros, tau_n; kappaQ, kQ
     end
     if isempty(τ)
         predicted_TP = []
+        predicted_EH = []
     else
         predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
             predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
         end
+        predicted_EH = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_TP
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP, predicted_EH
 end
 
 """
-    _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
-function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _conditional_forecast(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -123,13 +144,9 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
     dP = size(OmegaFF, 1)
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; pca_loadings)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -174,6 +191,38 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         zeros(dP - dQ)]
     H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p)
         zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dQ)]
+
+    # Measurement equation: term premium
+    if length(τ) > 0
+        if p == 1
+            GP = [GPFF diagm(KPF)
+                zeros(dP, dP) I(dP)]
+        else
+            GP = [GPFF diagm(KPF)
+                I(dP * p - dP) zeros(dP * p - dP, 2dP)
+                zeros(dP, dP * p) I(dP)]
+        end
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(τ))
+        Gpower_ind = I(size(GP, 1))
+        Gpower_sum = I(size(GP, 1))
+        for i in 1:τ[end]
+            if i ∈ τ
+                idx = findall(x -> x == i, τ)
+                Gpower[:, :, idx] = Gpower_sum ./ i
+            end
+            Gpower_ind *= GP
+            Gpower_sum += Gpower_ind
+        end
+
+        eh_const = sum(T0P_)
+        append!(μM, ones(length(τ)) * eh_const)
+
+        eh_fl = Matrix{Float64}(undef, length(τ), k)
+        for i in axes(eh_fl, 1)
+            eh_fl[i, :] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, 1:dP]; zeros(N - dQ); x[1, dP+1:end]]
+            H = vcat(H, eh_fl[i, :]')
+        end
+    end
 
     ## Kalman filtering & smoothing
     precFtm = Vector{Vector}(undef, dh)
@@ -294,23 +343,22 @@ function _conditional_forecasts(S, τ, horizon, yields, macros, tau_n; kappaQ, k
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
+        predicted_EH = []
         predicted_TP = []
     else
-        predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
-        for i in eachindex(τ)
-            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
-        end
+        predicted_EH = eh_const .+ predicted_F * eh_fl'
+        predicted_TP = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_EH
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP, predicted_EH
 end
 
 """
-    scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+    conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
@@ -319,16 +367,19 @@ scenarios, a result of the posterior sampler, and data
 - `τ` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
+- `baseline::Vector{Forecast}`: the output of `conditional_expectation` when `S` is empty.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
+- If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - `Vector{Forecast}(, iteration)`
-- `t`'th rows in predicted `yields`, predicted `factors`, and predicted `TP` are the corresponding predicted value at time `size(yields, 1)+t`.
+- `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
 """
-function scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; mean_macros::Vector=[], data_scale=1200)
+function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
     iteration = length(saved_params)
     scenarios = Vector{Forecast}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="scenario_analysis...")
+    prog = Progress(iteration; dt=5, desc="conditional_expectation...")
     Threads.@threads for iter in 1:iteration
 
         kappaQ = saved_params[:kappaQ][iter]
@@ -337,12 +388,32 @@ function scenario_analysis(S::Vector, τ, horizon, saved_params, yields, macros,
         varFF = saved_params[:varFF][iter]
         SigmaO = saved_params[:SigmaO][iter]
 
-        if isempty(S)
-            spanned_yield, spanned_F, predicted_TP = _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
-        else
-            spanned_yield, spanned_F, predicted_TP = _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+        dP = length(varFF)
+        dQ = dimQ() + size(yields, 2) - length(tau_n)
+        if isempty(mean_macros)
+            mean_macros = zeros(dP - dQ)
         end
-        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP))
+
+        if isempty(baseline)
+            S1 = S
+        else
+            baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]]
+
+            S1 = similar(S)
+            for t = eachindex(S1)
+                St1 = S[t].combinations
+                st1 = S[t].values + St1 * (baseline_expectation[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
+
+                S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
+            end
+        end
+
+        if isempty(S1)
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+        else
+            spanned_yield, spanned_F, predicted_TP, predicted_EH = _conditional_expectation(S1, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
+        end
+        scenarios[iter] = Forecast(yields=copy(spanned_yield), factors=copy(spanned_F), TP=copy(predicted_TP), EH=copy(predicted_EH))
         next!(prog)
     end
     finish!(prog)
@@ -352,9 +423,9 @@ end
 
 
 """
-    _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
-function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _conditional_expectation(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -370,13 +441,9 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
     p = Int(size(GPFF, 2) / dP)
     dh = length(S) # a time series length of the scenario, dh = 0 for an unconditional prediction
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; pca_loadings)
     W = [Wₒ; Wₚ]
     W_inv = inv(W)
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -420,6 +487,38 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         zeros(dP - dQ)]
     H = [Bₓ_*T1P_ zeros(N, dP - dQ) W_inv[:, 1:N-dQ] zeros(N, dP * p)
         zeros(dP - dQ, dQ) I(dP - dQ) zeros(dP - dQ, dP * p + N - dQ)]
+
+    # Measurement equation: term premium
+    if length(τ) > 0
+        if p == 1
+            GP = [GPFF diagm(KPF)
+                zeros(dP, dP) I(dP)]
+        else
+            GP = [GPFF diagm(KPF)
+                I(dP * p - dP) zeros(dP * p - dP, 2dP)
+                zeros(dP, dP * p) I(dP)]
+        end
+        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(τ))
+        Gpower_ind = I(size(GP, 1))
+        Gpower_sum = I(size(GP, 1))
+        for i in 1:τ[end]
+            if i ∈ τ
+                idx = findall(x -> x == i, τ)
+                Gpower[:, :, idx] = Gpower_sum ./ i
+            end
+            Gpower_ind *= GP
+            Gpower_sum += Gpower_ind
+        end
+
+        eh_const = sum(T0P_)
+        append!(μM, ones(length(τ)) * eh_const)
+
+        eh_fl = Matrix{Float64}(undef, length(τ), k)
+        for i in axes(eh_fl, 1)
+            eh_fl[i, :] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i] |> x -> [x[1, 1:dP]; zeros(N - dQ); x[1, dP+1:end]]
+            H = vcat(H, eh_fl[i, :]')
+        end
+    end
 
     ## initializing
     # for conditional prediction
@@ -512,25 +611,24 @@ function _scenario_analysis(S, τ, horizon, yields, macros, tau_n; kappaQ, kQ_in
         spanned_yield[t, :] = (Aₓ_ + Bₓ_ * T0P_) + Bₓ_ * T1P_ * spanned_factors[t, 1:dQ] + mea_error
     end
     if isempty(τ)
+        predicted_EH = []
         predicted_TP = []
     else
-        predicted_TP = Matrix{Float64}(undef, horizon, length(τ))
-        for i in eachindex(τ)
-            predicted_TP[:, i] = _termPremium(τ[i], spanned_factors[(T-p+1):end, 1:dQ], spanned_factors[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
-        end
+        predicted_EH = eh_const .+ predicted_F * eh_fl'
+        predicted_TP = spanned_yield[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_EH
     end
 
     spanned_factors = spanned_factors[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP
+    return spanned_yield[(end-horizon+1):end, :], spanned_factors, predicted_TP, predicted_EH
 end
 
 """
-    _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+    _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 """
-function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale)
+function _unconditional_expectation(τ, horizon, yields, macros, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, mean_macros, data_scale, pca_loadings)
 
     ## Construct TSM parameters
     phi0, C = phi_2_phi₀_C(; phi)
@@ -545,12 +643,8 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
     k = size(GPFF, 2) + N - dQ + dP # of factors in the companion from
     p = Int(size(GPFF, 2) / dP)
 
-    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, Wₒ, mean_PCs = PCA(yields, p; pca_loadings)
     W = [Wₒ; Wₚ]
-
-    if isempty(mean_macros)
-        mean_macros = zeros(dP - dQ)
-    end
 
     if isempty(macros)
         data = copy(PCs)
@@ -619,16 +713,18 @@ function _scenario_analysis_unconditional(τ, horizon, yields, macros, tau_n; ka
 
     if isempty(τ)
         predicted_TP_u = []
+        predicted_EH_u = []
     else
         predicted_TP_u = Matrix{Float64}(undef, horizon, length(τ))
         for i in eachindex(τ)
             predicted_TP_u[:, i] = _termPremium(τ[i], spanned_factors_u[(T-p+1):end, 1:dQ], spanned_factors_u[(T-p+1):end, (dQ+1):end], bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)[1]
         end
+        predicted_EH_u = spanned_yield_u[(end-horizon+1):end, findall(x -> x ∈ τ, tau_n)] - predicted_TP_u
     end
 
     spanned_factors_u = spanned_factors_u[(end-horizon+1):end, :]
     for i in 1:dP-dQ
         spanned_factors_u[:, dQ+i] .+= mean_macros[i]
     end
-    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u
+    return spanned_yield_u[(end-horizon+1):end, :], spanned_factors_u, predicted_TP_u, predicted_EH_u
 end

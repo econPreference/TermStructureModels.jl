@@ -7,7 +7,7 @@ When users execute some functions, the output is [`Vector{<:PosteriorSample}`](h
 - [`Vector{LatentSpace}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.LatentSpace): output of [`latentspace`](@ref)
 - [`Vector{YieldCurve}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.YieldCurve): output of [`fitted_YieldCurve`](@ref)
 - [`Vector{TermPremium}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.TermPremium): output of [`term_premium`](@ref)
-- [`Vector{Forecast}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.Forecast): outputs of [`conditional_forecasts`](@ref) and [`scenario_analysis`](@ref)
+- [`Vector{Forecast}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.Forecast): outputs of [`conditional_forecast`](@ref) and [`conditional_expectation`](@ref)
 
 Each entry of the above vectors is a posterior sample and takes the form of a `struct`, which is one of the following: `Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`. The above six `struct` have their unique fields. See [the API section](https://econpreference.github.io/TermStructureModels.jl/dev/api/#API-documentation) to see what fields each `struct` contains. Section [Notations](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) explains the specific meanings of the fields.
 

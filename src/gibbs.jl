@@ -1,10 +1,10 @@
 
 """
-    post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale)
+    post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings)
 # Output
 - Full conditional posterior distribution
 """
-function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale)
+function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     dP = length(varFF)
     dQ = dimQ() + size(yields, 2) - length(tau_n)
@@ -13,7 +13,7 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
 
     N = length(tau_n) # of maturities
     T = size(yields, 1) # length of dependent variables
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
 
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
@@ -51,13 +51,13 @@ function post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, 
 end
 
 """
-    post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+    post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
 # Output 
 - Full conditional posterior distribution
 """
-function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale)
+function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     kappaQ_candidate = support(prior_kappaQ_)
 
@@ -65,7 +65,7 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 
     for i in eachindex(kappaQ_candidate)
         # likelihood of the measurement eq
-        kern[i] = loglik_mea(yields, tau_n; kappaQ=kappaQ_candidate[i], kQ_infty, phi, varFF, SigmaO, data_scale)
+        kern[i] = loglik_mea(yields, tau_n; kappaQ=kappaQ_candidate[i], kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
     end
 
     kern .-= maximum(kern)
@@ -76,7 +76,7 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
 It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. `x_mode` and `inv_x_hess` constitute the mean and variance of the Normal proposal distribution.
 - Reparameterization:
     kappaQ[1] = x[1]
@@ -88,11 +88,11 @@ It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` u
     1 1 1]
 - The determinant = 1
 """
-function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess)
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
 
     function logpost(x)
         kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
-        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
             logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
@@ -123,7 +123,7 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
 end
 
 """
-    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+    post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
 Full-conditional posterior sampler for `phi` and `varFF` 
 # Input
 - `prior_kappaQ_` is a output of function `prior_kappaQ`.
@@ -132,12 +132,12 @@ Full-conditional posterior sampler for `phi` and `varFF`
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
 - It gives a posterior sample.
 """
-function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale)
+function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(psi, 1)
     p = Int(size(psi)[2] / dP)
-    PCs, ~, Wₚ = PCA(yields, p)
+    PCs, ~, Wₚ = PCA(yields, p; pca_loadings)
 
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
@@ -154,8 +154,8 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
             Vᵢ = var.(prior_phi_[i, 1:(1+p*dP+i-1)])
             prop_phi[i, 1:(1+p*dP+i-1)], prop_varFF[i] = NIG_NIG(yphi[:, i], Xphi[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_varFF_[i]), scale(prior_varFF_[i]))
 
-            prob = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi=prop_phi, varFF=prop_varFF, SigmaO, data_scale)
-            prob -= loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+            prob = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi=prop_phi, varFF=prop_varFF, SigmaO, data_scale, pca_loadings)
+            prob -= loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
             if rand() < min(1.0, exp(prob))
                 phi = copy(prop_phi)
@@ -171,6 +171,206 @@ function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_
 
     return phi, varFF, isaccept
 
+end
+
+"""
+    post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
+Full-conditional posterior sampler for `kappaQ`, `phi` and `varFF` 
+# Input
+- `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`.
+- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be the object in `Distributions.jl`.
+- `prior_diff_kappaQ` is a vector of the truncated normals(`Distributions.truncated(Distributions.Normal(), lower, upper)`). It has a prior for `[kappaQ[1]; diff(kappaQ)]`.
+- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+- `sampler` and `chain` are the objects in `Turing.jl`.
+- If the current step is in the warming up phrase, set `is_warmup=true`.
+# Output(6) 
+chain, q, nu0, kappaQ, phi, varFF
+"""
+function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
+
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    dP = size(psi, 1)
+    p = Int(size(psi)[2] / dP)
+    PCs, ~, Wₚ = PCA(yields, p; pca_loadings)
+    dims_phi = [1 + p * dP + i - 1 for i in 1:dQ] |> cumsum
+    net_nu0 = nu0 - (dP + 1)
+
+    if isempty(macros)
+        factors = copy(PCs)
+    else
+        factors = [PCs macros]
+    end
+
+    Omega0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Omega0)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
+    end
+
+    yphi, Xphi = yphi_Xphi(PCs, macros, p)
+    prior_kappaQ_ = mean.([prior_diff_kappaQ[i].untruncated for i in eachindex(prior_diff_kappaQ)]) |> cumsum |> x -> [Dirac(x[i]) for i in eachindex(x)]
+    prior_phi0_ = prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+    prior_phi_ = [prior_phi0_ prior_C(; Omega0)]
+    prior_varFF_ = prior_varFF(; nu0, Omega0)
+    GQ_XX_mean = prior_kappaQ_ |> x -> mean.(x) |> diagm
+    updated_q_idx = findall(x -> !(x isa Dirac), prior_q)
+
+    if chain == []
+        chain = Vector{MCMCChains.Chains}(undef, length(sampler))
+        for j in eachindex(sampler)
+            if j == 1
+                NUTS_model_ = diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[kappaQ[1]; diff(kappaQ)], save_state=true)
+            elseif j <= dQ + 1
+                NUTS_model_ = VAR_NUTS_model(j - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=[phi[j-1, 1:(1+p*dP+(j-1)-1)]; varFF[j-1]], save_state=true)
+            else
+                init_q_nu0 = q[updated_q_idx]
+                push!(init_q_nu0, net_nu0)
+
+                NUTS_model_ = q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0=phi[:, 1:end-dP], C=phi[:, end-dP+1:end], varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+                chain[j] = Turing.sample(NUTS_model_, sampler[j], 2; initial_params=init_q_nu0, save_state=true)
+            end
+        end
+    else
+        for j in eachindex(sampler)
+            if j == 1
+                NUTS_model_ = diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+            elseif j <= dQ + 1
+                NUTS_model_ = VAR_NUTS_model(j - 1, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+            else
+                NUTS_model_ = q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0=phi[:, 1:end-dP], C=phi[:, end-dP+1:end], varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+            end
+
+            chain[j] = Turing.AbstractMCMC.mcmcsample(
+                Random.default_rng(),
+                NUTS_model_,
+                Turing.DynamicPPL.Sampler(sampler[j]),
+                2;
+                chain_type=Turing.DynamicPPL.default_chain_type(Turing.DynamicPPL.Sampler(sampler[j])),
+                initial_state=Turing.DynamicPPL.loadstate(chain[j]),
+                progress=false,#Turing.PROGRESS[],
+                nadapts=is_warmup ? Turing.DynamicPPL.loadstate(chain[j]).i + 1 : 0,
+                discard_adapt=false,
+                discard_initial=0,
+                save_state=true,
+                verbose=false
+            )
+        end
+    end
+
+    kappaQ = group(chain[1], :diff_kappaQ).value |> x -> x[end, :, 1] |> cumsum
+    for i in 1:dP
+        if i <= dQ
+            phi[i, 1:(1+p*dP+i-1)], varFF[i:i] = group(chain[i+1], :phiQ).value |> x -> x[end, :, 1].data, group(chain[i+1], :varFFQ).value |> x -> x[end, :, 1].data
+        else
+            mᵢ = mean.(prior_phi_[i, 1:(1+p*dP+i-1)])
+            Vᵢ = var.(prior_phi_[i, 1:(1+p*dP+i-1)])
+            phi[i, 1:(1+p*dP+i-1)], varFF[i:i] = NIG_NIG(yphi[:, i], Xphi[:, 1:(end-dP+i-1)], mᵢ, diagm(Vᵢ), shape(prior_varFF_[i]), scale(prior_varFF_[i]))
+        end
+    end
+    q[updated_q_idx] = group(chain[end], :updated_q).value |> x -> x[end, :, 1]
+    nu0 = group(chain[end], :net_nu0).value |> x -> x[end, :, 1][end] |> x -> x + (dP + 1)
+
+    return chain, q, nu0, kappaQ, phi, varFF
+
+end
+
+"""
+    function diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+It makes a model for `diff_kappaQ` in the syntax of `Turing.jl`.
+"""
+
+@model function diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    diff_kappaQ ~ product_distribution(prior_diff_kappaQ_)
+    phiQ = zeros(1)
+    varFFQ = zeros(1)
+
+    log_lik = loglik_NUTS([], yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+    Turing.@addlogprob! log_lik
+
+    return diff_kappaQ
+end
+
+"""
+    function VAR_NUTS_model(i, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+It makes a model for `phi` and `varFF` in the syntax of `Turing.jl`.
+"""
+
+@model function VAR_NUTS_model(i, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    mᵢ = mean.(prior_phi_[i, 1:(1+p*dP+i-1)])
+    Vᵢ = var.(prior_phi_[i, 1:(1+p*dP+i-1)])
+
+    phiQ ~ MvNormal(mᵢ, diagm(Vᵢ))
+    varFFQ ~ prior_varFF_[i]
+
+    log_lik = loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ=[kappaQ[1]; diff(kappaQ)], kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+    Turing.@addlogprob! log_lik
+
+    return phiQ, varFFQ
+end
+
+"""
+    function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
+"""
+
+@model function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
+
+    updated_q_idx = findall(x -> !(x isa Dirac), prior_q)
+    updated_q ~ product_distribution(prior_q[updated_q_idx])
+    fix_q_idx = findall(x -> x isa Dirac, prior_q)
+    fix_q = mean.(prior_q[fix_q_idx])
+
+    q = Matrix{promote_type(eltype(fix_q), eltype(updated_q))}(undef, 4, 2)
+    q[updated_q_idx] = updated_q
+    q[fix_q_idx] = fix_q
+
+    net_nu0 ~ prior_nu0
+
+    Omega0 = Vector{promote_type(Float64, eltype(net_nu0))}(undef, dP)
+    for i in eachindex(Omega0)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * net_nu0
+    end
+
+    Turing.@addlogprob! logprior_varFF(varFF; nu0=net_nu0 + (dP + 1), Omega0)
+    Turing.@addlogprob! logprior_C(C; Omega0)
+    Turing.@addlogprob! logprior_phi0(phi0, mean_phi_const, rho, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0=net_nu0 + (dP + 1), Omega0, fix_const_PC1)
+
+    return updated_q, net_nu0
+end
+
+"""
+    loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+The function calculate the likelihood of the NUTS block.
+"""
+function loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    phi_full = similar(phi, promote_type(eltype(phi), eltype(phiQ))) |> x -> x .= 0.0
+    varFF_full = similar(varFF, promote_type(eltype(varFF), eltype(varFFQ)))
+
+    phi_full[:, :] = phi |> deepcopy
+    varFF_full[:] = varFF |> deepcopy
+
+    yphi, Xphi = yphi_Xphi(PCs, macros, p)
+
+    if i == 1
+        phi_full[i, 1:dims_phi[i]] = phiQ
+        varFF_full[i] = varFFQ
+    elseif !isempty(i)
+        phi_full[i, 1:diff(dims_phi)[i-1]] = phiQ
+        varFF_full[i] = varFFQ
+    end
+
+    T = size(yphi, 1)
+    log_pdf = 0.0
+    if !isempty(i)
+        log_pdf += logpdf(MvNormal(Xphi * phi_full[i, :], varFFQ * I(T)), yphi[:, i])
+    end
+    log_pdf += loglik_mea_NUTS(yields, tau_n; kappaQ=cumsum(diff_kappaQ), kQ_infty, phi=phi_full, varFF=varFF_full, SigmaO, data_scale, pca_loadings)
+
+    return log_pdf
 end
 
 """
@@ -199,18 +399,18 @@ function NIG_NIG(y, X, β₀, B₀, α₀, δ₀)
 end
 
 """
-    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
+    post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, pca_loadings)
 Posterior sampler for the measurement errors
 # Output
 - `Vector{Dist}(IG, N-dQ)`
 """
-function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale)
+function post_SigmaO(yields, tau_n; kappaQ, kQ_infty, ΩPP, gamma, p, data_scale, pca_loadings)
     yields = yields[p+1:end, :]
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     N = length(tau_n)
     T = size(yields, 1)
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
 
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)

@@ -6,15 +6,23 @@ We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (
 - Each element in the output follows Inverse-Gamma priors.
 """
 function prior_varFF(; nu0, Omega0::Vector)
-
     dP = length(Omega0) # dimension
-    varFF = Vector{Any}(undef, dP) # Diagonal matrix in the LDLt decomposition that follows a IG distribution
+    return [InverseGamma((nu0 + i - dP) / 2, Omega0[i] / 2) for i in 1:dP]
+end
 
-    for i in eachindex(varFF)
-        varFF[i] = InverseGamma((nu0 + i - dP) / 2, Omega0[i] / 2)
+"""
+    logprior_varFF(varFF; nu0, Omega0::Vector)
+It is a companion function of `prior_varFF`. It calculates the log density of the prior distribution for `varFF`.
+"""
+function logprior_varFF(varFF; nu0, Omega0::Vector)
+    dP = length(Omega0) # dimension
+    logpdf_ = 0.0
+
+    for i in 1:dP
+        logpdf_ += logpdf(InverseGamma((nu0 + i - dP) / 2, Omega0[i] / 2), varFF[i])
     end
 
-    return varFF
+    return logpdf_
 end
 
 """
@@ -45,6 +53,24 @@ function prior_C(; Omega0::Vector)
     end
 
     return C
+end
+
+"""
+    logprior_C(C; Omega0::Vector)
+It is a companion function of `prior_C`. It calculates the log density of the prior distribution for `C`.
+"""
+function logprior_C(C; Omega0::Vector)
+
+    dP = length(Omega0) # dimension
+
+    logpdf_ = 0.0
+    for i in 2:dP
+        for j in 1:(i-1)
+            logpdf_ += logpdf(Normal(0, sqrt(1 / Omega0[j])), C[i, j])
+        end
+    end
+
+    return logpdf_
 end
 
 """
@@ -117,6 +143,49 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
     end
 
     return phi0
+end
+
+"""
+    logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+It is a companion function of `prior_phi0`. It calculates the log density of the prior distribution for `phi0`.
+"""
+function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+
+    logpdf_ = 0.0
+    for i in 1:dQ
+        if i == 1 && fix_const_PC1
+            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-10)), phi0[i, 1])
+        else
+            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 1])), phi0[i, 1])
+        end
+        for l = 1:1
+            for j in 1:dQ
+                logpdf_ += logpdf(Normal(GQ_XX_mean[i, j], sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j])
+            end
+            for j in (dQ+1):dP
+                logpdf_ += logpdf(Normal(0, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j])
+            end
+        end
+        for l = 2:p
+            for j in 1:dP
+                logpdf_ += logpdf(Normal(0, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j])
+            end
+        end
+    end
+    for i in (dQ+1):dP
+        logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 2])), phi0[i, 1])
+        for l = 1:p
+            for j in 1:dP
+                if i == j && l == 1
+                    logpdf_ += logpdf(Normal(rho[i-dQ], sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j])
+                else
+                    logpdf_ += logpdf(Normal(0, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j])
+                end
+            end
+        end
+    end
+
+    return logpdf_
 end
 
 """
@@ -204,15 +273,15 @@ function dcurvature_dτ(τ; kappaQ)
 end
 
 """
-    prior_gamma(yields, p)
+    prior_gamma(yields, p; pca_loadings)
 There is a hierarchcal structure in the measurement equation. The prior means of the measurement errors are `gamma[i]` and each `gamma[i]` follows Gamma(1,`gamma_bar`) distribution. This function decides `gamma_bar` empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturities. An inverse of the average residual variances is set to `gamma_bar`.
 # Output
 - hyperparameter `gamma_bar`
 """
-function prior_gamma(yields, p)
+function prior_gamma(yields, p; pca_loadings)
     yields = yields[p+1:end, :]
 
-    PCs, OCs = PCA(yields, 0)
+    PCs, OCs = PCA(yields, 0; pca_loadings)
     T = size(OCs, 1)
 
     res_var = Vector{Float64}(undef, size(OCs, 2))

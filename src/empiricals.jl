@@ -1,17 +1,17 @@
 """
-    loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+    loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 This function generate a log likelihood of the measurement equation.
 # Output
 - the measurement equation part of the log likelihood
 """
-function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     dP = length(varFF)
     p = Int(((size(phi, 2) - 1) / dP) - 1)
     yields = yields[p+1:end, :] #excludes initial observations
     dQ = dimQ() + size(yields, 2) - length(tau_n)
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -36,15 +36,54 @@ function loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_sc
 end
 
 """
-    loglik_mea2(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale)
+    loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+This function generate a log likelihood of the measurement equation. It is used for `posterior_NUTS`.
+# Output
+- the measurement equation part of the log likelihood
+"""
+function loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+
+    dP = length(varFF)
+    p = Int(((size(phi, 2) - 1) / dP) - 1)
+    yields = yields[p+1:end, :] #excludes initial observations
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
+    bτ_ = btau(tau_n[end]; kappaQ)
+    Bₓ_ = Bₓ(bτ_, tau_n)
+
+    T1X_ = T1X(Bₓ_, Wₚ) |> x -> x + clamp(norm(x) * sqrt(eps(real(eltype(x)))), 1e-10, 1e-4)I
+
+    Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
+    ΩPP = phi_varFF_2_ΩPP(; phi, varFF, dQ)
+
+    aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
+    Aₓ_ = Aₓ(aτ_, tau_n)
+    T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+    Aₚ_ = Aₚ(Aₓ_, Bₓ_, T0P_, Wₒ)
+
+    T = size(OCs, 1)
+    dist_mea = MvNormal(diagm(SigmaO))
+    residuals = (OCs' - (Aₚ_ .+ Bₚ_ * PCs'))'
+
+    logpdf_ = 0
+    for t = 1:T
+        logpdf_ += logpdf(dist_mea, residuals[t, :])
+    end
+
+    return logpdf_
+end
+
+"""
+    loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale, pca_loadings)
 This function is the same as `loglik_mea` but it requires ΩPP as an input.
 """
-function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale)
+function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scale, pca_loadings)
 
     yields = yields[p+1:end, :] #excludes initial observations
     dQ = dimQ() + size(yields, 2) - length(tau_n)
 
-    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0)
+    PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
     T1X_ = T1X(Bₓ_, Wₚ)
@@ -206,7 +245,7 @@ function isstationary(GPFF; threshold)
 end
 
 """ 
-    erase_nonstationary_param(saved_params; threshold=1)
+    erase_nonstationary_param(saved_params::Vector{Parameter}; threshold=1)
 It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
@@ -215,7 +254,7 @@ It filters out posterior samples that implies an unit root VAR system. Only stat
 stationary samples, acceptance rate(%)
 - The second output indicates how many posterior samples remain.
 """
-function erase_nonstationary_param(saved_params; threshold=1)
+function erase_nonstationary_param(saved_params::Vector{Parameter}; threshold=1)
 
     iteration = length(saved_params)
     stationary_saved_params = Vector{Parameter}(undef, 0)
@@ -244,20 +283,62 @@ function erase_nonstationary_param(saved_params; threshold=1)
     return stationary_saved_params, 100length(stationary_saved_params) / iteration
 end
 
+""" 
+    erase_nonstationary_param(saved_params::Vector{Parameter_NUTS}; threshold=1)
+It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
+# Input
+- `saved_params` is the output of function `posterior_NUTS`.
+- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. 
+# Output(2): 
+stationary samples, acceptance rate(%)
+- The second output indicates how many posterior samples remain.
 """
-    reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
+function erase_nonstationary_param(saved_params::Vector{Parameter_NUTS}; threshold=1)
+
+    iteration = length(saved_params)
+    stationary_saved_params = Vector{Parameter_NUTS}(undef, 0)
+    prog = Progress(iteration; dt=5, desc="erase_nonstationary_param...")
+    #Threads.@threads 
+    for iter in 1:iteration
+
+        q = saved_params[:q][iter]
+        nu0 = saved_params[:nu0][iter]
+        kappaQ = saved_params[:kappaQ][iter]
+        kQ_infty = saved_params[:kQ_infty][iter]
+        phi = saved_params[:phi][iter]
+        varFF = saved_params[:varFF][iter]
+        SigmaO = saved_params[:SigmaO][iter]
+        gamma = saved_params[:gamma][iter]
+
+        phi0, C = phi_2_phi₀_C(; phi)
+        phi0 = C \ phi0
+        GPFF = phi0[:, 2:end]
+
+        if isstationary(GPFF; threshold)
+            push!(stationary_saved_params, Parameter_NUTS(q=copy(q), nu0=copy(nu0), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), phi=copy(phi), varFF=copy(varFF), SigmaO=copy(SigmaO), gamma=copy(gamma)))
+        end
+        next!(prog)
+    end
+    finish!(prog)
+
+    return stationary_saved_params, 100length(stationary_saved_params) / iteration
+end
+
+"""
+    reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
 It converts posterior samples in terms of the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
-function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
+function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
     if isempty(macros)
         factors = copy(PCs)
     else
@@ -311,22 +392,23 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
 end
 
 """
-    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
+    calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[], pca_loadings=[])
 The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
 # Input 
 - `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
 - `iteration` is the number of prior samples.
 - `τ::scalar` is a maturity for calculating the constant part in the term premium.
     - If τ is empty, the function does not sampling the prior distribution of the constant part in the term premium.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output(2)
 `prior_λₚ`, `prior_TP`
 - samples from the prior distribution of `λₚ` 
 - prior samples of constant part in the τ-month term premium
 """
-function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[])
+function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[], pca_loadings=[])
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
-    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p)
+    PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
 
     if isempty(macros)
         factors = copy(PCs)

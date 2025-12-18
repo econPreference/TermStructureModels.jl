@@ -19,7 +19,7 @@ Some outputs of our package are not simple arrays. They are
 - [`Vector{LatentSpace}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.LatentSpace): output of [`latentspace`](@ref)
 - [`Vector{YieldCurve}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.YieldCurve): output of [`fitted_YieldCurve`](@ref)
 - [`Vector{TermPremium}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.TermPremium): output of [`term_premium`](@ref)
-- [`Vector{Forecast}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.Forecast): outputs of [`conditional_forecasts`](@ref) and [`scenario_analysis`](@ref)
+- [`Vector{Forecast}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.Forecast): outputs of [`conditional_forecast`](@ref) and [`conditional_expectation`](@ref)
 
 The above outputs contain information about the posterior distributions of objects of interest. Users can use the outputs above to [extract posterior samples](https://econpreference.github.io/TermStructureModels.jl/dev/output/#Extract-Posterior-Samples) or [calculate descriptive statistics of the posterior distributions](https://econpreference.github.io/TermStructureModels.jl/dev/output/#Descriptive-Statistics-of-the-Posterior-Distributions).
 
@@ -41,8 +41,8 @@ Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abst
     - [`tuning_hyperparameter`](@ref)
     - [`posterior_sampler`](@ref)
     - [`term_premium`](@ref)
-    - [`conditional_forecasts`](@ref)
-    - [`scenario_analysis`](@ref)
+    - [`conditional_forecast`](@ref)
+    - [`conditional_expectation`](@ref)
     - [`latentspace`](@ref)
     - [`reducedform`](@ref)
     - [`fitted_YieldCurve`](@ref)
