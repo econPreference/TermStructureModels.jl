@@ -5,7 +5,7 @@
 You can get posterior samples of the term structure model parameters using [`reducedform`](@ref).
 
 ```julia
-reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=1200)
+reduced_params = reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
 ```
 
 `yields` is a `T` by `N` matrix, and `T` is the length of the sample period. `N` is the number of bond maturities in data. `tau_n` is a `N`-Vector that contains maturities in data. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable.
@@ -21,7 +21,7 @@ Each entry in `reduced_params::Vector{ReducedForm}` is a joint posterior sample 
 We first have to transform the parameter space from the principal component space to the latent factor space. It is done by [`latentspace`](@ref). And then, use [`fitted_YieldCurve`](@ref) to get fitted yields. Specifically,
 
 ```julia
-saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200)
+saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
 fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 ```
 

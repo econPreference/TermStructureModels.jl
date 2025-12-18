@@ -37,13 +37,19 @@ function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macr
         end
 
         if isempty(baseline)
-            S1 = S
+            S1 = similar(S)
+            for t = eachindex(S1)
+                St1 = S[t].combinations |> x -> [x zeros(size(x, 1), length(τ))]
+                st1 = S[t].values
+
+                S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
+            end
         else
             baseline_forecast = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]] |> deepcopy
 
             S1 = similar(S)
             for t = eachindex(S1)
-                St1 = S[t].combinations
+                St1 = S[t].combinations |> x -> [x zeros(size(x, 1), length(τ))]
                 st1 = S[t].values + St1 * (baseline_forecast[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
 
                 S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
@@ -395,13 +401,19 @@ function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, m
         end
 
         if isempty(baseline)
-            S1 = S
+            S1 = similar(S)
+            for t = eachindex(S1)
+                St1 = S[t].combinations |> x -> [x zeros(size(x, 1), length(τ))]
+                st1 = S[t].values
+
+                S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
+            end
         else
             baseline_expectation = [baseline[iter][:yields] baseline[iter][:factors][:, dQ+1:end] baseline[iter][:EH]]
 
             S1 = similar(S)
             for t = eachindex(S1)
-                St1 = S[t].combinations
+                St1 = S[t].combinations |> x -> [x zeros(size(x, 1), length(τ))]
                 st1 = S[t].values + St1 * (baseline_expectation[t, :] - [zeros(length(tau_n)); mean_macros; zeros(length(τ))])
 
                 S1[t] = Scenario(combinations=deepcopy(St1), values=deepcopy(st1))
