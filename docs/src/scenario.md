@@ -23,19 +23,13 @@ The first one is the full Bayesian treatment, so it is mathematically strict. Ho
 The required inputs and the type of the output are the same between `conditional_forecast` and `conditional_expectation`. That is,
 
 ```julia
-projections = conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
-                                    baseline=[],
-                                    mean_macros::Vector=[],
-                                    data_scale=1200)
+projections = conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 ```
 
 and
 
 ```julia
-projections = conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n;
-                                       baseline=[],
-                                       mean_macros::Vector=[],
-                                       data_scale=1200)
+projections = conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 ```
 
 `projections::Vector{Forecast}` contains the results of the forecasting. `τ` is a vector, and the term premium of `τ[i]`-bond is forecasted for each `i`. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).
