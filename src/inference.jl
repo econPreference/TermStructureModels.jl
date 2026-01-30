@@ -153,13 +153,14 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
             all_x[p_candidate] = exp.(Optim.minimizer(sol)) .+ 1e-10
             all_fitness[p_candidate] = Optim.minimum(sol)
+            init_y = Optim.minimizer(sol)
 
             if Optim.minimum(sol) < best_fitness
                 best_fitness = Optim.minimum(sol)
                 best_x = exp.(Optim.minimizer(sol)) .+ 1e-10
                 best_p = p_candidate
             end
-            println("p = $p_candidate, fitness = $(Optim.minimum(sol))")
+            println("p = $p_candidate, fitness = $(Optim.minimum(sol)), x = $(all_x[p_candidate])")
         end
 
         p = best_p
