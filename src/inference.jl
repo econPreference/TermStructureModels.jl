@@ -139,23 +139,22 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         all_fitness = Vector{Float64}(undef, upper_p)
 
         for p_candidate in 1:upper_p
-            function neg_logmarg_fixedp(y, params)
+            function neg_logmarg_fixedp(y)
                 x = exp.(y)
                 return negative_log_marginal([x; p_candidate])
             end
 
-            prob = Optimization.OptimizationProblem(neg_logmarg_fixedp, init_y)
-            sol = Optimization.solve(prob, Optim.LBFGS(); maxiters=maxiter)
+            sol = optimize(neg_logmarg_fixedp, init_y, LBFGS(), Optim.Options(iterations=maxiter))
 
-            all_x[p_candidate] = exp.(sol.u)
-            all_fitness[p_candidate] = sol.objective
+            all_x[p_candidate] = exp.(Optim.minimizer(sol))
+            all_fitness[p_candidate] = Optim.minimum(sol)
 
-            if sol.objective < best_fitness
-                best_fitness = sol.objective
-                best_x = exp.(sol.u)
+            if Optim.minimum(sol) < best_fitness
+                best_fitness = Optim.minimum(sol)
+                best_x = exp.(Optim.minimizer(sol))
                 best_p = p_candidate
             end
-            println("p = $p_candidate, fitness = $(sol.objective)")
+            println("p = $p_candidate, fitness = $(Optim.minimum(sol))")
         end
 
         p = best_p
