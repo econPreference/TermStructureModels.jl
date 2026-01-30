@@ -144,7 +144,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
                 return negative_log_marginal([x; p_candidate])
             end
 
-            sol = optimize(neg_logmarg_fixedp, init_y, LBFGS(), Optim.Options(iterations=maxiter, show_trace=true))
+            sol = optimize(neg_logmarg_fixedp, init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
 
             all_x[p_candidate] = exp.(Optim.minimizer(sol)) .+ 1e-10
             all_fitness[p_candidate] = Optim.minimum(sol)
