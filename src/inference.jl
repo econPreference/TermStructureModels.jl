@@ -144,8 +144,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
                 return negative_log_marginal([x; p_candidate])
             end
 
-            prob = OptimizationProblem(neg_logmarg_fixedp, init_y)
-            sol = solve(prob, LBFGS(); maxiters=maxiter)
+            prob = Optimization.OptimizationProblem(neg_logmarg_fixedp, init_y)
+            sol = Optimization.solve(prob, Optim.LBFGS(); maxiters=maxiter)
 
             all_x[p_candidate] = exp.(sol.u)
             all_fitness[p_candidate] = sol.objective
