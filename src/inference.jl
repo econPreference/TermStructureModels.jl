@@ -1,20 +1,24 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
-It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, early_stopping_tol=1.0)
+It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation.
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
+- `optimizer`: The optimization algorithm to use.
+    - `:LBFGS` (default): Uses the LBFGS algorithm from `Optim.jl`. Hyperparameters are optimized separately for each lag from 1 to `upper_p`, and the lag with the best marginal likelihood is selected. Warm-starting from the previous lag's solution is applied.
+    - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
+- `early_stopping_tol`: The minimum improvement in the log marginal likelihood required to continue optimizing for higher lags. Only used when `optimizer=:LBFGS`. Default is `1.0`.
 - `populationsize` and `maxiter` are options for the optimizer.
-    - `populationsize`: the number of candidate solutions in each generation
-    - `maxtier`: the maximum number of iterations
-- The lower bounds for `q` and `nu0` are `0` and `dP+2`. 
+    - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
+    - `maxiter`: the maximum number of iterations
+- The lower bounds for `q` and `nu0` are `0` and `dP+2`.
 - The upper bounds for `q`, `nu0` and VAR lag can be set by `upper_q`, `upper_nu0`, `upper_p`.
     - Our default option for `upper_nu0` is the time-series length of the data.
 - If you use our default option for `mean_phi_const`,
     1. `mean_phi_const[dQ+1:end]` is a zero vector.
     2. `mean_phi_const[1:dQ]` is calibrated to make a prior mean of `λₚ` a zero vector.
     3. After step 2, `mean_phi_const[1]` is replaced with `mean_phi_const_PC1` if it is not empty.
-- `mean_phi_const = Matrix(your prior, dP, upper_p)` 
+- `mean_phi_const = Matrix(your prior, dP, upper_p)`
 - `mean_phi_const[:,i]` is a prior mean for the VAR(`i`) constant. Therefore `mean_phi_const` is a matrix only in this function. In other functions, `mean_phi_const` is a vector for the orthogonalized VAR system with your selected lag.
 - When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 - `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
@@ -25,8 +29,9 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 # Output(2)
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
+- When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, early_stopping_tol=1.0)
 
 
     if isempty(upper_nu0) == true
@@ -155,13 +160,20 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             all_fitness[p_candidate] = Optim.minimum(sol)
             init_y = Optim.minimizer(sol)
 
-            if Optim.minimum(sol) < best_fitness
+            println("p = $p_candidate, fitness = $(Optim.minimum(sol)), x = $(all_x[p_candidate])")
+
+            if best_fitness - Optim.minimum(sol) >= early_stopping_tol
                 best_fitness = Optim.minimum(sol)
                 best_x = exp.(Optim.minimizer(sol)) .+ 1e-10
                 best_p = p_candidate
+            else
+                println("Early stopping: no improvement >= $early_stopping_tol for p = $p_candidate")
+                break
             end
-            println("p = $p_candidate, fitness = $(Optim.minimum(sol)), x = $(all_x[p_candidate])")
         end
+
+        all_x = all_x[1:min(best_p + 1, upper_p)]
+        all_fitness = all_fitness[1:min(best_p + 1, upper_p)]
 
         p = best_p
         q = [best_x[1] best_x[5]
