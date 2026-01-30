@@ -26,7 +26,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:BBO)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS)
 
 
     if isempty(upper_nu0) == true
@@ -140,18 +140,18 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         for p_candidate in 1:upper_p
             function neg_logmarg_fixedp(y)
-                x = exp.(y)
+                x = exp.(y) .+ 1e-10
                 return negative_log_marginal([x; p_candidate])
             end
 
             sol = optimize(neg_logmarg_fixedp, init_y, LBFGS(), Optim.Options(iterations=maxiter))
 
-            all_x[p_candidate] = exp.(Optim.minimizer(sol))
+            all_x[p_candidate] = exp.(Optim.minimizer(sol)) .+ 1e-10
             all_fitness[p_candidate] = Optim.minimum(sol)
 
             if Optim.minimum(sol) < best_fitness
                 best_fitness = Optim.minimum(sol)
-                best_x = exp.(Optim.minimizer(sol))
+                best_x = exp.(Optim.minimizer(sol)) .+ 1e-10
                 best_p = p_candidate
             end
             println("p = $p_candidate, fitness = $(Optim.minimum(sol))")
