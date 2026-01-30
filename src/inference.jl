@@ -195,6 +195,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt)[9] : best_x[9])
     end
 
+    q = min.(q, upper_q)
+    nu0 = min(nu0, upper_nu0)
+
     return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt
 
 end
