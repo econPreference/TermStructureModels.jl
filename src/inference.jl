@@ -26,7 +26,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:BBO)
 
 
     if isempty(upper_nu0) == true
@@ -117,15 +117,55 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
     end
 
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
-    opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), nu0 = $(best_candidate(x)[9] + dP + 1)"))
+    if optimizer == :BBO
+        ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
+        opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), nu0 = $(best_candidate(x)[9] + dP + 1)"))
 
-    q = [best_candidate(opt)[1] best_candidate(opt)[5]
-        best_candidate(opt)[2] best_candidate(opt)[6]
-        best_candidate(opt)[3] best_candidate(opt)[7]
-        best_candidate(opt)[4] best_candidate(opt)[8]]
-    nu0 = best_candidate(opt)[9] + dP + 1
-    p = best_candidate(opt)[10] |> Int
+        q = [best_candidate(opt)[1] best_candidate(opt)[5]
+            best_candidate(opt)[2] best_candidate(opt)[6]
+            best_candidate(opt)[3] best_candidate(opt)[7]
+            best_candidate(opt)[4] best_candidate(opt)[8]]
+        nu0 = best_candidate(opt)[9] + dP + 1
+        p = best_candidate(opt)[10] |> Int
+
+    elseif optimizer == :LBFGS
+        init_x = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
+        init_y = log.(init_x)
+
+        best_fitness = Inf
+        best_x = copy(init_x)
+        best_p = 1
+        all_x = Vector{Vector{Float64}}(undef, upper_p)
+        all_fitness = Vector{Float64}(undef, upper_p)
+
+        for p_candidate in 1:upper_p
+            function neg_logmarg_fixedp(y, params)
+                x = exp.(y)
+                return negative_log_marginal([x; p_candidate])
+            end
+
+            prob = OptimizationProblem(neg_logmarg_fixedp, init_y)
+            sol = solve(prob, LBFGS(); maxiters=maxiter)
+
+            all_x[p_candidate] = exp.(sol.u)
+            all_fitness[p_candidate] = sol.objective
+
+            if sol.objective < best_fitness
+                best_fitness = sol.objective
+                best_x = exp.(sol.u)
+                best_p = p_candidate
+            end
+            println("p = $p_candidate, fitness = $(sol.objective)")
+        end
+
+        p = best_p
+        q = [best_x[1] best_x[5]
+            best_x[2] best_x[6]
+            best_x[3] best_x[7]
+            best_x[4] best_x[8]]
+        nu0 = best_x[9] + dP + 1
+        opt = (minimizer=best_x, minimum=best_fitness, p=best_p, all_minimizer=all_x, all_minimum=all_fitness)
+    end
 
     PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
     if isempty(macros)
@@ -135,7 +175,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
     Omega0 = Vector{Float64}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt)[9] : Optim.minimizer(opt)[9])
     end
 
     return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt
