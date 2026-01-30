@@ -141,7 +141,12 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         for p_candidate in 1:upper_p
             function neg_logmarg_fixedp(y)
                 x = exp.(y) .+ 1e-10
-                return negative_log_marginal([x; p_candidate])
+                try
+                    val = negative_log_marginal([x; p_candidate])
+                    return isfinite(val) ? val : 1e10
+                catch
+                    return 1e10
+                end
             end
 
             sol = optimize(neg_logmarg_fixedp, init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
