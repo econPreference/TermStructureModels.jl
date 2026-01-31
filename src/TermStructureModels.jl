@@ -12,7 +12,7 @@ import AdvancedHMC, AxisArrays
 - `q::Matrix`
 - `nu0`
 - `Omega0::Vector`
-- `mean_phi_const::Vector = zeros(length(Omega0))`: It is a prior mean of a constant term in our VAR.
+- `mean_phi_const::Vector = zeros(length(Omega0))`: This is the prior mean of the constant term in the VAR.
 """
 @kwdef struct Hyperparameter
     p::Int
@@ -24,13 +24,13 @@ end
 
 """
     abstract type PosteriorSample
-It is a super-set of structs `Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`.
+This is a super-set of structs `Parameter`, `ReducedForm`, `LatentSpace`, `YieldCurve`, `TermPremium`, `Forecast`.
 """
 abstract type PosteriorSample end
 
 """
     @kwdef struct Parameter <: PosteriorSample
-It contains statistical parameters of the model that are sampled from function `posterior_sampler`.
+This struct contains the statistical parameters of the model that are sampled from function `posterior_sampler`.
 - `kappaQ`
 - `kQ_infty::Float64`
 - `phi::Matrix{Float64}`
@@ -49,7 +49,7 @@ end
 
 """
     @kwdef struct Parameter_NUTS <: PosteriorSample
-It contains statistical parameters of the model that are sampled from function `posterior_NUTS`.
+This struct contains the statistical parameters of the model that are sampled from function `posterior_NUTS`.
 - `q`
 - `nu0`
 - `kappaQ`
@@ -72,7 +72,7 @@ end
 
 """
     @kwdef struct ReducedForm <: PosteriorSample
-It contains statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `lambdaP` and `LambdaPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
+This struct contains the statistical parameters in terms of the reduced form VAR(p) in P-dynamics. `lambdaP` and `LambdaPF` are parameters in the market prices of risks equation, and they only contain the first `dQ` non-zero equations. 
 - `kappaQ`
 - `kQ_infty`
 - `KPF`
@@ -117,8 +117,8 @@ In the latent factor space, the transition equation is `data[t,:] = KPXF + GPXFX
 end
 
 """
-    @kwdef struct YieldCurve <: PosteriorSample 
-It contains a fitted yield curve. `yields[t,:] = intercept + slope*latents[t,:]` holds.
+    @kwdef struct YieldCurve <: PosteriorSample
+This struct contains the fitted yield curve. `yields[t,:] = intercept + slope*latents[t,:]` holds.
 - `latents::Matrix`: latent pricing factors in LatentSpace
 - `yields`
 - `intercept`
@@ -132,10 +132,10 @@ It contains a fitted yield curve. `yields[t,:] = intercept + slope*latents[t,:]`
 end
 
 """
-    @kwdef struct TermPremium <: PosteriorSample 
-The yields are decomposed into the term premium(`TP`) and the expectation hypothesis component(`EH`). Each components have constant terms(`const_TP` and `const_EH`) and time-varying components(`timevarying_TP` and `timevarying_EH`). `factorloading_EH` and `factorloading_TP` are coefficients of the pricing factors for the time varying components. Each column of the outputs indicates the results for each maturity.
+    @kwdef struct TermPremium <: PosteriorSample
+The yields are decomposed into the term premium(`TP`) and the expectation hypothesis component(`EH`). Each component has constant terms(`const_TP` and `const_EH`) and time-varying components(`timevarying_TP` and `timevarying_EH`). `factorloading_EH` and `factorloading_TP` are coefficients of the pricing factors for the time varying components. Each column of the outputs indicates the results for each maturity.
 
-We do not store time-varying components in `TermPremium`, and the time-varying components are the separate outputs in function [`term_premium`](@ref). 
+The time-varying components are not stored in `TermPremium`, and they are the separate outputs in function [`term_premium`](@ref). 
 - TP
 - EH
 - factorloading_TP
@@ -154,9 +154,9 @@ end
 
 """
     @kwdef struct Scenario
-It contains scenarios to be conditioned in the scenario analysis. When `y = [yields; macros]` is a observed vector in our measurement equation, `Scenario.combinations*y = Scenario.values` constitutes the scenario at a specific time. `Vector{Scenario}` is used to describe a time-series of scenarios.
+This struct contains scenarios to be conditioned in the scenario analysis. When `y = [yields; macros]` is an observed vector in the measurement equation, `Scenario.combinations*y = Scenario.values` constitutes the scenario at a specific time. `Vector{Scenario}` is used to describe a time-series of scenarios.
 
-`combinations` and `values` should be `Matrix` and `Vector`. If `values` is a scalar, `combinations` would be a matrix with one raw vector and `values` should be one-dimensional vector, for example [values]. 
+`combinations` and `values` should be `Matrix` and `Vector`. If `values` is a scalar, `combinations` would be a matrix with one row vector and `values` should be one-dimensional vector, for example [values]. 
 - `combinations::Matrix`
 - `values::Vector`
 """
@@ -167,7 +167,7 @@ end
 
 """
     @kwdef struct Forecast <: PosteriorSample
-It contains a result of the scenario analysis, the conditional prediction for yields, `factors = [PCs macros]`, and term premiums.
+This struct contains the results of the scenario analysis, the conditional prediction for yields, `factors = [PCs macros]`, and term premiums.
 - `yields`
 - `factors`
 - `TP`: term premium forecasts

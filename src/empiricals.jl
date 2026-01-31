@@ -1,6 +1,6 @@
 """
     loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-This function generate a log likelihood of the measurement equation.
+This function generates the log likelihood of the measurement equation.
 # Output
 - the measurement equation part of the log likelihood
 """
@@ -37,7 +37,7 @@ end
 
 """
     loglik_mea_NUTS(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-This function generate a log likelihood of the measurement equation. It is used for `posterior_NUTS`.
+This function generates the log likelihood of the measurement equation. It is used for `posterior_NUTS`.
 # Output
 - the measurement equation part of the log likelihood
 """
@@ -108,8 +108,8 @@ end
 
 """
     loglik_tran(PCs, macros; phi, varFF)
-It calculate log likelihood of the transition equation. 
-# Output 
+This function calculates the log likelihood of the transition equation.
+# Output
 - log likelihood of the transition equation.
 """
 function loglik_tran(PCs, macros; phi, varFF)
@@ -130,11 +130,11 @@ end
 
 """
     yphi_Xphi(PCs, macros, p)
-This function generate the dependent variable and the corresponding regressors in the orthogonalized transition equation.
+This function generates the dependent variable and the corresponding regressors in the orthogonalized transition equation.
 # Output(4)
 `yphi`, `Xphi = [ones(T - p) Xphi_lag Xphi_contemporaneous]`, `[ones(T - p) Xphi_lag]`, `Xphi_contemporaneous`
-- `yphi` and `Xphi` is a full matrix. For i'th equation, the dependent variable is `yphi[:,i]` and the regressor is `Xphi`. 
-- `Xphi` is same to all orthogonalized transtion equations. The orthogonalized equations are different in terms of contemporaneous regressors. Therefore, the corresponding regressors in `Xphi` should be excluded. The form of parameter `phi` do that task by setting the coefficients of the excluded regressors to zeros. In particular, for last `dP` by `dP` block in `phi`, the diagonals and the upper diagonal elements should be zero. 
+- `yphi` and `Xphi` is a full matrix. For the i'th equation, the dependent variable is `yphi[:,i]` and the regressor is `Xphi`.
+- `Xphi` is the same for all orthogonalized transition equations. The orthogonalized equations are different in terms of contemporaneous regressors. Therefore, the corresponding regressors in `Xphi` should be excluded. The form of parameter `phi` performs that task by setting the coefficients of the excluded regressors to zeros. In particular, for the last `dP` by `dP` block in `phi`, the diagonals and the upper diagonal elements should be zero.
 """
 function yphi_Xphi(PCs, macros, p)
 
@@ -161,7 +161,7 @@ end
 
 """
     LDL(X)
-This function generate a matrix decomposition, called LDLt. `X = L*D*L'`, where `L` is a lower triangular matrix and `D` is a diagonal. How to conduct it can be found at [Wikipedia](https://en.wikipedia.org/wiki/Cholesky_decomposition#LDL_decomposition).
+This function generates a matrix decomposition called LDLt. `X = L*D*L'`, where `L` is a lower triangular matrix and `D` is a diagonal. How to conduct it can be found at [Wikipedia](https://en.wikipedia.org/wiki/Cholesky_decomposition#LDL_decomposition).
 # Input
 - Decomposed Object, `X`
 # Output(2)
@@ -179,7 +179,7 @@ end
 
 """
     phi_varFF_2_ΩPP(; phi, varFF, dQ=[])
-It construct `ΩPP` from statistical parameters.
+This function constructs `ΩPP` from statistical parameters.
 # Output
 - `ΩPP`
 """
@@ -197,11 +197,11 @@ end
 
 """
     phi_2_phi₀_C(; phi)
-It divide phi into the lagged regressor part and the contemporaneous regerssor part.
+This function divides phi into the lagged regressor part and the contemporaneous regressor part.
 # Output(3)
 `phi0`, `C = C0 + I`, `C0`
 - `phi0`: coefficients for the lagged regressors
-- `C`: coefficients for the dependent variables when all contemporaneous variables are in the LHS of the orthogonalized equations. Therefore, the diagonals of `C` is ones. Note that since the contemporaneous variables get negative signs when they are at the RHS, the signs of `C` do not change whether they are at the RHS or LHS. 
+- `C`: coefficients for the dependent variables when all contemporaneous variables are on the LHS of the orthogonalized equations. Therefore, the diagonals of `C` are ones. Note that since the contemporaneous variables get negative signs when they are on the RHS, the signs of `C` do not change whether they are on the RHS or LHS.
 """
 function phi_2_phi₀_C(; phi)
 
@@ -215,7 +215,7 @@ end
 
 """
     phi_varFF_2_OmegaFF(; phi, varFF)
-It construct `OmegaFF` from statistical parameters.
+This function constructs `OmegaFF` from statistical parameters.
 # Output
 - `OmegaFF`
 """
@@ -227,9 +227,9 @@ end
 
 """
     isstationary(GPFF; threshold)
-It checks whether a reduced VAR matrix has unit roots. If there is at least one unit root, return is false.
+This function checks whether a reduced VAR matrix has unit roots. If there is at least one unit root, the return is false.
 # Input
-- `GPFF` should not include intercepts. Also, `GPFF` is `dP` by `dP*p` matrix that the coefficient at lag 1 comes first, and the lag `p` slope matrix comes last. 
+- `GPFF` should not include intercepts. Also, `GPFF` is a `dP` by `dP*p` matrix where the coefficient at lag 1 comes first, and the lag `p` slope matrix comes last.
 - Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. Typically, `threshold` is set to 1.
 # Output
 - `boolean`
@@ -244,13 +244,13 @@ function isstationary(GPFF; threshold)
     return maximum(abs.(eigen(G).values)) < threshold || maximum(abs.(eigen(G).values)) ≈ threshold
 end
 
-""" 
+"""
     erase_nonstationary_param(saved_params::Vector{Parameter}; threshold=1)
-It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
+This function filters out posterior samples that imply a unit root VAR system. Only stationary posterior samples remain.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
-- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. 
-# Output(2): 
+- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed.
+# Output(2):
 stationary samples, acceptance rate(%)
 - The second output indicates how many posterior samples remain.
 """
@@ -283,13 +283,13 @@ function erase_nonstationary_param(saved_params::Vector{Parameter}; threshold=1)
     return stationary_saved_params, 100length(stationary_saved_params) / iteration
 end
 
-""" 
+"""
     erase_nonstationary_param(saved_params::Vector{Parameter_NUTS}; threshold=1)
-It filters out posterior samples that implies an unit root VAR system. Only stationary posterior samples remain.
+This function filters out posterior samples that imply a unit root VAR system. Only stationary posterior samples remain.
 # Input
 - `saved_params` is the output of function `posterior_NUTS`.
-- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed. 
-# Output(2): 
+- Posterior samples with eigenvalues of the P-system greater than `threshold` are removed.
+# Output(2):
 stationary samples, acceptance rate(%)
 - The second output indicates how many posterior samples remain.
 """
@@ -326,10 +326,10 @@ end
 
 """
     reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
-It converts posterior samples in terms of the reduced form VAR parameters.
+This function converts posterior samples to the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
-- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
@@ -393,17 +393,17 @@ end
 
 """
     calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[], pca_loadings=[])
-The purpose of the function is to calibrate a prior mean of the first `dQ` constant terms in our VAR. Adjust your prior setting based on the prior samples in outputs.
-# Input 
-- `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. Our default option set it as a zero vector.
+This function calibrates a prior mean of the first `dQ` constant terms in the VAR. Adjust your prior setting based on the prior samples in the outputs.
+# Input
+- `mean_phi_const_PCs` is your prior mean of the first `dQ` constants. The default option sets it as a zero vector.
 - `iteration` is the number of prior samples.
 - `τ::scalar` is a maturity for calculating the constant part in the term premium.
-    - If τ is empty, the function does not sampling the prior distribution of the constant part in the term premium.
-- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
+    - If τ is empty, the function does not sample the prior distribution of the constant part in the term premium.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 # Output(2)
 `prior_λₚ`, `prior_TP`
-- samples from the prior distribution of `λₚ` 
-- prior samples of constant part in the τ-month term premium
+- samples from the prior distribution of `λₚ`
+- prior samples of the constant part in the τ-month term premium
 """
 function calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, nu0, yields, macros, tau_n, p; mean_phi_const_PCs=[], medium_tau=collect(24:3:48), iteration=1000, data_scale=1200, kappaQ_prior_pr=[], τ=[], pca_loadings=[])
 

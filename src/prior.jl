@@ -1,7 +1,7 @@
 """
     prior_varFF(; nu0, Omega0::Vector)
-We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Inverse-Gamma priors.  
-# Output: 
+This function translates the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Inverse-Gamma priors.
+# Output:
 - prior of `varFF` in the LDLt decomposition,` OmegaFF = inv(C)*diagm(varFF)*inv(C)'`
 - Each element in the output follows Inverse-Gamma priors.
 """
@@ -12,7 +12,7 @@ end
 
 """
     logprior_varFF(varFF; nu0, Omega0::Vector)
-It is a companion function of `prior_varFF`. It calculates the log density of the prior distribution for `varFF`.
+This is a companion function of `prior_varFF`. It calculates the log density of the prior distribution for `varFF`.
 """
 function logprior_varFF(varFF; nu0, Omega0::Vector)
     dP = length(Omega0) # dimension
@@ -27,8 +27,8 @@ end
 
 """
     prior_C(; Omega0::Vector)
-We translate the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Normal priors.  
-# Output: 
+This function translates the Inverse-Wishart prior to a series of the Normal-Inverse-Gamma (NIG) prior distributions. If the dimension is dₚ, there are dₚ NIG prior distributions. This function generates Normal priors.
+# Output:
 - unscaled prior of `C` in the LDLt decomposition, `OmegaFF = inv(C)*diagm(varFF)*inv(C)'`
 # Important note
 prior variance for `C[i,:] = varFF[i]*variance of output[i,:]`
@@ -57,7 +57,7 @@ end
 
 """
     logprior_C(C; Omega0::Vector)
-It is a companion function of `prior_C`. It calculates the log density of the prior distribution for `C`.
+This is a companion function of `prior_C`. It calculates the log density of the prior distribution for `C`.
 """
 function logprior_C(C; Omega0::Vector)
 
@@ -75,12 +75,12 @@ end
 
 """
     prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
-This part derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR. 
-# Input 
-- `prior_kappaQ_` is a output of function `prior_kappaQ`.
-- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+This function derives the prior distribution for coefficients of the lagged regressors in the orthogonalized VAR.
+# Input
+- `prior_kappaQ_` is an output of function `prior_kappaQ`.
+- When `fix_const_PC1==true`, the first element in a constant term in the orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 # Output
-- Normal prior distributions on the slope coefficient of lagged variables and intercepts in the orthogonalized equation. 
+- Normal prior distributions on the slope coefficient of lagged variables and intercepts in the orthogonalized equation.
 - `Output[:,1]` for intercepts, `Output[:,1+1:1+dP]` for the first lag, `Output[:,1+dP+1:1+2*dP]` for the second lag, and so on.
 # Important note
 prior variance for `phi[i,:]` = `varFF[i]*var(output[i,:])`
@@ -147,7 +147,7 @@ end
 
 """
     logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
-It is a companion function of `prior_phi0`. It calculates the log density of the prior distribution for `phi0`.
+This is a companion function of `prior_phi0`. It calculates the log density of the prior distribution for `phi0`.
 """
 function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
 
@@ -190,10 +190,10 @@ end
 
 """
     Minnesota(l, i, j; q, nu0, Omega0, dQ=[])
-It return unscaled prior variance of the Minnesota prior.
-# Input 
+This function returns the unscaled prior variance of the Minnesota prior.
+# Input
 - lag `l`, dependent variable `i`, regressor `j` in the VAR(`p`)
-- `q[:,1]` and `q[:,2]` are [own, cross, lag, intercept] shrikages for the first `dQ` and remaining `dP-dQ` equations, respectively.
+- `q[:,1]` and `q[:,2]` are [own, cross, lag, intercept] shrinkages for the first `dQ` and remaining `dP-dQ` equations, respectively.
 - `nu0`(d.f.), `Omega0`(scale): Inverse-Wishart prior for the error-covariance matrix of VAR(`p`).
 # Output
 - Minnesota part in the prior variance
@@ -230,8 +230,8 @@ end
 
 """
     prior_kappaQ(medium_tau, pr)
-The function derive the maximizer decay parameter `kappaQ` that maximize the curvature factor loading at each candidate medium-term maturity. And then, it impose a discrete prior distribution on the maximizers with a prior probability vector `pr`.
-# Input 
+This function derives the maximizer decay parameter `kappaQ` that maximizes the curvature factor loading at each candidate medium-term maturity. Then, it imposes a discrete prior distribution on the maximizers with a prior probability vector `pr`.
+# Input
 - `medium_tau::Vector`(candidate medium maturities, # of candidates)
 - `pr::Vector`(probability, # of candidates)
 # Output
@@ -257,10 +257,10 @@ end
 
 """
     dcurvature_dτ(τ; kappaQ)
-This function calculate the first derivative of the curvature factor loading w.r.t. the maturity.
+This function calculates the first derivative of the curvature factor loading w.r.t. the maturity.
 # Input
 - `kappaQ`: The decay parameter
-- `τ`: The maturity that the derivative is calculated
+- `τ`: The maturity at which the derivative is calculated
 # Output
 - the first derivative of the curvature factor loading w.r.t. the maturity
 """
@@ -274,7 +274,7 @@ end
 
 """
     prior_gamma(yields, p; pca_loadings)
-There is a hierarchcal structure in the measurement equation. The prior means of the measurement errors are `gamma[i]` and each `gamma[i]` follows Gamma(1,`gamma_bar`) distribution. This function decides `gamma_bar` empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturities. An inverse of the average residual variances is set to `gamma_bar`.
+There is a hierarchical structure in the measurement equation. The prior means of the measurement errors are `gamma[i]` and each `gamma[i]` follows Gamma(1,`gamma_bar`) distribution. This function decides `gamma_bar` empirically. OLS is used to estimate the measurement equation and then a variance of residuals is calculated for each maturity. An inverse of the average residual variances is set to `gamma_bar`.
 # Output
 - hyperparameter `gamma_bar`
 """

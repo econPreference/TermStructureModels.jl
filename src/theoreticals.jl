@@ -1,8 +1,6 @@
-#This module includes analytical results of our no-arbitrage Gaussian dynamic term structure model. For a specific theoretical settings, see our paper.
-
 """
     GQ_XX(; kappaQ)
-`kappaQ` governs a conditional mean of the Q-dynamics of `X`, and its slope matrix has a restricted form. This function shows that restricted form.
+`kappaQ` governs the conditional mean of the Q-dynamics of `X`, and its slope matrix has a restricted form. This function shows that restricted form.
 # Output
 - slope matrix of the Q-conditional mean of `X`
 """
@@ -25,7 +23,7 @@ end
 
 """
     dimQ()
-It returns the dimension of Q-dynamics under the standard ATSM.
+This function returns the dimension of Q-dynamics under the standard ATSM.
 """
 function dimQ()
     return 3
@@ -33,9 +31,9 @@ end
 
 """
     bτ(N; kappaQ, dQ)
-It solves the difference equation for `bτ`.
+This function solves the difference equation for `bτ`.
 # Output
-- for maturity `i`, `bτ[:, i]` is a vector of factor loadings.
+- For maturity `i`, `bτ[:, i]` is a vector of factor loadings.
 """
 function bτ(N; kappaQ, dQ)
     GQ_XX_ = GQ_XX(; kappaQ)
@@ -51,9 +49,9 @@ end
 
 """
     btau(N; kappaQ)
-It solves the difference equation for `bτ` in the closed form expression, assuming the distinct eigenvalues under the JSZ model.
+This function solves the difference equation for `bτ` in the closed form expression, assuming the distinct eigenvalues under the JSZ model.
 # Output
-- for maturity `i`, `btau[:, i]` is a vector of factor loadings.
+- For maturity `i`, `btau[:, i]` is a vector of factor loadings.
 """
 function btau(N; kappaQ)
     return [(1 .- kappaQ[i] .^ j) ./ (1 .- kappaQ[i]) for i in 1:length(kappaQ), j in 1:N]
@@ -73,7 +71,7 @@ end
 """
     T1X(Bₓ_, Wₚ)
 # Input
-- `Bₓ_` if an output of function `Bₓ`.
+- `Bₓ_` is an output of function `Bₓ`.
 # Output
 - `T1X`
 """
@@ -84,15 +82,15 @@ end
 """
     aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
     aτ(N, bτ_; kQ_infty, ΩXX, data_scale)
-The function has two methods(multiple dispatch). 
+This function has two methods (multiple dispatch).
 # Input
-- When `Wₚ` ∈ arguments: It calculates `aτ` using `ΩPP`. 
-- Otherwise: It calculates `aτ` using `ΩXX = OmegaXFXF[1:dQ, 1:dQ]`, so parameters are in the latent factor space. So, we do not need `Wₚ`.
+- When `Wₚ` ∈ arguments: This function calculates `aτ` using `ΩPP`.
+- Otherwise: This function calculates `aτ` using `ΩXX = OmegaXFXF[1:dQ, 1:dQ]`, so parameters are in the latent factor space and `Wₚ` is not needed.
 - `bτ_` is an output of function `bτ`.
-- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `data_scale::scalar`: In typical affine term structure models, theoretical yields are in decimal and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 # Output
 - `Vector(Float64)(aτ,N)`
-- For `i`'th maturity, `Output[i]` is the corresponding `aτ`.
+- For the `i`-th maturity, `Output[i]` is the corresponding `aτ`.
 """
 function aτ(N, bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
 
@@ -123,9 +121,9 @@ end
 
 """
     jensens_inequality(τ, bτ_, T1X_; ΩPP, data_scale)
-This function evaluate the Jensen's Ineqaulity term. All term is invariant with respect to the `data_scale`, except for this Jensen's inequality term. So, we need to scale down the term by `data_scale`.
+This function evaluates the Jensen's Inequality term. All terms are invariant with respect to the `data_scale`, except for this Jensen's inequality term, so the term needs to be scaled down by `data_scale`.
 # Output
-- Jensen's Ineqaulity term for `aτ` of maturity `τ`.
+- Jensen's Inequality term for `aτ` of maturity `τ`.
 """
 function jensens_inequality(τ, bτ_, T1X_; ΩPP, data_scale)
     J = 0.5 * ΩPP
@@ -182,21 +180,21 @@ end
 
 """
     _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
-This function calculates a term premium for maturity `τ`. 
+This function calculates the term premium for maturity `τ`.
 # Input
-- `data_scale::scalar` = In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `data_scale::scalar` = In typical affine term structure models, theoretical yields are in decimal and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 # Output(4)
 `TP`, `timevarying_TP`, `const_TP`, `jensen`
 - `TP`: term premium of maturity `τ`
 - `timevarying_TP`: contributions of each `[PCs macros]` on `TP` at each time ``t`` (row: time, col: variable)
 - `const_TP`: Constant part of `TP`
-- `jensen`: Jensen's Ineqaulity part in `TP`
-- Output excludes the time period for the initial observations.  
+- `jensen`: Jensen's Inequality part in `TP`
+- The output excludes the time period for the initial observations.
 """
 function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, GPFF, ΩPP, data_scale)
 
     T1P_ = inv(T1X_)
-    # Jensen's Ineqaulity term
+    # Jensen's Inequality term
     jensen = 0
     for i = 1:(τ-1)
         jensen += jensens_inequality(i + 1, bτ_, T1X_; ΩPP, data_scale)
@@ -216,7 +214,7 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
     dP = size(GPFF, 1)
     p = Int(size(GPFF, 2) / dP)
     T = size(PCs, 1) # time series length including intial conditions
-    timevarying_TP = zeros(T - p, dP) # time-varying part is seperated to see the individual contribution of each priced factor. So, the column length is dP.
+    timevarying_TP = zeros(T - p, dP) # time-varying part is separated to see the individual contribution of each priced factor, so the column length is dP.
 
     GQ_PP = T1X_ * GQ_XX(; kappaQ) * T1P_
     Λ_PF = GPFF[1:dQ, :]
@@ -256,8 +254,8 @@ end
 """
     term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[])
 This function generates posterior samples of the term premiums.
-# Input 
-- maturity of interest `tau_interest` for Calculating `TP`
+# Input
+- Maturity of interest `tau_interest` for calculating `TP`
 - `saved_params` from function `posterior_sampler`
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output(3)
@@ -265,7 +263,7 @@ This function generates posterior samples of the term premiums.
 - `saved_TP::Vector{TermPremium}(, iteration)`
 - `saved_tv_TP::Vector{Array}(, iteration)`
 - `saved_tv_EH::Vector{Array}(, iteration)`
-- Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor is stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
+- Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor are stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
 """
 function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[])
 
@@ -381,13 +379,13 @@ end
 
 """
     latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
-This function translates the principal components state space into the latent factor state space. 
+This function translates the principal components state space into the latent factor state space.
 # Input
-- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `data_scale::scalar`: In typical affine term structure models, theoretical yields are in decimal and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - `Vector{LatentSpace}(, iteration)`
-- latent factors contain initial observations.
+- Latent factors contain initial observations.
 """
 function latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
 
@@ -421,11 +419,11 @@ end
     PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings=[])
 Notation `XF` is for the latent factor space and notation `F` is for the PC state space.
 # Input
-- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `data_scale::scalar`: In typical affine term structure models, theoretical yields are in decimal and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output(6)
 `latent`, `kappaQ`, `kQ_infty`, `KPXF`, `GPXFXF`, `OmegaXFXF`
-- latent factors contain initial observations.
+- Latent factors contain initial observations.
 """
 function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings=[])
 
@@ -479,7 +477,7 @@ end
 
 """
     fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
-It generates a fitted yield curve.
+This function generates the fitted yield curve.
 # Input
 - `τ0` is a set of maturities of interest. `τ0` does not need to be the same as the one used for the estimation.
 - `saved_latent_params` is a transformed posterior sample using function `latentspace`.
@@ -522,7 +520,7 @@ end
 
 """
     PCA(yields, p; pca_loadings=[], dQ=[])
-It derives the principal components from `yields`.
+This function derives the principal components from `yields`.
 # Input
 - `yields[p+1:end, :]` is used to construct the affine transformation, and then all `yields[:,:]` are transformed into the principal components.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
@@ -530,7 +528,7 @@ It derives the principal components from `yields`.
 `PCs`, `OCs`, `Wₚ`, `Wₒ`, `mean_PCs`
 - `PCs`, `OCs`: first `dQ` and the remaining principal components
 - `Wₚ`, `Wₒ`: the rotation matrix for `PCs` and `OCs`, respectively
-- `mean_PCs`: the mean of `PCs` before demeaned.
+- `mean_PCs`: the mean of `PCs` before being demeaned.
 - `PCs` are demeaned.
 """
 function PCA(yields, p; pca_loadings=[], dQ=[])

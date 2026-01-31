@@ -53,8 +53,8 @@ end
 """
     post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 # Input
-- `prior_kappaQ_` is a output of function `prior_kappaQ`.
-# Output 
+- `prior_kappaQ_` is an output of function `prior_kappaQ`.
+# Output
 - Full conditional posterior distribution
 """
 function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
@@ -77,7 +77,7 @@ end
 
 """
     post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
-It conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. `x_mode` and `inv_x_hess` constitute the mean and variance of the Normal proposal distribution.
+This function conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. `x_mode` and `inv_x_hess` constitute the mean and variance of the Normal proposal distribution.
 - Reparameterization:
     kappaQ[1] = x[1]
     kappaQ[2] = x[1] + x[2]
@@ -124,13 +124,13 @@ end
 
 """
     post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
-Full-conditional posterior sampler for `phi` and `varFF` 
+Full-conditional posterior sampler for `phi` and `varFF`
 # Input
-- `prior_kappaQ_` is a output of function `prior_kappaQ`.
-- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
-# Output(3) 
+- `prior_kappaQ_` is an output of function `prior_kappaQ`.
+- When `fix_const_PC1==true`, the first element in a constant term in the orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+# Output(3)
 `phi`, `varFF`, `isaccept=Vector{Bool}(undef, dQ)`
-- It gives a posterior sample.
+- Returns a posterior sample.
 """
 function post_phi_varFF(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; phi, psi, psi_const, varFF, q, nu0, Omega0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings)
 
@@ -175,15 +175,15 @@ end
 
 """
     post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
-Full-conditional posterior sampler for `kappaQ`, `phi` and `varFF` 
+Full-conditional posterior sampler for `kappaQ`, `phi` and `varFF`
 # Input
 - `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`.
-- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be the object in `Distributions.jl`.
+- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be an object in `Distributions.jl`.
 - `prior_diff_kappaQ` is a vector of the truncated normals(`Distributions.truncated(Distributions.Normal(), lower, upper)`). It has a prior for `[kappaQ[1]; diff(kappaQ)]`.
-- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
+- When `fix_const_PC1==true`, the first element in a constant term in the orthogonalized VAR is fixed to its prior mean during the posterior sampling.
 - `sampler` and `chain` are the objects in `Turing.jl`.
-- If the current step is in the warming up phrase, set `is_warmup=true`.
-# Output(6) 
+- If the current step is in the warmup phase, set `is_warmup=true`.
+# Output(6)
 chain, q, nu0, kappaQ, phi, varFF
 """
 function post_kappaQ_phi_varFF_q_nu0(yields, macros, tau_n, mean_phi_const, rho, prior_q, prior_nu0, prior_diff_kappaQ; phi, psi, psi_const, varFF, q, nu0, kappaQ, kQ_infty, SigmaO, fix_const_PC1, data_scale, pca_loadings, sampler, chain, is_warmup)
@@ -277,7 +277,7 @@ end
 
 """
     function diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-It makes a model for `diff_kappaQ` in the syntax of `Turing.jl`.
+This function creates a model for `diff_kappaQ` in the syntax of `Turing.jl`.
 """
 
 @model function diff_kappaQ_NUTS_model(yields, PCs, tau_n, macros, p, dims_phi, prior_diff_kappaQ_; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
@@ -294,7 +294,7 @@ end
 
 """
     function VAR_NUTS_model(i, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-It makes a model for `phi` and `varFF` in the syntax of `Turing.jl`.
+This function creates a model for `phi` and `varFF` in the syntax of `Turing.jl`.
 """
 
 @model function VAR_NUTS_model(i, yields, PCs, tau_n, macros, dP, p, dims_phi, prior_phi_, prior_varFF_; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
@@ -313,7 +313,7 @@ end
 
 """
     function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
-It makes a model for `q` and `nu0` in the syntax of `Turing.jl`.
+This function creates a model for `q` and `nu0` in the syntax of `Turing.jl`.
 """
 
 @model function q_nu0_NUTS_model(factors, prior_q, prior_nu0, p, dQ, dP, GQ_XX_mean, rho; phi0, C, varFF, psi_const, psi, mean_phi_const, fix_const_PC1)
@@ -343,7 +343,7 @@ end
 
 """
     loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-The function calculate the likelihood of the NUTS block.
+This function calculates the likelihood of the NUTS block.
 """
 function loglik_NUTS(i, yields, PCs, tau_n, macros, dims_phi, p; phiQ, varFFQ, diff_kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
