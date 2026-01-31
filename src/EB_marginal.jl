@@ -1,9 +1,9 @@
 """
     log_marginal(PCs, macros, rho, tuned::Hyperparameter, tau_n, Wₚ; psi=[], psi_const=[], medium_tau, kappaQ_prior_pr, fix_const_PC1)
-This file calculates a value of our marginal likelihood. Only the transition equation is used to calculate it. 
+This file calculates a value of the marginal likelihood. Only the transition equation is used to calculate it.
 # Input
-- tuned is a point where the marginal likelihood is evaluated. 	
-- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. 
+- tuned is a point where the marginal likelihood is evaluated.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`.
 # Output
 - the log marginal likelihood of the VAR system.
 """

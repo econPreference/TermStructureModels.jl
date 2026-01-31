@@ -14,82 +14,86 @@ We have five hyperparameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.
 We recommend [`tuning_hyperparameter`](@ref) for deciding the hyperparameters.
 
 ```julia
-tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
+tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 ```
 
-Note that the default upper bound of `p` is `upper_p=18`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
+Note that the default upper bound of `p` is `upper_p=24`. The output `tuned::Hyperparameter` is the object that should be obtained in Step 1. `results` contains the optimization results.
 
-If users accept our default values, the function is simplified, that is
+If you accept the default values, the function is simplified to
 
 ```julia
 tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 ```
 
-`yields` is a `T` by `N` matrix, and `T` is the length of the sample period. `N` is the number of maturities in data. `tau_n` is a `N`-Vector that contains bond maturities in data. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column is an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in level, or it is set to 0 if the macro variable is differenced.
+`yields` is a `T` by `N` matrix, `T` is the length of the sample period and `N` is the number of maturities in the data. `tau_n` is an `N`-Vector that contains bond maturities in the data. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column represents an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in levels, or it is set to 0 if the macro variable is differenced.
 
 ### Several relevant points regarding hyperparameter optimization
 
-#### Computational Cost of the Optimization
+#### Optimization Algorithms
 
-Since we adopt the Differential Evolutionary(DE) algorithm (Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
+We provide two optimization algorithms via the `optimizer` option:
 
-The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
+- **`:LBFGS` (default, recommended)**: Uses gradient-based LBFGS optimization from `Optim.jl`. This algorithm alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence. It is fast and efficient, making it suitable for most applications. However, it does not guarantee finding the global optimum due to its local search nature.
+
+- **`:BBO`**: Uses a Differential Evolutionary (DE) algorithm from [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl). This algorithm optimizes hyperparameters and lag simultaneously and is more likely to find the global optimum. The downside is that it has higher computational costs and lacks automatic convergence detection—users must verify convergence by examining the objective function values or setting a sufficient number of iterations via `maxiter`.
+
+We recommend using the default `:LBFGS` optimizer for most cases due to its speed and reliability. If you suspect the optimization is stuck in a local optimum or need to verify global optimality, you can use `:BBO` with the `populationsize` and `maxiter` options adjusted according to your computational budget.
 
 #### Range of Data over which the Marginal Likelihood is Calculated
 
-In Bayesian methodology, the standard criterion of the model comparison is the marginal likelihood. When we compare models using the marginal likelihood, the most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
+In Bayesian methodology, the standard criterion for model comparison is the marginal likelihood. When comparing models using the marginal likelihood, the most crucial prerequisite is that the marginal likelihoods of all models must be calculated over the same observations.
 
-For instance, let's say we have `data` with the number of rows being 100. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` is used as initial values. `tuning_hyperparameter` automatically reflects this fact by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
+For instance, suppose we have `data` with 100 rows. Model 1 has `p=1`, and Model 2 has `p=2`. In this case, the marginal likelihood should be computed over `data[3:end, :]`. This means that for Model 1, `data[2, :]` is used as the initial value, and for Model 2, `data[1:2, :]` are used as initial values. `tuning_hyperparameter` automatically accounts for this by calculating the marginal likelihood over `data[upper_p+1:end, :]` for model comparison.
 
 #### Prior Belief about the Expectation Hypothesis
 
-Our algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the pure EH, where the term premium is zero, set `is_pure_EH=true`. However, note that using this option may take some initial time to numerically set the prior distribution.
+The algorithm has an inductive bias that the estimates should not deviate too much from the Expectation Hypothesis (EH). Here, the assumed EH means that the term premium is a non-zero constant. If you want to introduce an inductive bias centered around the pure EH, where the term premium is zero, set `is_pure_EH=true`. However, note that using this option may take some additional time to numerically set the prior distribution.
 
 ## Step 2. Sampling the Posterior Distribution of Parameters
 
-In Step 1, we got `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
+In Step 1, we obtained `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
 
 ```julia
 saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[])
 ```
 
-If users changed the default values in Step 1, the corresponding default values in the above function also should be changed. If users use our default values, the function simplifies to
+If you changed the default values in Step 1, the corresponding default values in the above function should also be changed. If you use the default values, the function simplifies to
 
 ```julia
 saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter)
 ```
 
-`iteration` is the number of posterior samples that users want to get. Our MCMC starts at the prior mean, and you have to erase burn-in samples manually.
+`iteration` is the number of posterior samples to generate. The MCMC sampler starts at the prior mean, and you need to discard burn-in samples manually.
 
-`saved_params::Vector{Parameter}` has a length of `iteration` and each entry is a posterior sample. `acceptPrMH` is `dQ+1`-Vector, and the `i(<=dQ)`-th entry shows the MH acceptance rate for i-th principal component in the recursive $\mathbb{P}$-VAR. The last entry of `acceptPrMH` is the MH acceptance rate for `kappaQ` under the unrestricted JSZ model. It is zero under the AFNS restriction.
+`saved_params::Vector{Parameter}` has length `iteration`, and each entry is a posterior sample. `acceptPrMH` is a `dQ+1`-Vector, where the `i(<=dQ)`-th entry shows the MH acceptance rate for the i-th principal component in the recursive $\mathbb{P}$-VAR. The last entry of `acceptPrMH` is the MH acceptance rate for `kappaQ` under the unrestricted JSZ model. It is zero under the AFNS restriction.
 
 ## Step 3. Discard Burn-in and Nonstationary Posterior Samples
 
-After users get posterior samples(`saved_params`), they might want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
+After obtaining posterior samples (`saved_params`), you may want to discard some samples as burn-in. If the number of burn-in samples is `burnin`, run
 
 ```julia
 saved_params = saved_params[burnin+1:end]
 ```
 
-Also, users might want to erase posterior samples that do not satisfies the stationary condition. It can be done by [`erase_nonstationary_param`](@ref).
+You may also want to discard posterior samples that do not satisfy the stationarity condition. This can be done using [`erase_nonstationary_param`](@ref).
 
 ```julia
 saved_params, Pr_stationary = erase_nonstationary_param(saved_params; threshold=1)
 ```
 
-All entries in the first output (`saved_params::Vector{Parameter}`) are posterior samples that satisfy the stationary condition.
+All entries in the output (`saved_params::Vector{Parameter}`) are posterior samples that satisfy the stationarity condition.
 
 !!! warning "Reduction in the Number of Posterior Samples"
 
-    The vector length of `saved_params` decreases after the burn-in process and `erase_nonstationary_param`. Note that this leads to a gap between `iteration` and `length(saved_params)`.
+    The length of `saved_params` decreases after the burn-in process and applying `erase_nonstationary_param`. Note that this creates a gap between `iteration` and `length(saved_params)`.
 
 !!! note "Handling Non-Stationary Data"
 
-    The optional input `eigenvalue` is designed to discard posterior samples with eigenvalues of the VAR system exceeding the specified threshold. Traditionally, we use a stationary VAR, so the default threshold is set to `1`. However, for non-stationary VAR models, it may be necessary to allow for a slightly higher threshold. In such cases, you can set `threshold` to a value greater than `1`, such as `1.05`.
+    The optional input `threshold` is designed to discard posterior samples with eigenvalues of the VAR system exceeding the specified threshold. Traditionally, we use a stationary VAR, so the default threshold is set to `1`. However, for non-stationary VAR models, it may be necessary to allow for a slightly higher threshold. In such cases, you can set `threshold` to a value greater than `1`, such as `1.05`.
 
 ## Diagnostics for MCMC
 
-We believe in the efficiency of our algorithm, so users do not need to be overly concerned about the convergence of the posterior samples. In our opinion, sampling 6,000 posterior samples and erase the first 1,000 samples as burn-in would be enough.
+We believe in the efficiency of the algorithm, so you do not need to be overly concerned about the convergence of the posterior samples. In our opinion, sampling 6,000 posterior samples and discarding the first 1,000 samples as burn-in should be sufficient.
 
 We provide [a measure](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.ineff_factor-Tuple{Any}) to gauge the efficiency of the algorithm, that is
 
@@ -97,7 +101,7 @@ We provide [a measure](https://econpreference.github.io/TermStructureModels.jl/d
 ineff = ineff_factor(saved_params)
 ```
 
-`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object of the tuple has the same shape as its corresponding parameter. The entries of the `Array` of the `Tuple` represent the inefficiency factors of the corresponding parameters. If an inefficiency factor is high, it indicates poor sampling efficiency of the parameter located at the same position.
+`saved_params::Vector{Parameter}` is the output of `posterior_sampler`. `ineff` is a `Tuple(kappaQ, kQ_infty, gamma, SigmaO, varFF, phi)`. Each object in the tuple has the same shape as its corresponding parameter. The entries in the `Array` of the `Tuple` represent the inefficiency factors of the corresponding parameters. If an inefficiency factor is high, it indicates poor sampling efficiency for the parameter at that position.
 
 You can calculate the maximum inefficiency factor by
 
@@ -105,4 +109,4 @@ You can calculate the maximum inefficiency factor by
 max_ineff = (ineff[1] |> maximum, ineff[2], ineff[3] |> maximum, ineff[4] |> maximum, ineff[5] |> maximum, ineff[6] |> maximum) |> maximum
 ```
 
-The value obtained by dividing the number of posterior samples by `max_ineff` is the effective number of posterior samples, taking into account the efficiency of the sampler. For example, let's say `max_ineff = 10`. Then, if 6,000 posterior samples are drawn and the first 1,000 samples are erased as burn-in, the remaining 5,000 posterior samples have the same efficiency as using 500 i.i.d samples, calculated as `(6000-1000)/max_ineff`. For reference, in [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628), the maximum inefficiency factor was `2.38`.
+The value obtained by dividing the number of posterior samples by `max_ineff` is the effective number of posterior samples, accounting for the efficiency of the sampler. For example, suppose `max_ineff = 10`. If 6,000 posterior samples are drawn and the first 1,000 samples are discarded as burn-in, the remaining 5,000 posterior samples have the same efficiency as 500 i.i.d. samples, calculated as `(6000-1000)/max_ineff`.

@@ -4,19 +4,19 @@
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
     - If we need an unconditional prediction, `S = []`.
-    - If you are conditionaing a scenario, I assume S = Vector{Scenario}.
+    - If you are conditioning a scenario, I assume S = Vector{Scenario}.
 -  `τ` is a vector. The term premium of `τ[i]`-bond is forecasted for each i.
-    - If `τ` is set to `[]`, the term premium is not forecasted. 
-- `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
+    - If `τ` is set to `[]`, the term premium is not forecasted.
+- `horizon`: maximum length of the predicted path. It should not be smaller than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
-- `baseline::Vector{Forecast}`: the output of `conditional_forecast` when `S` is empty. 
+- `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_forecast`. It is generally set as the result when `S` is empty. When provided, conditional forecasts represent deviations from `baseline`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - `Vector{Forecast}(, iteration)`
-- `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
-- Mathematically, it is a posterior samples from `future observation|past observation,scenario`.
+- `t`-th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
+- Mathematically, it is a posterior sample from `future observation|past observation,scenario`.
 """
 function conditional_forecast(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
     iteration = length(saved_params)
@@ -368,18 +368,18 @@ end
 # Input
 scenarios, a result of the posterior sampler, and data 
 - `S[t]` = conditioned scenario at time `size(yields, 1)+t`.
-    - Set `S = []` if you need an unconditional prediction. 
-    - If you are conditionaing a scenario, I assume S = Vector{Scenario}.
+    - Set `S = []` if you need an unconditional prediction.
+    - If you are conditioning a scenario, I assume S = Vector{Scenario}.
 - `τ` is a vector of maturities that term premiums of interest has.
-- `horizon`: maximum length of the predicted path. It should not be small than `length(S)`.
+- `horizon`: maximum length of the predicted path. It should not be smaller than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
-- `baseline::Vector{Forecast}`: the output of `conditional_expectation` when `S` is empty.
+- `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_expectation`. It is generally set as the result when `S` is empty. When provided, conditional forecasts represent deviations from `baseline`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 # Output
 - `Vector{Forecast}(, iteration)`
-- `t`'th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
+- `t`-th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
 - Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
 """
 function conditional_expectation(S::Vector, τ, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])

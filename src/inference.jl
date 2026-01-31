@@ -1,32 +1,38 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
-It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation. Our optimizer is a differential evolutionary algorithm that utilizes bimodal movements in the eigen-space(Wang, Li, Huang, and Li, 2014) and the trivial geography(Spector and Klein, 2006).
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+This function optimizes the hyperparameters by maximizing the marginal likelihood of the transition equation.
 # Input
-- When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
+- When comparing marginal likelihoods between models, the data for the dependent variable should be the same across models. To achieve this, we set the period of the dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for the dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
+- `optimizer`: The optimization algorithm to use.
+    - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
+    - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
+- `ml_tol`: Tolerance for parsimony in lag selection (only for `:LBFGS`). After finding the lag with the best marginal likelihood, the algorithm iteratively selects smaller lags if their marginal likelihood is within `ml_tol` of the best. This favors simpler models (smaller lags) when performance is comparable.
+- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 10 in the format `[vec(q); nu0; p]`. If empty (default), uses `[0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
 - `populationsize` and `maxiter` are options for the optimizer.
-    - `populationsize`: the number of candidate solutions in each generation
-    - `maxtier`: the maximum number of iterations
-- The lower bounds for `q` and `nu0` are `0` and `dP+2`. 
-- The upper bounds for `q`, `nu0` and VAR lag can be set by `upper_q`, `upper_nu0`, `upper_p`.
-    - Our default option for `upper_nu0` is the time-series length of the data.
-- If you use our default option for `mean_phi_const`,
+    - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
+    - `maxiter`: the maximum number of iterations
+- The lower bounds for `q` and `nu0` are `0` and `dP+2`.
+- The upper bounds for `q`, `nu0`, and VAR lag can be set by `upper_q`, `upper_nu0`, and `upper_p`.
+    - The default option for `upper_nu0` is the time-series length of the data.
+- If you use the default option for `mean_phi_const`,
     1. `mean_phi_const[dQ+1:end]` is a zero vector.
-    2. `mean_phi_const[1:dQ]` is calibrated to make a prior mean of `λₚ` a zero vector.
+    2. `mean_phi_const[1:dQ]` is calibrated to make the prior mean of `λₚ` a zero vector.
     3. After step 2, `mean_phi_const[1]` is replaced with `mean_phi_const_PC1` if it is not empty.
-- `mean_phi_const = Matrix(your prior, dP, upper_p)` 
-- `mean_phi_const[:,i]` is a prior mean for the VAR(`i`) constant. Therefore `mean_phi_const` is a matrix only in this function. In other functions, `mean_phi_const` is a vector for the orthogonalized VAR system with your selected lag.
-- When `fix_const_PC1==true`, the first element in a constant term in our orthogonalized VAR is fixed to its prior mean during the posterior sampling.
-- `data_scale::scalar`: In typical affine term structure model, theoretical yields are in decimal and not annualized. But, for convenience(public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `mean_phi_const = Matrix(your prior, dP, upper_p)`
+- `mean_phi_const[:,i]` is the prior mean for the VAR(`i`) constant. Therefore, `mean_phi_const` is a matrix only in this function. In other functions, `mean_phi_const` is a vector for the orthogonalized VAR system with the selected lag.
+- When `fix_const_PC1==true`, the first element in the constant term in the orthogonalized VAR is fixed to its prior mean during posterior sampling.
+- `data_scale::scalar`: In a typical affine term structure model, theoretical yields are in decimals and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields and use (`data_scale`*theoretical yields) as the variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. Alternatively, you can supply `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ`, which define means and standard deviations for Normal priors on `[kappaQ[1]; diff(kappaQ)]`; the implied Normal prior for each `kappaQ[i]` is then truncated to (0, 1). These options are only needed when using the JSZ model.
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
-- `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi_common` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
-- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
+- `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`. The entries of `psi_common` and `psi_const` should be nearly zero (e.g., `1e-10`), not exactly zero.
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 # Output(2)
-optimized Hyperparameter, optimization result
-- Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
+Optimized hyperparameter, optimization result
+- Note that we minimize the negative log marginal likelihood, so the second output is for the minimization problem.
+- When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 
 
     if isempty(upper_nu0) == true
@@ -117,15 +123,135 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
     end
 
-    ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
-    opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), nu0 = $(best_candidate(x)[9] + dP + 1)"))
+    if optimizer == :BBO
+        ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
+        opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), nu0 = $(best_candidate(x)[9] + dP + 1)"))
 
-    q = [best_candidate(opt)[1] best_candidate(opt)[5]
-        best_candidate(opt)[2] best_candidate(opt)[6]
-        best_candidate(opt)[3] best_candidate(opt)[7]
-        best_candidate(opt)[4] best_candidate(opt)[8]]
-    nu0 = best_candidate(opt)[9] + dP + 1
-    p = best_candidate(opt)[10] |> Int
+        q = [best_candidate(opt)[1] best_candidate(opt)[5]
+            best_candidate(opt)[2] best_candidate(opt)[6]
+            best_candidate(opt)[3] best_candidate(opt)[7]
+            best_candidate(opt)[4] best_candidate(opt)[8]]
+        nu0 = best_candidate(opt)[9] + dP + 1
+        p = best_candidate(opt)[10] |> Int
+
+    elseif optimizer == :LBFGS
+        # Alternating optimization between hyperparameters and lag selection
+        # all_x[p] stores optimized hyperparameters for lag p
+        # all_fitness[p] stores the objective value for that optimization
+        all_x = [fill(NaN, 9) for _ in 1:upper_p]
+        all_fitness = fill(NaN, upper_p)
+
+        # Set initial values: [vec(q); nu0; p]
+        if isempty(init_x)
+            init_hyperparameters = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
+            init_p = 1
+        else
+            init_hyperparameters = init_x[1:9]
+            init_p = Int(init_x[10])
+        end
+
+        # Helper functions for bounded transformation (sigmoid-based)
+        function y_to_x(y)
+            y_upper = copy(y)
+            for i in [1, 2, 4, 5, 6, 8, 9]
+                y_upper[i] = min(y[i], log(ux[i] - 1e-6))
+            end
+
+            x = exp.(y_upper) .+ 1e-6
+            # Apply bounded transformation to indices 3 and 7
+            x[3] = lx[3] + (ux[3] - lx[3]) / (1 + exp(-y[3]))
+            x[7] = lx[7] + (ux[7] - lx[7]) / (1 + exp(-y[7]))
+            return x
+        end
+
+        function x_to_y(x)
+            y = log.(x .- 1e-6)
+            # Inverse transformation for indices 3 and 7
+            y[3] = -log((ux[3] - lx[3]) / (x[3] - lx[3]) - 1)
+            y[7] = -log((ux[7] - lx[7]) / (x[7] - lx[7]) - 1)
+            return y
+        end
+
+        init_y = x_to_y(init_hyperparameters)
+
+        function neg_logmarg_fixedp(y, p_fixed)
+            x = y_to_x(y)
+            try
+                val = negative_log_marginal([x; p_fixed])
+                return isfinite(val) ? val : 1e10
+            catch
+                return 1e10
+            end
+        end
+
+        # Step 1: Initial hyperparameter optimization with init_p
+        println("Initial optimization with p=$init_p")
+        sol = optimize(y -> neg_logmarg_fixedp(y, init_p), init_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
+        all_x[init_p] = y_to_x(Optim.minimizer(sol))
+        all_fitness[init_p] = Optim.minimum(sol)
+        println("Initial x = $(all_x[init_p]), fitness = $(all_fitness[init_p])")
+
+        current_x = all_x[init_p]
+        prev_p = 0
+        current_p = init_p
+        iteration = 0
+
+        # Alternating optimization loop
+        while prev_p != current_p
+            iteration += 1
+            println("\n=== Alternating optimization iteration $iteration ===")
+
+            # Step 2: Evaluate objective for all lags with current hyperparameters fixed
+            println("Evaluating all lags with current hyperparameters...")
+            all_fitness_temp = Vector{Float64}(undef, upper_p)
+            for p_candidate in 1:upper_p
+                try
+                    all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
+                    if !isfinite(all_fitness_temp[p_candidate])
+                        all_fitness_temp[p_candidate] = 1e10
+                    end
+                catch
+                    all_fitness_temp[p_candidate] = 1e10
+                end
+                println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
+            end
+
+            # Step 3: Select best lag with parsimony principle
+            prev_p = current_p
+            best_p = argmin(all_fitness_temp)
+            best_fitness = all_fitness_temp[best_p]
+
+            valid_lags = [p_candidate for p_candidate in 1:upper_p if all_fitness_temp[p_candidate] - best_fitness <= ml_tol]
+            current_p = isempty(valid_lags) ? best_p : minimum(valid_lags)
+
+            current_fitness = all_fitness_temp[current_p]
+
+            println("Selected p = $current_p with fitness = $current_fitness")
+
+            if prev_p == current_p
+                println("Converged: optimal lag unchanged at p = $current_p")
+                println("Final minimizer: $current_x")
+                break
+            end
+
+            # Step 4: Re-optimize hyperparameters with the newly selected lag
+            println("Re-optimizing hyperparameters with p = $current_p")
+            current_y = x_to_y(current_x)
+            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
+            all_x[current_p] = y_to_x(Optim.minimizer(sol))
+            all_fitness[current_p] = Optim.minimum(sol)
+            current_x = all_x[current_p]
+            println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
+        end
+
+        p = current_p
+        q = [current_x[1] current_x[5]
+            current_x[2] current_x[6]
+            current_x[3] current_x[7]
+            current_x[4] current_x[8]]
+        nu0 = current_x[9] + dP + 1
+        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness)
+    end
 
     PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
     if isempty(macros)
@@ -135,7 +261,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
     Omega0 = Vector{Float64}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * best_candidate(opt)[9]
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt)[9] : current_x[9])
     end
 
     return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt
@@ -144,11 +270,11 @@ end
 
 """
     AR_res_var(TS::Vector, p)
-It derives an MLE error variance estimate of an AR(`p`) model
+This function derives the MLE error variance estimate of an AR(`p`) model.
 # Input
-- univariate time series `TS` and the lag `p`
-# output(2)
-residual variance estimate, AR(p) coefficients
+- Univariate time series `TS` and lag `p`
+# Output(2)
+Residual variance estimate, AR(p) coefficients
 """
 function AR_res_var(TS::Vector, p)
     Y = TS[(p+1):end]
@@ -164,14 +290,14 @@ end
 
 """
     posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[])
-This is a posterior distribution sampler.
+This function samples from the posterior distribution.
 # Input
-- `iteration`: # of posterior samples
-- `tuned`: optimized hyperparameters used during estimation
-- `init_param`: starting point of the sampler. It should be a type of Parameter.
-- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
+- `iteration`: Number of posterior samples
+- `tuned`: Optimized hyperparameters used during estimation
+- `init_param`: Starting point of the sampler. It should be of type Parameter.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero (e.g., `1e-10`), not exactly zero.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. This option is only needed when using the JSZ model.
-- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 - `kappaQ_proposal_mode=Vector{, dQ}` contains the center of the proposal distribution for `kappaQ`. If it is empty, it is optimized by MLE.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
@@ -297,16 +423,16 @@ end
 
 """
     posterior_NUTS(p, yields, macros, tau_n, rho, NUTS_nadapt, iteration; init_param=[], prior_q, prior_nu0, psi=[], psi_const=[], gamma_bar=[], prior_mean_diff_kappaQ, prior_std_diff_kappaQ, mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], NUTS_target_acceptance_rate=0.65, NUTS_max_depth=10)
-This is the NUTS-within-Gibbs sampler. The Gibbs blocks, cannot be updated with the conjugate prior, are sampled using the NUTS sampler. 
+This function implements the NUTS-within-Gibbs sampler. Gibbs blocks that cannot be updated with conjugate priors are sampled using the NUTS sampler.
 # Input
 - `p`: The lag length of the VAR system
-- `NUTS_nadapt`: # of iterations for tuning settings in the NUTS sampler. The samples for warming up the sampler are included in the output, so you should burn it.
-- `iteration`: # of posterior samples
-- `init_param`: starting point of the sampler. It should be a type of Parameter_NUTS.
-- `prior_q`: The 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`. For hyperparameters that do not need to be optimized, assigning a `Dirac(::Float64)` prior to the corresponding entry fixes that hyperparameter and optimizes only the remaining hyperparameters.
-- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be the object in `Distributions.jl`.
-- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. A empty default value means that you do not use this function. `[psi_const psi][i,j]` is corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero(e.g., `1e-10`), not exactly zero.
-- `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ` are vectors that contain the means and standard deviations of the Normal distributions for `[kappaQ[1]; diff(kappaQ)]`. Once normal priors are assigned to these parameters, the prior for `kappaQ[1]` is truncated to (0, 1), and the priors for `diff(KappaQ)` are truncated to (−1, 0).
+- `NUTS_nadapt`: Number of iterations for tuning settings in the NUTS sampler. The warmup samples are included in the output, so you should discard them.
+- `iteration`: Number of posterior samples
+- `init_param`: Starting point of the sampler. It should be of type Parameter_NUTS.
+- `prior_q`: A 4 by 2 matrix that contains the prior distribution for q. All entries should be objects in `Distributions.jl`. For hyperparameters that do not need to be optimized, assigning a `Dirac(::Float64)` prior to the corresponding entry fixes that hyperparameter and optimizes only the remaining hyperparameters.
+- `prior_nu0`: The prior distribution for nu0 - (dP + 1). It should be an object in `Distributions.jl`.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`. The entries of `psi` and `psi_const` should be nearly zero (e.g., `1e-10`), not exactly zero.
+- `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ` are vectors that contain the means and standard deviations of the Normal distributions for `[kappaQ[1]; diff(kappaQ)]`. Once Normal priors are assigned to these parameters, the prior for `kappaQ[1]` is truncated to (0, 1), and the priors for `diff(kappaQ)` are truncated to (−1, 0).
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 - `NUTS_target_acceptance_rate`, `NUTS_max_depth` are the arguments of the NUTS sampler in `AdvancedHMC.jl`.
 # Output
@@ -389,9 +515,9 @@ end
 
 """
     generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF, data_scale=1200)
-This function generate a simulation data given parameters. Note that all parameters are the things in the latent factor state space (that is, parameters in struct LatentSpace). There is some differences in notations because it is hard to express mathcal letters in VScode. So, mathcal{F} in my paper is expressed in `F` in the VScode. And, "F" in my paper is expressed as `XF`.
-# Input: 
-- noise = variance of the measurement errors
+This function generates simulation data given parameters. Note that all parameters are in the latent factor state space (i.e., parameters in struct LatentSpace). There are some differences in notation because it is difficult to express mathcal letters in VSCode. Therefore, mathcal{F} in the paper is expressed as `F` in VSCode, and "F" in the paper is expressed as `XF`.
+# Input
+- `noise`: Variance of the measurement errors
 # Output(3)
 `yields`, `latents`, `macros`
 - `yields = Matrix{Float64}(obs,T,length(tau_n))`
@@ -430,12 +556,12 @@ end
 
 """
     ineff_factor(saved_params::Vector{Parameter})
-It returns inefficiency factors of each parameter.
+This function returns the inefficiency factors for each parameter.
 # Input
 - `Vector{Parameter}` from `posterior_sampler`
 # Output
-- Estimated inefficiency factors are in Tuple(`kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to load an inefficiency factor of `phi`, you can use `Output.phi`.
-- If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.phi[1,1]` can be weird. So you should ignore it.
+- Estimated inefficiency factors are returned as a Tuple(`kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to access the inefficiency factor of `phi`, you can use `Output.phi`.
+- If `fix_const_PC1==true` in your optimized Hyperparameter struct, `Output.phi[1,1]` may be unreliable and should be ignored.
 """
 function ineff_factor(saved_params::Vector{Parameter})
 
@@ -496,12 +622,12 @@ end
 
 """
     ineff_factor(saved_params::Vector{Parameter_NUTS})
-It returns inefficiency factors of each parameter.
+This function returns the inefficiency factors for each parameter.
 # Input
 - `Vector{Parameter_NUTS}` from `posterior_NUTS`
 # Output
-- Estimated inefficiency factors are in Tuple(`q`, `nu0`, `kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to load an inefficiency factor of `phi`, you can use `Output.phi`.
-- If `fix_const_PC1==true` in your optimized struct Hyperparameter, `Output.phi[1,1]` can be weird. So you should ignore it.
+- Estimated inefficiency factors are returned as a Tuple(`q`, `nu0`, `kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to access the inefficiency factor of `phi`, you can use `Output.phi`.
+- If `fix_const_PC1==true` in your optimized Hyperparameter struct, `Output.phi[1,1]` may be unreliable and should be ignored.
 """
 function ineff_factor(saved_params::Vector{Parameter_NUTS})
 
@@ -568,9 +694,9 @@ end
 
 """
     longvar(v)
-It calculates the long-run variance of `v` using the quadratic spectral window with selection of bandwidth of Andrews(1991). We use the AR(1) approximation.
+This function calculates the long-run variance of `v` using the quadratic spectral window with bandwidth selection of Andrews (1991). The AR(1) approximation is used.
 # Input
-- Time-series Vector `v`
+- Time-series vector `v`
 # Output
 - Estimated 2*π*h(0) of `v`, where h(x) is the spectral density of `v` at x.
 """
@@ -617,7 +743,7 @@ end
 
 """
     mle_error_covariance(yields, macros, tau_n, p; pca_loadings=[])
-It calculates the MLE estimates of the error covariance matrix of the VAR(p) model.
+This function calculates the MLE estimates of the error covariance matrix of the VAR(p) model.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 """
 function mle_error_covariance(yields, macros, tau_n, p; pca_loadings=[])

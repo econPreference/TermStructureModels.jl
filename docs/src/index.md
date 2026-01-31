@@ -1,6 +1,6 @@
 # TermStructureModels.jl
 
-[TermStructureModels.jl](https://github.com/econPreference/TermStructureModels.jl) has the below functions.
+[TermStructureModels.jl](https://github.com/econPreference/TermStructureModels.jl) provides the following functions.
 
 - [Statistical Inference](https://econpreference.github.io/TermStructureModels.jl/dev/inference/)
   - [Parameters](https://econpreference.github.io/TermStructureModels.jl/dev/inference/#Inference-for-Parameters)
@@ -10,7 +10,7 @@
   - [Conditional Forecasting without scenarios (Baseline Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Baseline-Forecasts)
   - [Scenario Analysis (Scenario Forecasts)](https://econpreference.github.io/TermStructureModels.jl/dev/scenario/#Scenario-Forecasts)
 
-To use the above functions, [an estimation of the model](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/) must first be conducted. That is, use [`posterior_sampler`](@ref) to obtain posterior samples of parameters. The posterior samples are used for the above functions (Statistical inference and Forecasting). For details, refer to the corresponding pages.
+To use the above functions, you must first [estimate the model](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/). Use [`posterior_sampler`](@ref) to obtain posterior samples of parameters. These posterior samples are then used for the above functions (statistical inference and forecasting). For details, refer to the corresponding pages.
 
 Some outputs of our package are not simple arrays. They are
 
@@ -21,23 +21,23 @@ Some outputs of our package are not simple arrays. They are
 - [`Vector{TermPremium}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.TermPremium): output of [`term_premium`](@ref)
 - [`Vector{Forecast}`](https://econpreference.github.io/TermStructureModels.jl/dev/api/#TermStructureModels.Forecast): outputs of [`conditional_forecast`](@ref) and [`conditional_expectation`](@ref)
 
-The above outputs contain information about the posterior distributions of objects of interest. Users can use the outputs above to [extract posterior samples](https://econpreference.github.io/TermStructureModels.jl/dev/output/#Extract-Posterior-Samples) or [calculate descriptive statistics of the posterior distributions](https://econpreference.github.io/TermStructureModels.jl/dev/output/#Descriptive-Statistics-of-the-Posterior-Distributions).
+The above outputs contain information about the posterior distributions of objects of interest. You can use these outputs to [extract posterior samples](https://econpreference.github.io/TermStructureModels.jl/dev/output/#Extract-Posterior-Samples) or [calculate descriptive statistics of the posterior distributions](https://econpreference.github.io/TermStructureModels.jl/dev/output/#Descriptive-Statistics-of-the-Posterior-Distributions).
 
-Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of our model and the meanings of each variable can be found in the paper. [The Notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) details how notations in the paper correspond to variables in our package. Additionally, [the example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros/LargeVAR_Yields_Macros.ipynb) used in our paper is available in the repository.
+This package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628). Descriptions of the model and the meanings of each variable can be found in the paper. [The Notation section](https://econpreference.github.io/TermStructureModels.jl/dev/notations/) details how notations in the paper correspond to variables in the package. Additionally, [the example file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros/LargeVAR_Yields_Macros.ipynb) used in the paper is available in the repository.
 
-**Users are encouraged to read the two text boxes below.**
+**You are encouraged to read the two text boxes below.**
 
 !!! warning "Unit of Data"
 
-    Theoretical term structure models typically describe bond yields as decimals per one time period. However, yield data is typically presented in percent per annum. Therefore, you have to address the issue by using the option `data_scale`. `data_scale` represents the scale of the data. Specifically,
+    Theoretical term structure models typically describe bond yields as decimals per time period. However, yield data is typically presented in percent per annum. Therefore, you need to address this discrepancy using the `data_scale` option. `data_scale` represents the scale of the data. Specifically,
 
     ```julia
     `yields_in_data` = `data_scale`*`theoretical_yields_in_the_model`
     ```
 
-    holds. For example, suppose we have monthly yield data in percent per annum. If we use a monthly term structure model, `data_scale=1200`. **The default value of `data_scale` is 1200 for all functions.**
+    holds. For example, suppose we have monthly yield data in percent per annum. If we use a monthly term structure model, then `data_scale=1200`. **The default value of `data_scale` is 1200 for all functions.**
 
-    Functions that have option `data_scale` are as follows:
+    Functions that have the `data_scale` option are as follows:
     - [`tuning_hyperparameter`](@ref)
     - [`posterior_sampler`](@ref)
     - [`term_premium`](@ref)
@@ -51,4 +51,4 @@ Our package is based on [our paper](https://papers.ssrn.com/sol3/papers.cfm?abst
 
 !!! tip "Normalization of Data"
 
-    Our package demeans the principal components of bond yields, which are spanned risk factors in the bond market. Therefore, we recommend using macro data after demeaning it. Of course, demeaning the macro variables is recommended but not mandatory.
+    The package demeans the principal components of bond yields, which are spanned risk factors in the bond market. Therefore, we recommend demeaning macro data before use. Note that demeaning the macro variables is recommended but not mandatory.

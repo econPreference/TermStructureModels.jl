@@ -1,6 +1,6 @@
 """
     getindex(x::Vector{<:PosteriorSample}, c::Symbol)
-For `struct <: PosteriorSample`, `struct[:name]` calls objects in `struct`. `Output[i]` = ``i'``th posterior sample
+For `struct <: PosteriorSample`, `struct[:name]` calls objects in `struct`. `Output[i]` = the `i`-th posterior sample
 """
 function getindex(x::Vector{<:PosteriorSample}, c::Symbol)
     props = getproperty.(x, c)
@@ -110,7 +110,7 @@ end
 
 """
     hessian(f, x, index=[])
-It calculates the Hessian matrix of a scalar function `f` at `x`. If `index` is not empty, it calculates the Hessian matrix of the function with respect to the selected variables.
+This function calculates the Hessian matrix of a scalar function `f` at `x`. If `index` is not empty, it calculates the Hessian matrix of the function with respect to the selected variables.
 """
 function hessian(f, x, index=[])
 
