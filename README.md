@@ -4,11 +4,11 @@
 
 [![Build Status](https://github.com/econPreference/GDTSM.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/econPreference/GDTSM.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-_TermStructureModels.jl_ is a `Julia` package to estimate the term structure of interest rates. We currently provide an Gaussian affine term structure model that satisfies the No-Arbitrage condition.
+_TermStructureModels.jl_ is a `Julia` package to estimate the term structure of interest rates. We currently provide a Gaussian affine term structure model that satisfies the No-Arbitrage condition.
 
-Our model is the three-factor JSZ[(Joslin, Singleton, and Zhu, 2011)](https://academic.oup.com/rfs/article-abstract/24/3/926/1590594) model constrained by the AFNS[(Christensen, Diebold, and Rudebusch, 2011)](https://www.sciencedirect.com/science/article/pii/S0304407611000388) restriction. [Our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628) provides theoretical descriptions of our model.
+The model is the three-factor JSZ[(Joslin, Singleton, and Zhu, 2011)](https://academic.oup.com/rfs/article-abstract/24/3/926/1590594) model constrained by the AFNS[(Christensen, Diebold, and Rudebusch, 2011)](https://www.sciencedirect.com/science/article/pii/S0304407611000388) restriction. [The paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628) provides theoretical descriptions of the model.
 
-The **main features** of the package is that it allows for the lag length of the VAR system in the Physical measure to extend beyond one. Additionally, it permits the inclusion of numerous macroeconomic variables as unspanned risks within the Physical measure. For instance, in our study, we set the lag length to 17 in the term-structure model that incorporates 28 macroeconomic variables.
+The **main features** of the package are that it allows for the lag length of the VAR system in the Physical measure to extend beyond one. Additionally, it permits the inclusion of numerous macroeconomic variables as unspanned risks within the Physical measure.
 
 **Other features** of the package include
 
@@ -18,7 +18,7 @@ The **main features** of the package is that it allows for the lag length of the
 - Decomposition of a bond yield into the expectation hypothesis component and the term premium component
 - Conditional Forecasting, including Scenario Analyses, to inspect interactions between bond yields and the macroeconomy
 
-Our package also provides **the yield-only model** and **the standard JSZ model with three distinct eigenvalues, not restricted by the AFNS constraint**.
+The package also provides **the yield-only model** and **the standard JSZ model with three distinct eigenvalues, not restricted by the AFNS constraint**.
 
 ## Installation
 
@@ -37,12 +37,12 @@ Run
 using TermStructureModels
 ```
 
-to load all functions of our package.
+to load all functions of the package.
 
 ## Example File
 
-To better understand how to use our package, refer to [the script file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros/LargeVAR_Yields_Macros.ipynb) used for [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628).
+To better understand how to use the package, refer to [the script file](https://github.com/econPreference/TermStructureModels.jl/blob/main/examples/LargeVAR_Yields_Macros/LargeVAR_Yields_Macros.ipynb) used for [the paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628).
 
 ## Citation
 
-If you want to cite this package for your works, cite [our paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628).
+If you want to cite this package for your work, cite [the paper](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4708628).

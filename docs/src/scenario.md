@@ -1,24 +1,24 @@
 # Forecasting
 
-We have two kinds of forecasts.
+The package provides two kinds of forecasts.
 
 1. [Baseline Forecasts](@ref)
 2. [Scenario Forecasts](@ref) (Scenario Analysis)
 
-All of two forecasts are conditional forecasts, because they are based on information in data. The difference is that the scenario forecast assumes additional scenarios that describe future paths of some variables.
+Both forecasts are conditional forecasts, because they are based on information in the data. The difference is that the scenario forecast assumes additional scenarios that describe future paths of some variables.
 
 Baseline forecasts and scenario forecasts can be represented either as the posterior distribution of predicted objects or as the posterior distribution of conditional expectations of predicted objects. To summarize:
 
 1. Posterior Distribution of Predicted Objects
-   - In other words, Distribution of future objects conditional on past observations and the scenario
+   - In other words, the distribution of future objects conditional on past observations and the scenario
    - Function: [`conditional_forecast`](@ref)
 2. Posterior Distribution of Conditional Expectations of Predicted Objects
-   - In other words, Posterior Distribution of "E[future object|past obs, scenario, parameters]"
+   - In other words, the posterior distribution of "E[future object|past obs, scenario, parameters]"
    - Function: [`conditional_expectation`](@ref)
 
 In this summary, for baseline forecasts, the scenario is the empty set.
 
-The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one consider only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when users make decisions based on the expected path of future variables. **We recommend the second version** (`conditional_expectation`).
+The first one is the full Bayesian treatment, so it is mathematically strict. However, it can be difficult to derive meaningful implications from the prediction because of its wide prediction intervals. The second one considers only parameter uncertainty, so it underestimates the prediction uncertainty. However, it is appropriate when you make decisions based on the expected path of future variables. **We recommend the second version** (`conditional_expectation`).
 
 The required inputs and the type of the output are the same between `conditional_forecast` and `conditional_expectation`. That is,
 
@@ -34,7 +34,7 @@ projections = conditional_expectation(S::Vector, τ, horizon, saved_params, yiel
 
 `projections::Vector{Forecast}` contains the results of the forecasting. `τ` is a vector, and the term premium of `τ[i]`-bond is forecasted for each `i`. If `τ` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).
 
-Users can use the same `yields`, `tau_n` and `macros` they employed when executing `posterior_sampler`. If one wishes to compute conditional forecasts using observations up to a certain point, they can simply use `yields` and `macros` from the initial period up to that point. However, parameter uncertainty is incorporated independently of `yields` and `macros` through `saved_params`.
+You can use the same `yields`, `tau_n` and `macros` you employed when executing `posterior_sampler`. If you wish to compute conditional forecasts using observations up to a certain point, you can simply use `yields` and `macros` from the initial period up to that point. However, parameter uncertainty is incorporated independently of `yields` and `macros` through `saved_params`.
 
 If you use demeaned macro data, option `mean_macros` is useful. If the sample mean of macro data is specified as the input value for `mean_macros`, `projections` contains conditional forecasts of non-demeaned macro variables. The sample mean of macro data can be calculated as follows.
 
@@ -56,7 +56,7 @@ Do
 S = []
 ```
 
-It sets a scenario to an empty set, so the package calculate baseline forecasts.
+It sets a scenario to an empty set, so the package calculates baseline forecasts.
 
 ## Scenario Forecasts
 
@@ -74,7 +74,7 @@ S = Vector{Scenario}(undef, len)
 S[i].combination*[yields[T+i,:]; macros[T+i, :]] == S[i].values
 ```
 
-`[yields[T+i,:]; macros[T+i, :]]` is a predicted variable that is not observed. Scenario forecasts are calculated assuming that the above equation holds at time `T+i`, based on `S[i]` set by users. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
+`[yields[T+i,:]; macros[T+i, :]]` is a predicted variable that is not observed. Scenario forecasts are calculated assuming that the above equation holds at time `T+i`, based on `S[i]` set by you. The number of rows in `S[i].combination` and the length of `S[i].values` are the same, and this length represents the number of scenarios assumed at time `T+i`.
 
 Setting the two fields of `S[i]` is straightforward. Suppose that the content of the scenarios at time `T+i` is
 
@@ -82,7 +82,7 @@ Setting the two fields of `S[i]` is straightforward. Suppose that the content of
 combs*[yields[T+i,:]; macros[T+i, :]] == vals
 ```
 
-Then, users can assign the content to `S[i]` by executing
+Then, you can assign the content to `S[i]` by executing
 
 ```julia
 S[i] = Scenario(combinations=combs, values=vals)
