@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0)
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation.
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -8,6 +8,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
     - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
     - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
 - `ml_tol`: Tolerance for parsimony in lag selection (only for `:LBFGS`). After finding the lag with the best marginal likelihood, the algorithm iteratively selects smaller lags if their marginal likelihood is within `ml_tol` of the best. This favors simpler models (smaller lags) when performance is comparable.
+- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 10 in the format `[vec(q); nu0; p]`. If empty (default), uses `[0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
@@ -31,7 +32,7 @@ optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 - When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 
 
     if isempty(upper_nu0) == true
@@ -140,7 +141,14 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         all_x = [fill(NaN, 9) for _ in 1:upper_p]
         all_fitness = fill(NaN, upper_p)
 
-        init_x = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
+        # Set initial values: [vec(q); nu0; p]
+        if isempty(init_x)
+            init_hyperparameters = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
+            init_p = 1
+        else
+            init_hyperparameters = init_x[1:9]
+            init_p = Int(init_x[10])
+        end
 
         # Helper functions for bounded transformation (sigmoid-based)
         function y_to_x(y)
@@ -164,7 +172,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             return y
         end
 
-        init_y = x_to_y(init_x)
+        init_y = x_to_y(init_hyperparameters)
 
         function neg_logmarg_fixedp(y, p_fixed)
             x = y_to_x(y)
@@ -176,16 +184,16 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             end
         end
 
-        # Step 1: Initial hyperparameter optimization with p=1
-        println("Initial optimization with p=1")
-        sol = optimize(y -> neg_logmarg_fixedp(y, 1), init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
-        all_x[1] = y_to_x(Optim.minimizer(sol))
-        all_fitness[1] = Optim.minimum(sol)
-        println("Initial x = $(all_x[1]), fitness = $(all_fitness[1])")
+        # Step 1: Initial hyperparameter optimization with init_p
+        println("Initial optimization with p=$init_p")
+        sol = optimize(y -> neg_logmarg_fixedp(y, init_p), init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+        all_x[init_p] = y_to_x(Optim.minimizer(sol))
+        all_fitness[init_p] = Optim.minimum(sol)
+        println("Initial x = $(all_x[init_p]), fitness = $(all_fitness[init_p])")
 
-        current_x = all_x[1]
+        current_x = all_x[init_p]
         prev_p = 0
-        current_p = 1
+        current_p = init_p
         iteration = 0
 
         # Alternating optimization loop
