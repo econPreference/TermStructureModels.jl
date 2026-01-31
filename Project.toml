@@ -1,6 +1,6 @@
 name = "TermStructureModels"
 uuid = "7e9258e2-c4b0-4fc1-89eb-9ad7f6b40598"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Preference <econ.preference@gmail.com> and contributors"]
 
 [deps]
