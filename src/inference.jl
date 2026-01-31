@@ -5,7 +5,7 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
 - `optimizer`: The optimization algorithm to use.
-    - `:LBFGS` (default): Uses box-constrained LBFGS via `Fminbox(LBFGS())` from `Optim.jl`. Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence. 
+    - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
     - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
@@ -141,7 +141,27 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         init_x = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
 
-        function neg_logmarg_fixedp(x, p_fixed)
+        # Helper functions for bounded transformation (sigmoid-based)
+        function y_to_x(y)
+            x = exp.(y) .+ 1e-10
+            # Apply bounded transformation to indices 3 and 7
+            x[3] = lx[3] + (ux[3] - lx[3]) / (1 + exp(-y[3]))
+            x[7] = lx[7] + (ux[7] - lx[7]) / (1 + exp(-y[7]))
+            return x
+        end
+
+        function x_to_y(x)
+            y = log.(x .- 1e-10)
+            # Inverse transformation for indices 3 and 7
+            y[3] = -log((ux[3] - lx[3]) / (x[3] - lx[3]) - 1)
+            y[7] = -log((ux[7] - lx[7]) / (x[7] - lx[7]) - 1)
+            return y
+        end
+
+        init_y = x_to_y(init_x)
+
+        function neg_logmarg_fixedp(y, p_fixed)
+            x = y_to_x(y)
             try
                 val = negative_log_marginal([x; p_fixed])
                 return isfinite(val) ? val : 1e10
@@ -152,8 +172,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         # Step 1: Initial hyperparameter optimization with p=1
         println("Initial optimization with p=1")
-        sol = optimize(x -> neg_logmarg_fixedp(x, 1), lx[1:9], ux[1:9], init_x, Fminbox(LBFGS()), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
-        all_x[1] = Optim.minimizer(sol)
+        sol = optimize(y -> neg_logmarg_fixedp(y, 1), init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+        all_x[1] = y_to_x(Optim.minimizer(sol))
         all_fitness[1] = Optim.minimum(sol)
         println("Initial x = $(all_x[1]), fitness = $(all_fitness[1])")
 
@@ -191,13 +211,15 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
             if prev_p == current_p
                 println("Converged: optimal lag unchanged at p = $current_p")
+                println("Final minimizer: $current_x")
                 break
             end
 
             # Step 4: Re-optimize hyperparameters with the newly selected lag
             println("Re-optimizing hyperparameters with p = $current_p")
-            sol = optimize(x -> neg_logmarg_fixedp(x, current_p), lx[1:9], ux[1:9], current_x, Fminbox(LBFGS()), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
-            all_x[current_p] = Optim.minimizer(sol)
+            current_y = x_to_y(current_x)
+            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+            all_x[current_p] = y_to_x(Optim.minimizer(sol))
             all_fitness[current_p] = Optim.minimum(sol)
             current_x = all_x[current_p]
             println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
