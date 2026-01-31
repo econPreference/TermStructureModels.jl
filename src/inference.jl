@@ -186,7 +186,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         # Step 1: Initial hyperparameter optimization with init_p
         println("Initial optimization with p=$init_p")
-        sol = optimize(y -> neg_logmarg_fixedp(y, init_p), init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+        sol = optimize(y -> neg_logmarg_fixedp(y, init_p), init_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
         all_x[init_p] = y_to_x(Optim.minimizer(sol))
         all_fitness[init_p] = Optim.minimum(sol)
         println("Initial x = $(all_x[init_p]), fitness = $(all_fitness[init_p])")
@@ -250,7 +250,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             # Step 4: Re-optimize hyperparameters with the newly selected lag
             println("Re-optimizing hyperparameters with p = $current_p")
             current_y = x_to_y(current_x)
-            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
             all_x[current_p] = y_to_x(Optim.minimizer(sol))
             all_fitness[current_p] = Optim.minimum(sol)
             current_x = all_x[current_p]
