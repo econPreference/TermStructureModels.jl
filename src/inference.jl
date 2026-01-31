@@ -134,54 +134,86 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         p = best_candidate(opt)[10] |> Int
 
     elseif optimizer == :LBFGS
+        # Alternating optimization between hyperparameters and lag selection
+        # all_x[p] stores optimized hyperparameters for lag p
+        # all_fitness[p] stores the objective value for that optimization
+        all_x = [fill(NaN, 9) for _ in 1:upper_p]
+        all_fitness = fill(NaN, upper_p)
+
         init_x = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
         init_y = log.(init_x)
 
-        best_fitness = Inf
-        best_x = copy(init_x)
-        best_p = 1
-        all_x = Vector{Vector{Float64}}(undef, upper_p)
-        all_fitness = Vector{Float64}(undef, upper_p)
-
-        for p_candidate in 1:upper_p
-            function neg_logmarg_fixedp(y)
-                x = exp.(y) .+ 1e-10
-                try
-                    val = negative_log_marginal([x; p_candidate])
-                    return isfinite(val) ? val : 1e10
-                catch
-                    return 1e10
-                end
-            end
-
-            sol = optimize(neg_logmarg_fixedp, init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
-
-            all_x[p_candidate] = exp.(Optim.minimizer(sol)) .+ 1e-10
-            all_fitness[p_candidate] = Optim.minimum(sol)
-            init_y = Optim.minimizer(sol)
-
-            println("p = $p_candidate, fitness = $(Optim.minimum(sol)), x = $(all_x[p_candidate])")
-
-            if best_fitness - Optim.minimum(sol) >= early_stopping_tol
-                best_fitness = Optim.minimum(sol)
-                best_x = exp.(Optim.minimizer(sol)) .+ 1e-10
-                best_p = p_candidate
-            else
-                println("Early stopping: no improvement >= $early_stopping_tol for p = $p_candidate")
-                break
+        function neg_logmarg_fixedp(y, p_fixed)
+            x = exp.(y) .+ 1e-10
+            try
+                val = negative_log_marginal([x; p_fixed])
+                return isfinite(val) ? val : 1e10
+            catch
+                return 1e10
             end
         end
 
-        all_x = all_x[1:min(best_p + 1, upper_p)]
-        all_fitness = all_fitness[1:min(best_p + 1, upper_p)]
+        # Step 1: Initial hyperparameter optimization with p=1
+        println("Initial optimization with p=1")
+        sol = optimize(y -> neg_logmarg_fixedp(y, 1), init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+        all_x[1] = exp.(Optim.minimizer(sol)) .+ 1e-10
+        all_fitness[1] = Optim.minimum(sol)
+        println("Initial x = $(all_x[1]), fitness = $(all_fitness[1])")
 
-        p = best_p
-        q = [best_x[1] best_x[5]
-            best_x[2] best_x[6]
-            best_x[3] best_x[7]
-            best_x[4] best_x[8]]
-        nu0 = best_x[9] + dP + 1
-        opt = (minimizer=best_x, minimum=best_fitness, p=best_p, all_minimizer=all_x, all_minimum=all_fitness)
+        current_x = all_x[1]
+        prev_p = 0
+        current_p = 1
+        iteration = 0
+
+        # Alternating optimization loop
+        while prev_p != current_p
+            iteration += 1
+            println("\n=== Alternating optimization iteration $iteration ===")
+
+            # Step 2: Evaluate objective for all lags with current hyperparameters fixed
+            println("Evaluating all lags with current hyperparameters...")
+            all_fitness_temp = Vector{Float64}(undef, upper_p)
+            for p_candidate in 1:upper_p
+                try
+                    all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
+                    if !isfinite(all_fitness_temp[p_candidate])
+                        all_fitness_temp[p_candidate] = 1e10
+                    end
+                catch
+                    all_fitness_temp[p_candidate] = 1e10
+                end
+                println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
+            end
+
+            # Step 3: Select best lag
+            prev_p = current_p
+            current_p = argmin(all_fitness_temp)
+            current_fitness = all_fitness_temp[current_p]
+
+            println("Selected p = $current_p with fitness = $current_fitness")
+
+            if prev_p == current_p
+                println("Converged: optimal lag unchanged at p = $current_p")
+                break
+            end
+
+            # Step 4: Re-optimize hyperparameters with the newly selected lag
+            println("Re-optimizing hyperparameters with p = $current_p")
+            current_y = log.(current_x .- 1e-10)
+            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+            all_x[current_p] = exp.(Optim.minimizer(sol)) .+ 1e-10
+            all_fitness[current_p] = Optim.minimum(sol)
+            current_x = all_x[current_p]
+            println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
+        end
+
+        p = current_p
+        q = [current_x[1] current_x[5]
+            current_x[2] current_x[6]
+            current_x[3] current_x[7]
+            current_x[4] current_x[8]]
+        nu0 = current_x[9] + dP + 1
+        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness)
     end
 
     PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
