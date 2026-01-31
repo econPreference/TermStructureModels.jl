@@ -1,12 +1,13 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, early_stopping_tol=1.0)
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0)
 It optimizes our hyperparameters by maximizing the marginal likelhood of the transition equation.
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
 - `optimizer`: The optimization algorithm to use.
     - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
     - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
+- `ml_tol`: Tolerance for parsimony in lag selection (only for `:LBFGS`). After finding the lag with the best marginal likelihood, the algorithm iteratively selects smaller lags if their marginal likelihood is within `ml_tol` of the best. This favors simpler models (smaller lags) when performance is comparable.
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
@@ -30,7 +31,7 @@ optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 - When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0)
 
 
     if isempty(upper_nu0) == true
@@ -207,9 +208,27 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
                 println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
             end
 
-            # Step 3: Select best lag
+            # Step 3: Select best lag with parsimony principle
             prev_p = current_p
-            current_p = argmin(all_fitness_temp)
+            best_p = argmin(all_fitness_temp)
+            best_fitness = all_fitness_temp[best_p]
+
+            # Apply parsimony: prefer smaller lags if fitness difference is within ml_tol
+            current_p = best_p
+            while current_p > 1
+                found_smaller = false
+                for p_candidate in (current_p-1):-1:1
+                    if all_fitness_temp[p_candidate] - best_fitness <= ml_tol
+                        current_p = p_candidate
+                        found_smaller = true
+                        break
+                    end
+                end
+                if !found_smaller
+                    break
+                end
+            end
+
             current_fitness = all_fitness_temp[current_p]
 
             println("Selected p = $current_p with fitness = $current_fitness")
