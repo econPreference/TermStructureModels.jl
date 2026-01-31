@@ -14,10 +14,10 @@ We have five hyperparameters, `p`, `q`, `nu0`, `Omega0`, and `mean_phi_const`.
 We recommend [`tuning_hyperparameter`](@ref) for deciding the hyperparameters.
 
 ```julia
-tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[])
+tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 ```
 
-Note that the default upper bound of `p` is `upper_p=18`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
+Note that the default upper bound of `p` is `upper_p=24`. The output `tuned::Hyperparameter` is the object that needs to be obtained in Step 1. `results` contains the optimization results.
 
 If users accept our default values, the function is simplified, that is
 
@@ -29,11 +29,15 @@ tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 
 ### Several relevant points regarding hyperparameter optimization
 
-#### Computational Cost of the Optimization
+#### Optimization Algorithms
 
-Since we adopt the Differential Evolutionary(DE) algorithm (Specifically, [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl)), it is hard to set the terminal condition. Our strategy was to run the algorithm with a sufficient number of iterations (our default settings) and to verify that it reaches a global optimum by plotting the objective function.
+We provide two optimization algorithms via the `optimizer` option:
 
-The reason for using `BlackBoxOptim.jl` is that this package was the most suitable for our model. After trying several optimization packages in Python and Julia, `BlackBoxOptim.jl` consistently found the optimum values most reliably. A downside of DE algorithms like `BlackBoxOptim.jl` is that they can have high computational costs. If the computational cost is excessively high to you, you can reduce it by setting `populationsize` or `maxiter` options in `tuning_hyperparameter` to lower values. However, this may lead to a decrease in model performance.
+- **`:LBFGS` (default, recommended)**: Uses gradient-based LBFGS optimization from `Optim.jl`. This algorithm alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence. It is fast and efficient, making it suitable for most applications. However, it does not guarantee finding the global optimum due to its local search nature.
+
+- **`:BBO`**: Uses a Differential Evolutionary (DE) algorithm from [`BlackBoxOptim.jl`](https://github.com/robertfeldt/BlackBoxOptim.jl). This algorithm optimizes hyperparameters and lag simultaneously and is more likely to find the global optimum. The downside is that it has higher computational costs and lacks automatic convergence detection—users must verify convergence by examining the objective function values or setting a sufficient number of iterations via `maxiter`.
+
+We recommend using the default `:LBFGS` optimizer for most cases due to its speed and reliability. If you suspect the optimization is stuck in a local optimum or need to verify global optimality, you can use `:BBO` with the `populationsize` and `maxiter` options adjusted according to your computational budget.
 
 #### Range of Data over which the Marginal Likelihood is Calculated
 
