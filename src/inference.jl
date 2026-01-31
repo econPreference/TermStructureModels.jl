@@ -5,9 +5,8 @@ It optimizes our hyperparameters by maximizing the marginal likelhood of the tra
 # Input
 - When we compare marginal likelihoods between models, the data for the dependent variable should be the same across the models. To achieve that, we set a period of dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for our dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
 - `optimizer`: The optimization algorithm to use.
-    - `:LBFGS` (default): Uses the LBFGS algorithm from `Optim.jl`. Hyperparameters are optimized separately for each lag from 1 to `upper_p`, and the lag with the best marginal likelihood is selected. Warm-starting from the previous lag's solution is applied.
+    - `:LBFGS` (default): Uses box-constrained LBFGS via `Fminbox(LBFGS())` from `Optim.jl`. Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence. 
     - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
-- `early_stopping_tol`: The minimum improvement in the log marginal likelihood required to continue optimizing for higher lags. Only used when `optimizer=:LBFGS`. Default is `1.0`.
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
@@ -31,7 +30,7 @@ optimized Hyperparameter, optimization result
 - Be careful that we minimized the negative log marginal likelihood, so the second output is about the minimization problem.
 - When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, early_stopping_tol=1.0)
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 10 10; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=18, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS)
 
 
     if isempty(upper_nu0) == true
@@ -141,10 +140,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         all_fitness = fill(NaN, upper_p)
 
         init_x = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
-        init_y = log.(init_x)
 
-        function neg_logmarg_fixedp(y, p_fixed)
-            x = exp.(y) .+ 1e-10
+        function neg_logmarg_fixedp(x, p_fixed)
             try
                 val = negative_log_marginal([x; p_fixed])
                 return isfinite(val) ? val : 1e10
@@ -155,8 +152,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         # Step 1: Initial hyperparameter optimization with p=1
         println("Initial optimization with p=1")
-        sol = optimize(y -> neg_logmarg_fixedp(y, 1), init_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
-        all_x[1] = exp.(Optim.minimizer(sol)) .+ 1e-10
+        sol = optimize(x -> neg_logmarg_fixedp(x, 1), lx[1:9], ux[1:9], init_x, Fminbox(LBFGS()), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+        all_x[1] = Optim.minimizer(sol)
         all_fitness[1] = Optim.minimum(sol)
         println("Initial x = $(all_x[1]), fitness = $(all_fitness[1])")
 
@@ -199,9 +196,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
             # Step 4: Re-optimize hyperparameters with the newly selected lag
             println("Re-optimizing hyperparameters with p = $current_p")
-            current_y = log.(current_x .- 1e-10)
-            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
-            all_x[current_p] = exp.(Optim.minimizer(sol)) .+ 1e-10
+            sol = optimize(x -> neg_logmarg_fixedp(x, current_p), lx[1:9], ux[1:9], current_x, Fminbox(LBFGS()), Optim.Options(iterations=maxiter, x_abstol=1e-3, show_trace=true))
+            all_x[current_p] = Optim.minimizer(sol)
             all_fitness[current_p] = Optim.minimum(sol)
             current_x = all_x[current_p]
             println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
