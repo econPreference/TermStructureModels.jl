@@ -165,7 +165,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
 
         function x_to_y(x)
-            y = log.(x .- 1e-6)
+            y = log.(max.(x .- 1e-6, 1e-10))
             # Inverse transformation for indices 3 and 7
             y[3] = -log((ux[3] - lx[3]) / (x[3] - lx[3]) - 1)
             y[7] = -log((ux[7] - lx[7]) / (x[7] - lx[7]) - 1)
