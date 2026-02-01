@@ -8,7 +8,7 @@ This function optimizes the hyperparameters by maximizing the marginal likelihoo
     - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
     - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
 - `ml_tol`: Tolerance for parsimony in lag selection (only for `:LBFGS`). After finding the lag with the best marginal likelihood, the algorithm iteratively selects smaller lags if their marginal likelihood is within `ml_tol` of the best. This favors simpler models (smaller lags) when performance is comparable.
-- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 10 in the format `[vec(q); nu0; p]`. If empty (default), uses `[0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
+- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 10 in the format `[vec(q); nu0-(dP+1); p]`. If empty (default), uses `[0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
@@ -787,4 +787,5 @@ function mle_error_covariance(yields, macros, tau_n, p; pca_loadings=[])
     # end
 
     return Omega
+
 end
