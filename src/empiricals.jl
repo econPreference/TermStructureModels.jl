@@ -333,7 +333,7 @@ This function converts posterior samples to the reduced form VAR parameters.
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
-function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
+function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[], is_parallel=true)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
@@ -348,43 +348,84 @@ function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_l
     iteration = length(saved_params)
     reduced_params = Vector{ReducedForm}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="reducedform...")
-    Threads.@threads for iter in 1:iteration
+    if is_parallel
+        Threads.@threads for iter in 1:iteration
 
-        kappaQ = saved_params[:kappaQ][iter]
-        kQ_infty = saved_params[:kQ_infty][iter]
-        phi = saved_params[:phi][iter]
-        varFF = saved_params[:varFF][iter]
-        SigmaO = saved_params[:SigmaO][iter]
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter]
+            varFF = saved_params[:varFF][iter]
+            SigmaO = saved_params[:SigmaO][iter]
 
-        phi0, C = phi_2_phi₀_C(; phi)
-        phi0 = C \ phi0
-        KPF = phi0[:, 1]
-        GPFF = phi0[:, 2:end]
-        OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
+            phi0, C = phi_2_phi₀_C(; phi)
+            phi0 = C \ phi0
+            KPF = phi0[:, 1]
+            GPFF = phi0[:, 2:end]
+            OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
 
-        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
-        Bₓ_ = Bₓ(bτ_, tau_n)
-        T1X_ = T1X(Bₓ_, Wₚ)
-        aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
-        Aₓ_ = Aₓ(aτ_, tau_n)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+            bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_n)
+            T1X_ = T1X(Bₓ_, Wₚ)
+            aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, tau_n)
+            T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
 
-        KQ_X = zeros(dQ)
-        KQ_X[1] = copy(kQ_infty)
-        KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
-        GQPF = similar(GPFF[1:dQ, :]) |> (x -> x .= 0)
-        GQPF[:, 1:dQ] = T1X_ * GQ_XX(; kappaQ) / T1X_
-        lambdaP = KPF[1:dQ] - KQ_P
-        LambdaPF = GPFF[1:dQ, :] - GQPF
+            KQ_X = zeros(dQ)
+            KQ_X[1] = copy(kQ_infty)
+            KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
+            GQPF = similar(GPFF[1:dQ, :]) |> (x -> x .= 0)
+            GQPF[:, 1:dQ] = T1X_ * GQ_XX(; kappaQ) / T1X_
+            lambdaP = KPF[1:dQ] - KQ_P
+            LambdaPF = GPFF[1:dQ, :] - GQPF
 
-        mpr = Matrix{Float64}(undef, size(factors, 1) - p, dP)
-        for t in p+1:size(factors, 1)
-            Ft = factors'[:, t:-1:t-p+1] |> vec
-            mpr[t-p, :] = cholesky(OmegaFF).L \ [lambdaP + LambdaPF * Ft; zeros(dP - dQ)]
+            mpr = Matrix{Float64}(undef, size(factors, 1) - p, dP)
+            for t in p+1:size(factors, 1)
+                Ft = factors'[:, t:-1:t-p+1] |> vec
+                mpr[t-p, :] = cholesky(OmegaFF).L \ [lambdaP + LambdaPF * Ft; zeros(dP - dQ)]
+            end
+            reduced_params[iter] = ReducedForm(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPF=copy(KPF), GPFF=copy(GPFF), OmegaFF=copy(OmegaFF), SigmaO=copy(SigmaO), lambdaP=copy(lambdaP), LambdaPF=copy(LambdaPF), mpr=copy(mpr))
+
+            next!(prog)
         end
-        reduced_params[iter] = ReducedForm(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPF=copy(KPF), GPFF=copy(GPFF), OmegaFF=copy(OmegaFF), SigmaO=copy(SigmaO), lambdaP=copy(lambdaP), LambdaPF=copy(LambdaPF), mpr=copy(mpr))
+    else
+        for iter in 1:iteration
 
-        next!(prog)
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter]
+            varFF = saved_params[:varFF][iter]
+            SigmaO = saved_params[:SigmaO][iter]
+
+            phi0, C = phi_2_phi₀_C(; phi)
+            phi0 = C \ phi0
+            KPF = phi0[:, 1]
+            GPFF = phi0[:, 2:end]
+            OmegaFF = (C \ diagm(varFF)) / C' |> Symmetric
+
+            bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_n)
+            T1X_ = T1X(Bₓ_, Wₚ)
+            aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, tau_n)
+            T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+            KQ_X = zeros(dQ)
+            KQ_X[1] = copy(kQ_infty)
+            KQ_P = T1X_ * (KQ_X + (GQ_XX(; kappaQ) - I(dQ)) * T0P_)
+            GQPF = similar(GPFF[1:dQ, :]) |> (x -> x .= 0)
+            GQPF[:, 1:dQ] = T1X_ * GQ_XX(; kappaQ) / T1X_
+            lambdaP = KPF[1:dQ] - KQ_P
+            LambdaPF = GPFF[1:dQ, :] - GQPF
+
+            mpr = Matrix{Float64}(undef, size(factors, 1) - p, dP)
+            for t in p+1:size(factors, 1)
+                Ft = factors'[:, t:-1:t-p+1] |> vec
+                mpr[t-p, :] = cholesky(OmegaFF).L \ [lambdaP + LambdaPF * Ft; zeros(dP - dQ)]
+            end
+            reduced_params[iter] = ReducedForm(kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPF=copy(KPF), GPFF=copy(GPFF), OmegaFF=copy(OmegaFF), SigmaO=copy(SigmaO), lambdaP=copy(lambdaP), LambdaPF=copy(LambdaPF), mpr=copy(mpr))
+
+            next!(prog)
+        end
     end
     finish!(prog)
 

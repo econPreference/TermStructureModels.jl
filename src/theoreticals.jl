@@ -265,7 +265,7 @@ This function generates posterior samples of the term premiums.
 - `saved_tv_EH::Vector{Array}(, iteration)`
 - Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor are stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
 """
-function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[])
+function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=true)
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
@@ -291,85 +291,168 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
     end
 
     prog = Progress(iteration; dt=5, desc="term_premium...")
-    Threads.@threads for iter in 1:iteration
+    if is_parallel
+        Threads.@threads for iter in 1:iteration
 
-        kappaQ = saved_params[:kappaQ][iter]
-        kQ_infty = saved_params[:kQ_infty][iter]
-        phi = saved_params[:phi][iter]
-        varFF = saved_params[:varFF][iter]
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter]
+            varFF = saved_params[:varFF][iter]
 
-        phi0, C = phi_2_phi₀_C(; phi)
-        phi0 = C \ phi0
-        KPF = phi0[:, 1]
-        GPFF = phi0[:, 2:end]
-        OmegaFF = (C \ diagm(varFF)) / C'
-        if p == 1
-            GP = [GPFF diagm(KPF)
-                zeros(dP, dP) I(dP)]
-        else
-            GP = [GPFF diagm(KPF)
-                I(dP * p - dP) zeros(dP * p - dP, 2dP)
-                zeros(dP, dP * p) I(dP)]
-        end
-        Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
-        Gpower_ind = I(size(GP, 1))
-        Gpower_sum = I(size(GP, 1))
-        for i in 1:tau_interest[end]
-            if i ∈ tau_interest
-                idx = findall(x -> x == i, tau_interest)
-                Gpower[:, :, idx] = Gpower_sum ./ i
+            phi0, C = phi_2_phi₀_C(; phi)
+            phi0 = C \ phi0
+            KPF = phi0[:, 1]
+            GPFF = phi0[:, 2:end]
+            OmegaFF = (C \ diagm(varFF)) / C'
+            if p == 1
+                GP = [GPFF diagm(KPF)
+                    zeros(dP, dP) I(dP)]
+            else
+                GP = [GPFF diagm(KPF)
+                    I(dP * p - dP) zeros(dP * p - dP, 2dP)
+                    zeros(dP, dP * p) I(dP)]
             end
-            Gpower_ind *= GP
-            Gpower_sum += Gpower_ind
+            Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
+            Gpower_ind = I(size(GP, 1))
+            Gpower_sum = I(size(GP, 1))
+            for i in 1:tau_interest[end]
+                if i ∈ tau_interest
+                    idx = findall(x -> x == i, tau_interest)
+                    Gpower[:, :, idx] = Gpower_sum ./ i
+                end
+                Gpower_ind *= GP
+                Gpower_sum += Gpower_ind
+            end
+
+            bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_n)
+            T1X_ = T1X(Bₓ_, Wₚ)
+            T1P_ = inv(T1X_)
+
+            aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, tau_n)
+            T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+            const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
+            timevarying_EH = Array{Float64}(undef, T - p, p * dP + dP, length(tau_interest))
+            fl_EH = Matrix{Float64}(undef, p * dP + dP, length(tau_interest))
+
+            const_EH .= sum(T0P_)
+            for i in axes(fl_EH, 2)
+                fl_EH[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
+                timevarying_EH[:, :, i] = factors .* fl_EH[:, i]'
+                const_EH[:, i] += sum(timevarying_EH[:, end-dP+1:end, i][:, :], dims=2)[:, 1]
+            end
+            timevarying_EH = timevarying_EH[:, 1:dP*p, :]
+            fl_EH = fl_EH[1:dP*p, :]
+            EH = const_EH + sum(timevarying_EH, dims=2)[:, 1, :]
+
+            const_TP = -1 .* const_EH
+            fl_TP = -1 .* fl_EH
+            timevarying_TP = -1 .* timevarying_EH
+            for i in axes(const_TP, 2)
+                const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
+            end
+            fl_TP_sub = bτ_[:, Int.(tau_interest)]' * T1P_ |> x -> x ./ tau_interest
+            fl_TP[1:dQ, :] += fl_TP_sub'
+            for i in axes(timevarying_TP, 3)
+                timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
+            end
+            TP = const_TP .+ sum(timevarying_TP, dims=2)[:, 1, :]
+
+            saved_TP[iter] = TermPremium(TP=copy(TP),
+                EH=copy(EH),
+                factorloading_TP=copy(fl_TP),
+                factorloading_EH=copy(fl_EH),
+                const_TP=copy(const_TP),
+                const_EH=copy(const_EH)
+            )
+            saved_tv_TP[iter] = copy(timevarying_TP)
+            saved_tv_EH[iter] = copy(timevarying_EH)
+
+            next!(prog)
         end
+    else
+        for iter in 1:iteration
 
-        bτ_ = bτ(tau_n[end]; kappaQ, dQ)
-        Bₓ_ = Bₓ(bτ_, tau_n)
-        T1X_ = T1X(Bₓ_, Wₚ)
-        T1P_ = inv(T1X_)
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter]
+            varFF = saved_params[:varFF][iter]
 
-        aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
-        Aₓ_ = Aₓ(aτ_, tau_n)
-        T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+            phi0, C = phi_2_phi₀_C(; phi)
+            phi0 = C \ phi0
+            KPF = phi0[:, 1]
+            GPFF = phi0[:, 2:end]
+            OmegaFF = (C \ diagm(varFF)) / C'
+            if p == 1
+                GP = [GPFF diagm(KPF)
+                    zeros(dP, dP) I(dP)]
+            else
+                GP = [GPFF diagm(KPF)
+                    I(dP * p - dP) zeros(dP * p - dP, 2dP)
+                    zeros(dP, dP * p) I(dP)]
+            end
+            Gpower = Array{Float64}(undef, size(GP, 1), size(GP, 2), length(tau_interest))
+            Gpower_ind = I(size(GP, 1))
+            Gpower_sum = I(size(GP, 1))
+            for i in 1:tau_interest[end]
+                if i ∈ tau_interest
+                    idx = findall(x -> x == i, tau_interest)
+                    Gpower[:, :, idx] = Gpower_sum ./ i
+                end
+                Gpower_ind *= GP
+                Gpower_sum += Gpower_ind
+            end
 
-        const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
-        timevarying_EH = Array{Float64}(undef, T - p, p * dP + dP, length(tau_interest))
-        fl_EH = Matrix{Float64}(undef, p * dP + dP, length(tau_interest))
+            bτ_ = bτ(tau_n[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_n)
+            T1X_ = T1X(Bₓ_, Wₚ)
+            T1P_ = inv(T1X_)
 
-        const_EH .= sum(T0P_)
-        for i in axes(fl_EH, 2)
-            fl_EH[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
-            timevarying_EH[:, :, i] = factors .* fl_EH[:, i]'
-            const_EH[:, i] += sum(timevarying_EH[:, end-dP+1:end, i][:, :], dims=2)[:, 1]
+            aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP=OmegaFF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, tau_n)
+            T0P_ = T0P(T1X_, Aₓ_, Wₚ, mean_PCs)
+
+            const_EH = Matrix{Float64}(undef, T - p, length(tau_interest))
+            timevarying_EH = Array{Float64}(undef, T - p, p * dP + dP, length(tau_interest))
+            fl_EH = Matrix{Float64}(undef, p * dP + dP, length(tau_interest))
+
+            const_EH .= sum(T0P_)
+            for i in axes(fl_EH, 2)
+                fl_EH[:, i] = sum(T1P_, dims=1) * [I(dQ) zeros(dQ, p * dP + dP - dQ)] * Gpower[:, :, i]
+                timevarying_EH[:, :, i] = factors .* fl_EH[:, i]'
+                const_EH[:, i] += sum(timevarying_EH[:, end-dP+1:end, i][:, :], dims=2)[:, 1]
+            end
+            timevarying_EH = timevarying_EH[:, 1:dP*p, :]
+            fl_EH = fl_EH[1:dP*p, :]
+            EH = const_EH + sum(timevarying_EH, dims=2)[:, 1, :]
+
+            const_TP = -1 .* const_EH
+            fl_TP = -1 .* fl_EH
+            timevarying_TP = -1 .* timevarying_EH
+            for i in axes(const_TP, 2)
+                const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
+            end
+            fl_TP_sub = bτ_[:, Int.(tau_interest)]' * T1P_ |> x -> x ./ tau_interest
+            fl_TP[1:dQ, :] += fl_TP_sub'
+            for i in axes(timevarying_TP, 3)
+                timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
+            end
+            TP = const_TP .+ sum(timevarying_TP, dims=2)[:, 1, :]
+
+            saved_TP[iter] = TermPremium(TP=copy(TP),
+                EH=copy(EH),
+                factorloading_TP=copy(fl_TP),
+                factorloading_EH=copy(fl_EH),
+                const_TP=copy(const_TP),
+                const_EH=copy(const_EH)
+            )
+            saved_tv_TP[iter] = copy(timevarying_TP)
+            saved_tv_EH[iter] = copy(timevarying_EH)
+
+            next!(prog)
         end
-        timevarying_EH = timevarying_EH[:, 1:dP*p, :]
-        fl_EH = fl_EH[1:dP*p, :]
-        EH = const_EH + sum(timevarying_EH, dims=2)[:, 1, :]
-
-        const_TP = -1 .* const_EH
-        fl_TP = -1 .* fl_EH
-        timevarying_TP = -1 .* timevarying_EH
-        for i in axes(const_TP, 2)
-            const_TP[:, i] .+= aτ_[Int(tau_interest[i])] + bτ_[:, Int(tau_interest[i])]' * T0P_ |> x -> x / tau_interest[i]
-        end
-        fl_TP_sub = bτ_[:, Int.(tau_interest)]' * T1P_ |> x -> x ./ tau_interest
-        fl_TP[1:dQ, :] += fl_TP_sub'
-        for i in axes(timevarying_TP, 3)
-            timevarying_TP[:, 1:dQ, i] .+= PCs[p+1:end, :] .* fl_TP_sub[i, :]'
-        end
-        TP = const_TP .+ sum(timevarying_TP, dims=2)[:, 1, :]
-
-        saved_TP[iter] = TermPremium(TP=copy(TP),
-            EH=copy(EH),
-            factorloading_TP=copy(fl_TP),
-            factorloading_EH=copy(fl_EH),
-            const_TP=copy(const_TP),
-            const_EH=copy(const_EH)
-        )
-        saved_tv_TP[iter] = copy(timevarying_TP)
-        saved_tv_EH[iter] = copy(timevarying_EH)
-
-        next!(prog)
     end
     finish!(prog)
 
@@ -387,28 +470,49 @@ This function translates the principal components state space into the latent fa
 - `Vector{LatentSpace}(, iteration)`
 - Latent factors contain initial observations.
 """
-function latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
+function latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[], is_parallel=true)
 
     iteration = length(saved_params)
     saved_params_latent = Vector{LatentSpace}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="latentspace...")
-    Threads.@threads for iter in 1:iteration
+    if is_parallel
+        Threads.@threads for iter in 1:iteration
 
-        kappaQ = saved_params[:kappaQ][iter]
-        kQ_infty = saved_params[:kQ_infty][iter]
-        phi = saved_params[:phi][iter]
-        varFF = saved_params[:varFF][iter]
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter]
+            varFF = saved_params[:varFF][iter]
 
-        phi0, C = phi_2_phi₀_C(; phi)
-        phi0 = C \ phi0
-        KPF = phi0[:, 1]
-        GPFF = phi0[:, 2:end]
-        OmegaFF = (C \ diagm(varFF)) / C'
+            phi0, C = phi_2_phi₀_C(; phi)
+            phi0 = C \ phi0
+            KPF = phi0[:, 1]
+            GPFF = phi0[:, 2:end]
+            OmegaFF = (C \ diagm(varFF)) / C'
 
-        latent, kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF = PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings)
-        saved_params_latent[iter] = LatentSpace(latents=copy(latent), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPXF=copy(KPXF), GPXFXF=copy(GPXFXF), OmegaXFXF=copy(OmegaXFXF))
+            latent, kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF = PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings)
+            saved_params_latent[iter] = LatentSpace(latents=copy(latent), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPXF=copy(KPXF), GPXFXF=copy(GPXFXF), OmegaXFXF=copy(OmegaXFXF))
 
-        next!(prog)
+            next!(prog)
+        end
+    else
+        for iter in 1:iteration
+
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter]
+            varFF = saved_params[:varFF][iter]
+
+            phi0, C = phi_2_phi₀_C(; phi)
+            phi0 = C \ phi0
+            KPF = phi0[:, 1]
+            GPFF = phi0[:, 2:end]
+            OmegaFF = (C \ diagm(varFF)) / C'
+
+            latent, kappaQ, kQ_infty, KPXF, GPXFXF, OmegaXFXF = PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data_scale, pca_loadings)
+            saved_params_latent[iter] = LatentSpace(latents=copy(latent), kappaQ=copy(kappaQ), kQ_infty=copy(kQ_infty), KPXF=copy(KPXF), GPXFXF=copy(GPXFXF), OmegaXFXF=copy(OmegaXFXF))
+
+            next!(prog)
+        end
     end
     finish!(prog)
 
@@ -485,33 +589,58 @@ This function generates the fitted yield curve.
 - `Vector{YieldCurve}(,`# of iteration`)`
 - `yields` and `latents` contain initial observations.
 """
-function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
+function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=true)
 
     dQ = saved_latent_params[:latents][1] |> x -> size(x, 2)
     iteration = length(saved_latent_params)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
     prog = Progress(iteration; dt=5, desc="fitted_YieldCurve...")
-    Threads.@threads for iter in 1:iteration
+    if is_parallel
+        Threads.@threads for iter in 1:iteration
 
-        latents = saved_latent_params[:latents][iter]
-        kappaQ = saved_latent_params[:kappaQ][iter]
-        kQ_infty = saved_latent_params[:kQ_infty][iter]
-        OmegaXFXF = saved_latent_params[:OmegaXFXF][iter]
+            latents = saved_latent_params[:latents][iter]
+            kappaQ = saved_latent_params[:kappaQ][iter]
+            kQ_infty = saved_latent_params[:kQ_infty][iter]
+            OmegaXFXF = saved_latent_params[:OmegaXFXF][iter]
 
-        # statistical Parameters
-        bτ_ = bτ(τ0[end]; kappaQ, dQ)
-        Bₓ_ = Bₓ(bτ_, τ0)
-        aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
-        Aₓ_ = Aₓ(aτ_, τ0)
+            # statistical Parameters
+            bτ_ = bτ(τ0[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, τ0)
+            aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, τ0)
 
-        YieldCurve_[iter] = YieldCurve(
-            latents=copy(latents),
-            yields=copy((Aₓ_ .+ Bₓ_ * latents')' |> Matrix),
-            intercept=copy(Aₓ_),
-            slope=copy(Bₓ_)
-        )
+            YieldCurve_[iter] = YieldCurve(
+                latents=copy(latents),
+                yields=copy((Aₓ_ .+ Bₓ_ * latents')' |> Matrix),
+                intercept=copy(Aₓ_),
+                slope=copy(Bₓ_)
+            )
 
-        next!(prog)
+            next!(prog)
+        end
+    else
+        for iter in 1:iteration
+
+            latents = saved_latent_params[:latents][iter]
+            kappaQ = saved_latent_params[:kappaQ][iter]
+            kQ_infty = saved_latent_params[:kQ_infty][iter]
+            OmegaXFXF = saved_latent_params[:OmegaXFXF][iter]
+
+            # statistical Parameters
+            bτ_ = bτ(τ0[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, τ0)
+            aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, τ0)
+
+            YieldCurve_[iter] = YieldCurve(
+                latents=copy(latents),
+                yields=copy((Aₓ_ .+ Bₓ_ * latents')' |> Matrix),
+                intercept=copy(Aₓ_),
+                slope=copy(Bₓ_)
+            )
+
+            next!(prog)
+        end
     end
     finish!(prog)
 

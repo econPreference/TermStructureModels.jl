@@ -563,7 +563,7 @@ This function returns the inefficiency factors for each parameter.
 - Estimated inefficiency factors are returned as a Tuple(`kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to access the inefficiency factor of `phi`, you can use `Output.phi`.
 - If `fix_const_PC1==true` in your optimized Hyperparameter struct, `Output.phi[1,1]` may be unreliable and should be ignored.
 """
-function ineff_factor(saved_params::Vector{Parameter})
+function ineff_factor(saved_params::Vector{Parameter}; is_parallel=true)
 
     iteration = length(saved_params)
 
@@ -578,24 +578,45 @@ function ineff_factor(saved_params::Vector{Parameter})
     vec_saved_params = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_params[1, :] = initial_θ
     prog = Progress(iteration - 1; dt=5, desc="ineff_factor(1.vectorization)...")
-    Threads.@threads for iter in 2:iteration
-        kappaQ = saved_params[:kappaQ][iter]
-        kQ_infty = saved_params[:kQ_infty][iter]
-        phi = saved_params[:phi][iter] |> vec
-        varFF = saved_params[:varFF][iter]
-        SigmaO = saved_params[:SigmaO][iter]
-        gamma = saved_params[:gamma][iter]
+    if is_parallel
+        Threads.@threads for iter in 2:iteration
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter] |> vec
+            varFF = saved_params[:varFF][iter]
+            SigmaO = saved_params[:SigmaO][iter]
+            gamma = saved_params[:gamma][iter]
 
-        vec_saved_params[iter, :] = [kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
-        next!(prog)
+            vec_saved_params[iter, :] = [kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
+            next!(prog)
+        end
+    else
+        for iter in 2:iteration
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter] |> vec
+            varFF = saved_params[:varFF][iter]
+            SigmaO = saved_params[:SigmaO][iter]
+            gamma = saved_params[:gamma][iter]
+
+            vec_saved_params[iter, :] = [kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
+            next!(prog)
+        end
     end
     finish!(prog)
 
     ineff = Vector{Float64}(undef, size(vec_saved_params)[2])
     prog = Progress(size(vec_saved_params, 2); dt=5, desc="ineff_factor(2.calculation)...")
-    Threads.@threads for i in axes(vec_saved_params, 2)
-        ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
-        next!(prog)
+    if is_parallel
+        Threads.@threads for i in axes(vec_saved_params, 2)
+            ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
+            next!(prog)
+        end
+    else
+        for i in axes(vec_saved_params, 2)
+            ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
+            next!(prog)
+        end
     end
     finish!(prog)
 
@@ -629,7 +650,7 @@ This function returns the inefficiency factors for each parameter.
 - Estimated inefficiency factors are returned as a Tuple(`q`, `nu0`, `kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to access the inefficiency factor of `phi`, you can use `Output.phi`.
 - If `fix_const_PC1==true` in your optimized Hyperparameter struct, `Output.phi[1,1]` may be unreliable and should be ignored.
 """
-function ineff_factor(saved_params::Vector{Parameter_NUTS})
+function ineff_factor(saved_params::Vector{Parameter_NUTS}; is_parallel=true)
 
     iteration = length(saved_params)
 
@@ -646,26 +667,49 @@ function ineff_factor(saved_params::Vector{Parameter_NUTS})
     vec_saved_params = Matrix{Float64}(undef, iteration, length(initial_θ))
     vec_saved_params[1, :] = initial_θ
     prog = Progress(iteration - 1; dt=5, desc="ineff_factor(1.vectorization)...")
-    Threads.@threads for iter in 2:iteration
-        q = saved_params[:q][iter] |> vec
-        nu0 = saved_params[:nu0][iter]
-        kappaQ = saved_params[:kappaQ][iter]
-        kQ_infty = saved_params[:kQ_infty][iter]
-        phi = saved_params[:phi][iter] |> vec
-        varFF = saved_params[:varFF][iter]
-        SigmaO = saved_params[:SigmaO][iter]
-        gamma = saved_params[:gamma][iter]
+    if is_parallel
+        Threads.@threads for iter in 2:iteration
+            q = saved_params[:q][iter] |> vec
+            nu0 = saved_params[:nu0][iter]
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter] |> vec
+            varFF = saved_params[:varFF][iter]
+            SigmaO = saved_params[:SigmaO][iter]
+            gamma = saved_params[:gamma][iter]
 
-        vec_saved_params[iter, :] = [q; nu0; kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
-        next!(prog)
+            vec_saved_params[iter, :] = [q; nu0; kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
+            next!(prog)
+        end
+    else
+        for iter in 2:iteration
+            q = saved_params[:q][iter] |> vec
+            nu0 = saved_params[:nu0][iter]
+            kappaQ = saved_params[:kappaQ][iter]
+            kQ_infty = saved_params[:kQ_infty][iter]
+            phi = saved_params[:phi][iter] |> vec
+            varFF = saved_params[:varFF][iter]
+            SigmaO = saved_params[:SigmaO][iter]
+            gamma = saved_params[:gamma][iter]
+
+            vec_saved_params[iter, :] = [q; nu0; kappaQ; kQ_infty; gamma; SigmaO; varFF; phi]
+            next!(prog)
+        end
     end
     finish!(prog)
 
     ineff = Vector{Float64}(undef, size(vec_saved_params)[2])
     prog = Progress(size(vec_saved_params, 2); dt=5, desc="ineff_factor(2.calculation)...")
-    Threads.@threads for i in axes(vec_saved_params, 2)
-        ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
-        next!(prog)
+    if is_parallel
+        Threads.@threads for i in axes(vec_saved_params, 2)
+            ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
+            next!(prog)
+        end
+    else
+        for i in axes(vec_saved_params, 2)
+            ineff[i] = longvar(vec_saved_params[:, i]) / var(vec_saved_params[:, i])
+            next!(prog)
+        end
     end
     finish!(prog)
 
