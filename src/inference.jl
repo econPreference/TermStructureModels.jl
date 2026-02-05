@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 This function optimizes the hyperparameters by maximizing the marginal likelihood of the transition equation.
 # Input
 - When comparing marginal likelihoods between models, the data for the dependent variable should be the same across models. To achieve this, we set the period of the dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for the dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -8,7 +8,7 @@ This function optimizes the hyperparameters by maximizing the marginal likelihoo
     - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
     - `:BBO`: Uses a differential evolutionary algorithm (BlackBoxOptim.jl). The lag and hyperparameters are optimized simultaneously.
 - `ml_tol`: Tolerance for parsimony in lag selection (only for `:LBFGS`). After finding the lag with the best marginal likelihood, the algorithm iteratively selects smaller lags if their marginal likelihood is within `ml_tol` of the best. This favors simpler models (smaller lags) when performance is comparable.
-- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 10 in the format `[vec(q); nu0-(dP+1); p]`. If empty (default), uses `[0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
+- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 12 in the format `[vec(q); nu0-(dP+1); p]`. If empty (default), uses `[0.1, 0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
@@ -32,7 +32,7 @@ Optimized hyperparameter, optimization result
 - Note that we minimize the negative log marginal likelihood, so the second output is for the minimization problem.
 - When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 
 
     if isempty(upper_nu0) == true
@@ -63,7 +63,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         psi_const = ones(dP)
     end
 
-    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
     if isempty(mean_phi_const) && is_pure_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
@@ -92,12 +92,13 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     function negative_log_marginal(input)
 
         # parameters
-        q = [input[1] input[5]
-            input[2] input[6]
-            input[3] input[7]
-            input[4] input[8]]
-        nu0 = input[9] + dP + 1
-        p = Int(input[10])
+        q = [input[1] input[6]
+            input[2] input[7]
+            input[3] input[8]
+            input[4] input[9]
+            input[5] input[10]]
+        nu0 = input[11] + dP + 1
+        p = Int(input[12])
 
         PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)
         if isempty(macros)
@@ -107,7 +108,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
         Omega0 = Vector{Float64}(undef, dP)
         for i in eachindex(Omega0)
-            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[9]
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[11]
         end
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
@@ -124,51 +125,52 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
 
     if optimizer == :BBO
-        ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 9); 0])
-        opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[10])), q[:,1] = $(best_candidate(x)[1:4]), q[:,2] = $(best_candidate(x)[5:8]), nu0 = $(best_candidate(x)[9] + dP + 1)"))
+        ss = MixedPrecisionRectSearchSpace(lx, ux, [-1ones(Int64, 11); 0])
+        opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[12])), q[:,1] = $(best_candidate(x)[1:5]), q[:,2] = $(best_candidate(x)[6:10]), nu0 = $(best_candidate(x)[11] + dP + 1)"))
 
-        q = [best_candidate(opt)[1] best_candidate(opt)[5]
-            best_candidate(opt)[2] best_candidate(opt)[6]
-            best_candidate(opt)[3] best_candidate(opt)[7]
-            best_candidate(opt)[4] best_candidate(opt)[8]]
-        nu0 = best_candidate(opt)[9] + dP + 1
-        p = best_candidate(opt)[10] |> Int
+        q = [best_candidate(opt)[1] best_candidate(opt)[6]
+            best_candidate(opt)[2] best_candidate(opt)[7]
+            best_candidate(opt)[3] best_candidate(opt)[8]
+            best_candidate(opt)[4] best_candidate(opt)[9]
+            best_candidate(opt)[5] best_candidate(opt)[10]]
+        nu0 = best_candidate(opt)[11] + dP + 1
+        p = best_candidate(opt)[12] |> Int
 
     elseif optimizer == :LBFGS
         # Alternating optimization between hyperparameters and lag selection
         # all_x[p] stores optimized hyperparameters for lag p
         # all_fitness[p] stores the objective value for that optimization
-        all_x = [fill(NaN, 9) for _ in 1:upper_p]
+        all_x = [fill(NaN, 11) for _ in 1:upper_p]
         all_fitness = fill(NaN, upper_p)
 
         # Set initial values: [vec(q); nu0; p]
         if isempty(init_x)
-            init_hyperparameters = [0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 2.0, 1.0, 1.0]
+            init_hyperparameters = [0.1, 0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 0.1, 2.0, 1.0, 1.0]
             init_p = 1
         else
-            init_hyperparameters = init_x[1:9]
-            init_p = Int(init_x[10])
+            init_hyperparameters = init_x[1:11]
+            init_p = Int(init_x[12])
         end
 
         # Helper functions for bounded transformation (sigmoid-based)
         function y_to_x(y)
             y_upper = copy(y)
-            for i in [1, 2, 4, 5, 6, 8, 9]
+            for i in [1, 2, 3, 5, 6, 7, 8, 10, 11]
                 y_upper[i] = min(y[i], log(ux[i] - 1e-6))
             end
 
             x = exp.(y_upper) .+ 1e-6
             # Apply bounded transformation to indices 3 and 7
-            x[3] = lx[3] + (ux[3] - lx[3]) / (1 + exp(-y[3]))
-            x[7] = lx[7] + (ux[7] - lx[7]) / (1 + exp(-y[7]))
+            x[4] = lx[4] + (ux[4] - lx[4]) / (1 + exp(-y[4]))
+            x[9] = lx[9] + (ux[9] - lx[9]) / (1 + exp(-y[9]))
             return x
         end
 
         function x_to_y(x)
             y = log.(max.(x .- 1e-6, 1e-10))
             # Inverse transformation for indices 3 and 7
-            y[3] = -log((ux[3] - lx[3]) / (x[3] - lx[3]) - 1)
-            y[7] = -log((ux[7] - lx[7]) / (x[7] - lx[7]) - 1)
+            y[4] = -log((ux[4] - lx[4]) / (x[4] - lx[4]) - 1)
+            y[9] = -log((ux[9] - lx[9]) / (x[9] - lx[9]) - 1)
             return y
         end
 
@@ -245,11 +247,12 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
 
         p = current_p
-        q = [current_x[1] current_x[5]
-            current_x[2] current_x[6]
-            current_x[3] current_x[7]
-            current_x[4] current_x[8]]
-        nu0 = current_x[9] + dP + 1
+        q = [current_x[1] current_x[6]
+            current_x[2] current_x[7]
+            current_x[3] current_x[8]
+            current_x[4] current_x[9]
+            current_x[5] current_x[10]]
+        nu0 = current_x[11] + dP + 1
         opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness)
     end
 
@@ -261,7 +264,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
     end
     Omega0 = Vector{Float64}(undef, dP)
     for i in eachindex(Omega0)
-        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt)[9] : current_x[9])
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt)[11] : current_x[11])
     end
 
     return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt

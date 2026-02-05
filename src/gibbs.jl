@@ -323,7 +323,7 @@ This function creates a model for `q` and `nu0` in the syntax of `Turing.jl`.
     fix_q_idx = findall(x -> x isa Dirac, prior_q)
     fix_q = mean.(prior_q[fix_q_idx])
 
-    q = Matrix{promote_type(eltype(fix_q), eltype(updated_q))}(undef, 4, 2)
+    q = Matrix{promote_type(eltype(fix_q), eltype(updated_q))}(undef, 5, 2)
     q[updated_q_idx] = updated_q
     q[fix_q_idx] = fix_q
 

@@ -113,7 +113,7 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
         if i == 1 && fix_const_PC1
             phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-10))
         else
-            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 1]))
+            phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[5, 1]))
         end
         for l = 1:1
             for j in 1:dQ
@@ -130,7 +130,7 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
         end
     end
     for i in (dQ+1):dP
-        phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 2]))
+        phi0[i, 1] = Normal(mean_phi_const[i], sqrt(psi_const[i] * q[5, 2]))
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
@@ -156,7 +156,7 @@ function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP;
         if i == 1 && fix_const_PC1
             logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * 1e-10)), phi0[i, 1])
         else
-            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 1])), phi0[i, 1])
+            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[5, 1])), phi0[i, 1])
         end
         for l = 1:1
             for j in 1:dQ
@@ -173,7 +173,7 @@ function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP;
         end
     end
     for i in (dQ+1):dP
-        logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[4, 2])), phi0[i, 1])
+        logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(psi_const[i] * q[5, 2])), phi0[i, 1])
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
@@ -193,7 +193,7 @@ end
 This function returns the unscaled prior variance of the Minnesota prior.
 # Input
 - lag `l`, dependent variable `i`, regressor `j` in the VAR(`p`)
-- `q[:,1]` and `q[:,2]` are [own, cross, lag, intercept] shrinkages for the first `dQ` and remaining `dP-dQ` equations, respectively.
+- `q[:,1]` and `q[:,2]` are [own, inner cross, outer cross, lag, intercept] shrinkages for the first `dQ` and remaining `dP-dQ` equations, respectively. Here, when the dependent variable is a principal component, inner cross refers to the other principal components (excluding itself), whereas outer cross refers to the macroeconomic variables. Likewise, when the dependent variable is a macroeconomic variable, inner cross refers to the other macroeconomic variables (excluding itself), whereas outer cross refers to the principal components.
 - `nu0`(d.f.), `Omega0`(scale): Inverse-Wishart prior for the error-covariance matrix of VAR(`p`).
 # Output
 - Minnesota part in the prior variance
@@ -208,19 +208,23 @@ function Minnesota(l, i, j; q, nu0, Omega0, dQ=[])
     if i < dQ + 1
         if i == j
             Minn_var = q[1, 1]
-        else
+        elseif j < dQ + 1
             Minn_var = q[2, 1]
+        else
+            Minn_var = q[3, 1]
         end
-        Minn_var /= l^q[3, 1]
+        Minn_var /= l^q[4, 1]
         Minn_var *= nu0 - dP - 1
         Minn_var /= Omega0[j]
     else
         if i == j
             Minn_var = q[1, 2]
+        elseif j < dQ + 1
+            Minn_var = q[3, 2]
         else
             Minn_var = q[2, 2]
         end
-        Minn_var /= l^q[3, 2]
+        Minn_var /= l^q[4, 2]
         Minn_var *= nu0 - dP - 1
         Minn_var /= Omega0[j]
     end
