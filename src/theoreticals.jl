@@ -252,12 +252,13 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
 end
 
 """
-    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[])
+    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=false)
 This function generates posterior samples of the term premiums.
 # Input
 - Maturity of interest `tau_interest` for calculating `TP`
 - `saved_params` from function `posterior_sampler`
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
+- `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output(3)
 `saved_TP`, `saved_tv_TP`, `saved_tv_EH`
 - `saved_TP::Vector{TermPremium}(, iteration)`
@@ -265,7 +266,7 @@ This function generates posterior samples of the term premiums.
 - `saved_tv_EH::Vector{Array}(, iteration)`
 - Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor are stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
 """
-function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=true)
+function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=false)
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
@@ -461,16 +462,17 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
 end
 
 """
-    latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
+    latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[], is_parallel=false)
 This function translates the principal components state space into the latent factor state space.
 # Input
 - `data_scale::scalar`: In typical affine term structure models, theoretical yields are in decimal and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields, so want to use (`data_scale`*theoretical yields) as variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
+- `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output
 - `Vector{LatentSpace}(, iteration)`
 - Latent factors contain initial observations.
 """
-function latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[], is_parallel=true)
+function latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[], is_parallel=false)
 
     iteration = length(saved_params)
     saved_params_latent = Vector{LatentSpace}(undef, iteration)
@@ -580,16 +582,17 @@ function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data
 end
 
 """
-    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
+    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=false)
 This function generates the fitted yield curve.
 # Input
 - `τ0` is a set of maturities of interest. `τ0` does not need to be the same as the one used for the estimation.
 - `saved_latent_params` is a transformed posterior sample using function `latentspace`.
+- `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output
 - `Vector{YieldCurve}(,`# of iteration`)`
 - `yields` and `latents` contain initial observations.
 """
-function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=true)
+function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=false)
 
     dQ = saved_latent_params[:latents][1] |> x -> size(x, 2)
     iteration = length(saved_latent_params)

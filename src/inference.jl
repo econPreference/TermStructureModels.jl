@@ -558,15 +558,16 @@ function generative(T, dP, tau_n, p, noise::Float64; kappaQ, kQ_infty, KPXF, GPX
 end
 
 """
-    ineff_factor(saved_params::Vector{Parameter})
+    ineff_factor(saved_params::Vector{Parameter}; is_parallel=false)
 This function returns the inefficiency factors for each parameter.
 # Input
 - `Vector{Parameter}` from `posterior_sampler`
+- `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output
 - Estimated inefficiency factors are returned as a Tuple(`kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to access the inefficiency factor of `phi`, you can use `Output.phi`.
 - If `fix_const_PC1==true` in your optimized Hyperparameter struct, `Output.phi[1,1]` may be unreliable and should be ignored.
 """
-function ineff_factor(saved_params::Vector{Parameter}; is_parallel=true)
+function ineff_factor(saved_params::Vector{Parameter}; is_parallel=false)
 
     iteration = length(saved_params)
 
@@ -645,15 +646,16 @@ function ineff_factor(saved_params::Vector{Parameter}; is_parallel=true)
 end
 
 """
-    ineff_factor(saved_params::Vector{Parameter_NUTS})
+    ineff_factor(saved_params::Vector{Parameter_NUTS}; is_parallel=false)
 This function returns the inefficiency factors for each parameter.
 # Input
 - `Vector{Parameter_NUTS}` from `posterior_NUTS`
+- `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output
 - Estimated inefficiency factors are returned as a Tuple(`q`, `nu0`, `kappaQ`, `kQ_infty`, `gamma`, `SigmaO`, `varFF`, `phi`). For example, if you want to access the inefficiency factor of `phi`, you can use `Output.phi`.
 - If `fix_const_PC1==true` in your optimized Hyperparameter struct, `Output.phi[1,1]` may be unreliable and should be ignored.
 """
-function ineff_factor(saved_params::Vector{Parameter_NUTS}; is_parallel=true)
+function ineff_factor(saved_params::Vector{Parameter_NUTS}; is_parallel=false)
 
     iteration = length(saved_params)
 

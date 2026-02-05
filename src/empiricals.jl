@@ -325,15 +325,16 @@ function erase_nonstationary_param(saved_params::Vector{Parameter_NUTS}; thresho
 end
 
 """
-    reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[])
+    reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[], is_parallel=false)
 This function converts posterior samples to the reduced form VAR parameters.
 # Input
 - `saved_params` is the first output of function `posterior_sampler`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
+- `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output
 - Posterior samples in terms of struct `ReducedForm`
 """
-function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[], is_parallel=true)
+function reducedform(saved_params, yields, macros, tau_n; data_scale=1200, pca_loadings=[], is_parallel=false)
 
     dQ = dimQ() + size(yields, 2) - length(tau_n)
     dP = size(saved_params[:phi][1], 1)
