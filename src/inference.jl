@@ -156,10 +156,10 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         function y_to_x(y)
             y_upper = copy(y)
             for i in [1, 2, 3, 5, 6, 7, 8, 10, 11]
-                y_upper[i] = min(y[i], log(ux[i] - 1e-6))
+                y_upper[i] = min(y[i], log(ux[i]))
             end
 
-            x = exp.(y_upper) .+ 1e-6
+            x = exp.(y_upper)
             # Apply bounded transformation to indices 3 and 7
             x[4] = lx[4] + (ux[4] - lx[4]) / (1 + exp(-y[4]))
             x[9] = lx[9] + (ux[9] - lx[9]) / (1 + exp(-y[9]))
@@ -167,7 +167,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
 
         function x_to_y(x)
-            y = log.(max.(x .- 1e-6, 1e-10))
+            y = log.(max.(x, 1e-16))
             # Inverse transformation for indices 3 and 7
             y[4] = -log((ux[4] - lx[4]) / (x[4] - lx[4]) - 1)
             y[9] = -log((ux[9] - lx[9]) / (x[9] - lx[9]) - 1)
