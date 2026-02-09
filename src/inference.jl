@@ -560,6 +560,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
             # Step 4: Variable selection (forward stepwise) if there are macro variables
             if n_macros > 0
+                # Reset variable selection: start from empty set each iteration
+                selected_macros = Set{Int}()
                 println("\n--- Forward stepwise variable selection ---")
                 current_logmarg = -current_fitness
 
