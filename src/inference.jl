@@ -272,6 +272,412 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 end
 
 """
+    tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+This function optimizes the hyperparameters with automatic variable selection: selects which macro variables affect latent factors (PCs).
+# Input
+- When comparing marginal likelihoods between models, the data for the dependent variable should be the same across models. To achieve this, we set the period of the dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for the dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
+- `optimizer`: The optimization algorithm to use.
+    - `:LBFGS` (default): Alternates between lag selection, forward stepwise variable selection for coefficients of macro variables on latent factors, and hyperparameter optimization. Variable selection stops when log marginal likelihood improvement ≤ 1.0.
+    - `:BBO`: Uses BlackBoxOptim.jl to optimize lag, hyperparameters, and variable selection simultaneously.
+- `ml_tol`: Tolerance for parsimony in lag selection (only for `:LBFGS`). After finding the lag with the best marginal likelihood, the algorithm iteratively selects smaller lags if their marginal likelihood is within `ml_tol` of the best. This favors simpler models (smaller lags) when performance is comparable.
+- `init_x`: Initial values for hyperparameters and lag (only for `:LBFGS`). Should be a vector of length 12 in the format `[vec(q); nu0-(dP+1); p]`. If empty (default), uses `[0.1, 0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 0.1, 2.0, 1.0, 1.0, 1]`.
+- `populationsize` and `maxiter` are options for the optimizer.
+    - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
+    - `maxiter`: the maximum number of iterations
+- The lower bounds for `q` and `nu0` are `0` and `dP+2`.
+- The upper bounds for `q`, `nu0`, and VAR lag can be set by `upper_q`, `upper_nu0`, and `upper_p`.
+    - The default option for `upper_nu0` is the time-series length of the data.
+- If you use the default option for `mean_phi_const`,
+    1. `mean_phi_const[dQ+1:end]` is a zero vector.
+    2. `mean_phi_const[1:dQ]` is calibrated to make the prior mean of `λₚ` a zero vector.
+    3. After step 2, `mean_phi_const[1]` is replaced with `mean_phi_const_PC1` if it is not empty.
+- `mean_phi_const = Matrix(your prior, dP, upper_p)`
+- `mean_phi_const[:,i]` is the prior mean for the VAR(`i`) constant. Therefore, `mean_phi_const` is a matrix only in this function. In other functions, `mean_phi_const` is a vector for the orthogonalized VAR system with the selected lag.
+- When `fix_const_PC1==true`, the first element in the constant term in the orthogonalized VAR is fixed to its prior mean during posterior sampling.
+- `data_scale::scalar`: In a typical affine term structure model, theoretical yields are in decimals and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields and use (`data_scale`*theoretical yields) as the variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
+- `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. Alternatively, you can supply `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ`, which define means and standard deviations for Normal priors on `[kappaQ[1]; diff(kappaQ)]`; the implied Normal prior for each `kappaQ[i]` is then truncated to (0, 1). These options are only needed when using the JSZ model.
+- `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
+- `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. Variable selection is implemented by setting `psi_common[1:dQ, dQ+i] = 1e-16` for excluded macro variable i, which removes coefficients of macro variable i (dQ+i) on latent factors (1:dQ).
+- `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
+# Output(3)
+Optimized hyperparameter, optimization result, psi matrix
+- The second output contains optimization results: when `optimizer=:LBFGS`, a NamedTuple with `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`, `selected_macros`, `psi_common`; when `optimizer=:BBO`, a NamedTuple with `opt` (bboptimize result), `selected_macros`, `psi_common`.
+- The third output is `psi = kron(ones(1, p), psi_common)`, the final prior variance scaling matrix for VAR coefficients.
+"""
+function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+
+
+    if isempty(upper_nu0) == true
+        upper_nu0 = size(yields, 1)
+    end
+
+    dQ = dimQ() + size(yields, 2) - length(tau_n)
+    if isempty(macros)
+        dP = copy(dQ)
+    else
+        dP = dQ + size(macros, 2)
+    end
+    if isempty(kappaQ_prior_pr)
+        if isempty(prior_mean_diff_kappaQ)
+            kappaQ_prior_pr = length(medium_tau) |> x -> ones(x) / x
+        else
+            kappaQ_prior_pr = [truncated(Normal(prior_mean_diff_kappaQ[1], prior_std_diff_kappaQ[1]), eps(), 1 - eps())]
+            for i in 2:length(prior_mean_diff_kappaQ)
+                kappaQ_prior_pr = [kappaQ_prior_pr; truncated(convolve(Normal(prior_mean_diff_kappaQ[i], prior_std_diff_kappaQ[i]), deepcopy(kappaQ_prior_pr[i-1].untruncated)), eps(), 1 - eps())]
+            end
+        end
+    end
+
+    # Number of macro variables for variable selection
+    n_macros = isempty(macros) ? 0 : size(macros, 2)
+
+    if isempty(psi_common)
+        # Initialize with all macro variables excluded (if any)
+        psi_common = ones(dP, dP)
+        if n_macros > 0
+            for i in 1:n_macros
+                psi_common[1:dQ, dQ+i] .= 1e-16
+            end
+        end
+    end
+    if isempty(psi_const)
+        psi_const = ones(dP)
+    end
+
+    # Add variable selection parameters for BBO (binary: 0 or 1 for each macro variable)
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
+    ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
+    if n_macros > 0
+        lx = [lx; zeros(n_macros)]  # 0 = excluded
+        ux = [ux; ones(n_macros)]   # 1 = included
+    end
+
+    if isempty(mean_phi_const) && is_pure_EH
+        mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
+        for i in axes(mean_phi_const, 2)
+            mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr, pca_loadings)[1] |> x -> mean(x, dims=1)[1, :]
+            if !isempty(mean_phi_const_PC1)
+                mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
+            end
+            if isempty(macros)
+                mean_phi_const[:, i] = copy(mean_phi_const_PCs)
+            else
+                mean_phi_const[:, i] = [mean_phi_const_PCs; zeros(size(macros, 2))]
+            end
+            prior_const_TP = calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, mean_phi_const_PCs, iteration=10_000, data_scale, kappaQ_prior_pr, τ=120, pca_loadings)[2]
+            println("For lag $i, mean_phi_const[1:dQ] is $mean_phi_const_PCs ,")
+            println("and prior mean of the constant part in the term premium is $(mean(prior_const_TP)),")
+            println("and prior std of the constant part in the term premium is $(std(prior_const_TP)).")
+            println(" ")
+        end
+    elseif isempty(mean_phi_const) && !is_pure_EH
+        mean_phi_const = zeros(dP, upper_p)
+    end
+    starting = (lx + ux) ./ 2
+    starting[12] = 1  # initial lag
+    if n_macros > 0
+        starting[13:end] .= 0  # start with all variables excluded
+    end
+
+    function negative_log_marginal(input)
+
+        # parameters
+        q = [input[1] input[6]
+            input[2] input[7]
+            input[3] input[8]
+            input[4] input[9]
+            input[5] input[10]]
+        nu0 = input[11] + dP + 1
+        p = Int(input[12])
+
+        # Variable selection: for BBO, read from input[13:end]; for LBFGS, use outer psi_common
+        if length(input) > 12 && n_macros > 0
+            # BBO: variable selection from input
+            psi_common_local = ones(dP, dP)
+            for i in 1:n_macros
+                if Int(input[12+i]) == 0  # variable i is excluded
+                    psi_common_local[1:dQ, dQ+i] .= 1e-16
+                end
+            end
+        else
+            # LBFGS: use outer psi_common (closure)
+            psi_common_local = copy(psi_common)
+        end
+
+        PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)
+        if isempty(macros)
+            factors = copy(PCs)
+        else
+            factors = [PCs macros[(upper_p-p)+1:end, :]]
+        end
+        Omega0 = Vector{Float64}(undef, dP)
+        for i in eachindex(Omega0)
+            Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * input[11]
+        end
+
+        tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
+        if isempty(macros)
+            psi = kron(ones(1, p), psi_common_local)
+            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
+        else
+            psi = kron(ones(1, p), psi_common_local)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
+        end
+
+        # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
+
+    end
+
+    if optimizer == :BBO
+        # -1 = continuous, 0 = integer
+        # [hyperparameters (11 continuous); lag (1 integer); variable selection (n_macros integers)]
+        search_space_types = [-1 * ones(Int64, 11); zeros(Int64, 1 + n_macros)]
+        ss = MixedPrecisionRectSearchSpace(lx, ux, search_space_types)
+        opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[12])), q[:,1] = $(best_candidate(x)[1:5]), q[:,2] = $(best_candidate(x)[6:10]), nu0 = $(best_candidate(x)[11] + dP + 1)"))
+
+        q = [best_candidate(opt)[1] best_candidate(opt)[6]
+            best_candidate(opt)[2] best_candidate(opt)[7]
+            best_candidate(opt)[3] best_candidate(opt)[8]
+            best_candidate(opt)[4] best_candidate(opt)[9]
+            best_candidate(opt)[5] best_candidate(opt)[10]]
+        nu0 = best_candidate(opt)[11] + dP + 1
+        p = best_candidate(opt)[12] |> Int
+
+        # Extract selected variables
+        selected_macros = Int[]
+        psi_common = ones(dP, dP)
+        if n_macros > 0
+            for i in 1:n_macros
+                if Int(best_candidate(opt)[12+i]) == 1
+                    push!(selected_macros, i)
+                else
+                    psi_common[1:dQ, dQ+i] .= 1e-16
+                end
+            end
+        end
+
+        # Extend opt with variable selection info
+        opt = (opt=opt, selected_macros=selected_macros, psi_common=copy(psi_common))
+
+    elseif optimizer == :LBFGS
+        # Alternating optimization between hyperparameters, lag selection, and variable selection
+        # all_x[p] stores optimized hyperparameters for lag p
+        # all_fitness[p] stores the objective value for that optimization
+        all_x = [fill(NaN, 11) for _ in 1:upper_p]
+        all_fitness = fill(NaN, upper_p)
+
+        # Set initial values: [vec(q); nu0; p]
+        if isempty(init_x)
+            init_hyperparameters = [0.1, 0.1, 0.1, 2.0, 1.0, 0.1, 0.1, 0.1, 2.0, 1.0, 1.0]
+            init_p = 1
+        else
+            init_hyperparameters = init_x[1:11]
+            init_p = Int(init_x[12])
+        end
+
+        # Helper functions for bounded transformation (sigmoid-based)
+        function y_to_x(y)
+            y_upper = copy(y)
+            for i in [1, 2, 3, 5, 6, 7, 8, 10, 11]
+                y_upper[i] = min(y[i], log(ux[i] - 1e-16))
+            end
+
+            x = exp.(y_upper) .+ 1e-16
+            # Apply bounded transformation to indices 3 and 7
+            x[4] = lx[4] + (ux[4] - lx[4]) / (1 + exp(-y[4]))
+            x[9] = lx[9] + (ux[9] - lx[9]) / (1 + exp(-y[9]))
+            return x
+        end
+
+        function x_to_y(x)
+            y = log.(x .- 1e-16)
+            # Inverse transformation for indices 3 and 7
+            y[4] = -log((ux[4] - lx[4]) / (x[4] - lx[4]) - 1)
+            y[9] = -log((ux[9] - lx[9]) / (x[9] - lx[9]) - 1)
+            return y
+        end
+
+        init_y = x_to_y(init_hyperparameters)
+
+        function neg_logmarg_fixedp(y, p_fixed)
+            x = y_to_x(y)
+            try
+                val = negative_log_marginal([x; p_fixed])
+                return isfinite(val) ? val : 1e10
+            catch
+                return 1e10
+            end
+        end
+
+        # Step 1: Initial hyperparameter optimization with init_p
+        println("Initial optimization with p=$init_p")
+        sol = optimize(y -> neg_logmarg_fixedp(y, init_p), init_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
+        all_x[init_p] = y_to_x(Optim.minimizer(sol))
+        all_fitness[init_p] = Optim.minimum(sol)
+        println("Initial x = $(all_x[init_p]), fitness = $(all_fitness[init_p])")
+
+        current_x = all_x[init_p]
+        prev_p = 0
+        current_p = init_p
+        iteration = 0
+
+        # Initialize variable selection: start with all macro variables excluded
+        selected_macros = Set{Int}()
+        prev_selected_macros = Set{Int}()
+
+        # Alternating optimization loop
+        while prev_p != current_p || prev_selected_macros != selected_macros || iteration == 0
+            iteration += 1
+            println("\n=== Alternating optimization iteration $iteration ===")
+
+            # Step 2: Evaluate objective for all lags with current hyperparameters fixed
+            println("Evaluating all lags with current hyperparameters...")
+            all_fitness_temp = Vector{Float64}(undef, upper_p)
+            for p_candidate in 1:upper_p
+                try
+                    all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
+                    if !isfinite(all_fitness_temp[p_candidate])
+                        all_fitness_temp[p_candidate] = 1e10
+                    end
+                catch
+                    all_fitness_temp[p_candidate] = 1e10
+                end
+                println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
+            end
+
+            # Step 3: Select best lag with parsimony principle
+            prev_p = current_p
+            prev_selected_macros = copy(selected_macros)
+            best_p = argmin(all_fitness_temp)
+            best_fitness = all_fitness_temp[best_p]
+
+            valid_lags = [p_candidate for p_candidate in 1:upper_p if all_fitness_temp[p_candidate] - best_fitness <= ml_tol]
+            current_p = isempty(valid_lags) ? best_p : minimum(valid_lags)
+
+            current_fitness = all_fitness_temp[current_p]
+
+            println("Selected p = $current_p with fitness = $current_fitness")
+
+            # Step 4: Variable selection (forward stepwise) if there are macro variables
+            if n_macros > 0
+                println("\n--- Forward stepwise variable selection ---")
+                current_logmarg = -current_fitness
+
+                while true
+                    # Find best candidate variable to add
+                    best_candidate_var = 0
+                    best_candidate_logmarg = current_logmarg
+
+                    for macro_idx in 1:n_macros
+                        if macro_idx ∈ selected_macros
+                            continue  # Skip already selected variables
+                        end
+
+                        # Try adding this variable
+                        temp_selected = copy(selected_macros)
+                        push!(temp_selected, macro_idx)
+
+                        # Update psi_common
+                        temp_psi_common = ones(dP, dP)
+                        for i in 1:n_macros
+                            if i ∉ temp_selected
+                                temp_psi_common[1:dQ, dQ+i] .= 1e-16
+                            end
+                        end
+
+                        # Evaluate marginal likelihood with this variable added
+                        # Save original psi_common
+                        orig_psi_common = copy(psi_common)
+                        psi_common = temp_psi_common
+
+                        try
+                            temp_fitness = negative_log_marginal([current_x; current_p])
+                            temp_logmarg = -temp_fitness
+
+                            println("  Candidate macro_$macro_idx: log_marginal = $temp_logmarg (improvement = $(temp_logmarg - current_logmarg))")
+
+                            if temp_logmarg > best_candidate_logmarg
+                                best_candidate_logmarg = temp_logmarg
+                                best_candidate_var = macro_idx
+                            end
+                        catch e
+                            println("  Candidate macro_$macro_idx: evaluation failed ($e)")
+                        end
+
+                        # Restore original psi_common
+                        psi_common = orig_psi_common
+                    end
+
+                    # Check if improvement is sufficient
+                    improvement = best_candidate_logmarg - current_logmarg
+                    if improvement <= ml_tol || best_candidate_var == 0
+                        println("Variable selection stopped (improvement = $improvement)")
+                        break
+                    end
+
+                    # Add the best candidate variable
+                    push!(selected_macros, best_candidate_var)
+                    current_logmarg = best_candidate_logmarg
+
+                    # Update psi_common permanently
+                    psi_common = ones(dP, dP)
+                    for i in 1:n_macros
+                        if i ∉ selected_macros
+                            psi_common[1:dQ, dQ+i] .= 1e-16
+                        end
+                    end
+
+                    println("Added macro_$best_candidate_var to model (log_marginal = $current_logmarg)")
+                end
+
+                println("Selected macro variables: $(sort(collect(selected_macros)))")
+            end
+
+            if prev_p == current_p && prev_selected_macros == selected_macros && iteration > 1
+                println("Converged: optimal lag unchanged at p = $current_p and variable selection stabilized")
+                println("Selected macro variables: $(sort(collect(selected_macros)))")
+                println("Final minimizer: $current_x")
+                break
+            end
+
+            # Step 5: Re-optimize hyperparameters with the newly selected lag and variables
+            println("Re-optimizing hyperparameters with p = $current_p")
+            current_y = x_to_y(current_x)
+            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
+            all_x[current_p] = y_to_x(Optim.minimizer(sol))
+            all_fitness[current_p] = Optim.minimum(sol)
+            current_x = all_x[current_p]
+            println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
+        end
+
+        p = current_p
+        q = [current_x[1] current_x[6]
+            current_x[2] current_x[7]
+            current_x[3] current_x[8]
+            current_x[4] current_x[9]
+            current_x[5] current_x[10]]
+        nu0 = current_x[11] + dP + 1
+        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness, selected_macros=sort(collect(selected_macros)), psi_common=copy(psi_common))
+    end
+    PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
+    if isempty(macros)
+        factors = copy(PCs)
+    else
+        factors = [PCs macros[(upper_p-p)+1:end, :]]
+    end
+    Omega0 = Vector{Float64}(undef, dP)
+    for i in eachindex(Omega0)
+        Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt.opt)[11] : current_x[11])
+    end
+
+    # Compute final psi (kron operation applied)
+    psi = kron(ones(1, p), psi_common)
+
+    return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt, psi
+
+end
+
+"""
     AR_res_var(TS::Vector, p)
 This function derives the MLE error variance estimate of an AR(`p`) model.
 # Input
