@@ -463,9 +463,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         opt = (opt=opt, selected_vars=selected_vars, psi=copy(psi_result))
 
     elseif optimizer == :LBFGS
-        # Alternating optimization between hyperparameters, lag selection, and variable selection
-        # all_x[p] stores optimized hyperparameters for lag p
-        # all_fitness[p] stores the objective value for that optimization
+        # Phase 1: Alternating lag ↔ hyperparameter optimization with all variables included (psi = ones)
+        # Phase 2: Backward variable selection (once, after convergence)
         all_x = [fill(NaN, 11) for _ in 1:upper_p]
         all_fitness = fill(NaN, upper_p)
 
@@ -512,6 +511,9 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             end
         end
 
+        # Phase 1: all variables included during optimization
+        psi = ones(dP, dP * upper_p)
+
         # Step 1: Initial hyperparameter optimization with init_p
         println("Initial optimization with p=$init_p")
         sol = optimize(y -> neg_logmarg_fixedp(y, init_p), init_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
@@ -524,12 +526,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         current_p = init_p
         iteration = 0
 
-        # Initialize variable selection: start with all candidate variables excluded
-        selected_vars = Set{Tuple{Int,Int}}()  # (lag, variable) pairs
-        prev_selected_vars = Set{Tuple{Int,Int}}()
-
-        # Alternating optimization loop
-        while prev_p != current_p || prev_selected_vars != selected_vars || iteration == 0
+        # Alternating lag ↔ hyperparameter optimization loop
+        while prev_p != current_p || iteration == 0
             iteration += 1
             println("\n=== Alternating optimization iteration $iteration ===")
 
@@ -550,7 +548,6 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
             # Step 3: Select best lag with parsimony principle
             prev_p = current_p
-            prev_selected_vars = copy(selected_vars)
             best_p = argmin(all_fitness_temp)
             best_fitness = all_fitness_temp[best_p]
 
@@ -561,110 +558,13 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
             println("Selected p = $current_p with fitness = $current_fitness")
 
-            # Step 4: Hierarchical forward stepwise variable selection
-            # Lag 1: macro candidates only (PCs already included)
-            # Lag k≥2: only variables included at lag k-1 are candidates (including PCs)
-            n_vs_active = dP * current_p - dQ
-            if n_vs_active > 0
-                # Reset variable selection: start from empty set each iteration
-                selected_vars = Set{Tuple{Int,Int}}()
-
-                # Reset psi: only columns 1:dQ included, all others excluded
-                psi[1:dQ, (dQ+1):end] .= 1e-16
-
-                println("\n--- Hierarchical forward stepwise variable selection (p=$current_p) ---")
-                current_logmarg = -current_fitness
-
-                for lag in 1:current_p
-                    # Determine candidates for this lag
-                    if lag == 1
-                        # Lag 1: only macro variables (PCs already included)
-                        candidate_vars = collect((dQ+1):dP)
-                    else
-                        # Lag k≥2: only variables included at lag k-1
-                        if lag == 2
-                            # Included at lag 1 = PCs (always) + selected macros
-                            prev_included = Set(1:dQ)
-                            for (l, j) in selected_vars
-                                if l == 1
-                                    push!(prev_included, j)
-                                end
-                            end
-                        else
-                            # Included at lag k-1 = variables selected at lag k-1
-                            prev_included = Set{Int}()
-                            for (l, j) in selected_vars
-                                if l == lag - 1
-                                    push!(prev_included, j)
-                                end
-                            end
-                        end
-                        candidate_vars = sort(collect(prev_included))
-                    end
-
-                    if isempty(candidate_vars)
-                        println("  Lag $lag: no candidates → skipping")
-                        continue
-                    end
-
-                    println("  Lag $lag: $(length(candidate_vars)) candidates = $candidate_vars")
-
-                    # Forward stepwise for this lag
-                    while true
-                        best_candidate_var = (0, 0)
-                        best_candidate_logmarg = current_logmarg
-
-                        for j in candidate_vars
-                            if (lag, j) ∈ selected_vars
-                                continue
-                            end
-
-                            col = (lag - 1) * dP + j
-                            psi[1:dQ, col] .= 1
-
-                            try
-                                temp_fitness = negative_log_marginal([current_x; current_p])
-                                temp_logmarg = -temp_fitness
-
-                                println("    Candidate (lag=$lag, var=$j): log_marginal = $temp_logmarg (improvement = $(temp_logmarg - current_logmarg))")
-
-                                if temp_logmarg > best_candidate_logmarg
-                                    best_candidate_logmarg = temp_logmarg
-                                    best_candidate_var = (lag, j)
-                                end
-                            catch e
-                                println("    Candidate (lag=$lag, var=$j): evaluation failed ($e)")
-                            end
-
-                            psi[1:dQ, col] .= 1e-16
-                        end
-
-                        improvement = best_candidate_logmarg - current_logmarg
-                        if improvement <= ml_tol || best_candidate_var == (0, 0)
-                            println("  Lag $lag: stopped (improvement = $improvement)")
-                            break
-                        end
-
-                        push!(selected_vars, best_candidate_var)
-                        current_logmarg = best_candidate_logmarg
-                        k_best, j_best = best_candidate_var
-                        psi[1:dQ, (k_best-1)*dP+j_best] .= 1
-
-                        println("    Added (lag=$k_best, var=$j_best) to model (log_marginal = $current_logmarg)")
-                    end
-                end
-
-                println("Selected variables: $(sort(collect(selected_vars)))")
-            end
-
-            if prev_p == current_p && prev_selected_vars == selected_vars && iteration > 1
-                println("Converged: optimal lag unchanged at p = $current_p and variable selection stabilized")
-                println("Selected variables: $(sort(collect(selected_vars)))")
+            if prev_p == current_p && iteration > 1
+                println("Converged: optimal lag unchanged at p = $current_p")
                 println("Final minimizer: $current_x")
                 break
             end
 
-            # Step 5: Re-optimize hyperparameters with the newly selected lag and variables
+            # Step 4: Re-optimize hyperparameters with the selected lag
             println("Re-optimizing hyperparameters with p = $current_p")
             current_y = x_to_y(current_x)
             sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
@@ -674,6 +574,66 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
         end
 
+        # Phase 2: Backward variable selection (once)
+        # active_tip[j] = current highest included lag for variable j (initially = current_p)
+        # PCs (1:dQ) at lag 1 are protected: active_tip[j] for j≤dQ cannot go below 1
+        active_tip = fill(current_p, dP)
+        current_logmarg = -all_fitness[current_p]
+
+        println("\n--- Backward variable selection (p=$current_p) ---")
+
+        while true
+            # Collect candidates: (logmarg_after, j, l) for each removable tip
+            candidates = Tuple{Float64,Int,Int}[]
+
+            for j in 1:dP
+                l = active_tip[j]
+                if l == 0
+                    continue
+                end
+                if j <= dQ && l == 1
+                    continue  # protect lag 1 PCs
+                end
+
+                col = (l - 1) * dP + j
+                psi[1:dQ, col] .= 1e-16  # try removing
+
+                temp_logmarg = -negative_log_marginal([current_x; current_p])
+                println("  Try remove (lag=$l, var=$j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
+                if temp_logmarg >= current_logmarg - ml_tol
+                    push!(candidates, (temp_logmarg, j, l))
+                end
+
+                psi[1:dQ, col] .= 1  # restore
+            end
+
+            if isempty(candidates)
+                println("Backward selection: no more removable variables")
+                break
+            end
+
+            # Remove the one with the least logmarg decrease (highest logmarg after)
+            sort!(candidates, by=x -> x[1], rev=true)
+            best_logmarg, best_j, best_l = candidates[1]
+
+            col = (best_l - 1) * dP + best_j
+            psi[1:dQ, col] .= 1e-16
+            current_logmarg = best_logmarg
+            active_tip[best_j] -= 1
+
+            println("Removed (lag=$best_l, var=$best_j), logmarg = $current_logmarg")
+        end
+
+        # Build selected_vars from active_tip
+        selected_vars = Tuple{Int,Int}[]
+        for j in 1:dP
+            for l in 1:active_tip[j]
+                push!(selected_vars, (l, j))
+            end
+        end
+        sort!(selected_vars)
+        println("Selected variables: $selected_vars")
+
         p = current_p
         q = [current_x[1] current_x[6]
             current_x[2] current_x[7]
@@ -681,7 +641,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             current_x[4] current_x[9]
             current_x[5] current_x[10]]
         nu0 = current_x[11] + dP + 1
-        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness, selected_vars=sort(collect(selected_vars)), psi=copy(psi[:, 1:dP*current_p]))
+        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness, selected_vars=selected_vars, psi=copy(psi[:, 1:dP*current_p]))
     end
     PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
     if isempty(macros)
