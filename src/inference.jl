@@ -561,8 +561,9 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
             println("Selected p = $current_p with fitness = $current_fitness")
 
-            # Step 4: Variable selection (forward stepwise)
-            # Candidates: all columns dQ+1 to dP*current_p (columns 1:dQ always included)
+            # Step 4: Hierarchical forward stepwise variable selection
+            # Lag 1: macro candidates only (PCs already included)
+            # Lag k≥2: only variables included at lag k-1 are candidates (including PCs)
             n_vs_active = dP * current_p - dQ
             if n_vs_active > 0
                 # Reset variable selection: start from empty set each iteration
@@ -571,56 +572,86 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 # Reset psi: only columns 1:dQ included, all others excluded
                 psi[1:dQ, (dQ+1):end] .= 1e-16
 
-                println("\n--- Forward stepwise variable selection (p=$current_p, candidates=$n_vs_active) ---")
+                println("\n--- Hierarchical forward stepwise variable selection (p=$current_p) ---")
                 current_logmarg = -current_fitness
 
-                while true
-                    # Find best candidate column to add
-                    best_candidate_var = (0, 0)
-                    best_candidate_logmarg = current_logmarg
-
-                    for col in (dQ+1):(dP*current_p)
-                        k = (col - 1) ÷ dP + 1
-                        j = (col - 1) % dP + 1
-                        if (k, j) ∈ selected_vars
-                            continue  # Skip already selected
-                        end
-
-                        # Try adding: temporarily include
-                        psi[1:dQ, col] .= 1
-
-                        try
-                            temp_fitness = negative_log_marginal([current_x; current_p])
-                            temp_logmarg = -temp_fitness
-
-                            println("  Candidate (lag=$k, var=$j): log_marginal = $temp_logmarg (improvement = $(temp_logmarg - current_logmarg))")
-
-                            if temp_logmarg > best_candidate_logmarg
-                                best_candidate_logmarg = temp_logmarg
-                                best_candidate_var = (k, j)
+                for lag in 1:current_p
+                    # Determine candidates for this lag
+                    if lag == 1
+                        # Lag 1: only macro variables (PCs already included)
+                        candidate_vars = collect((dQ+1):dP)
+                    else
+                        # Lag k≥2: only variables included at lag k-1
+                        if lag == 2
+                            # Included at lag 1 = PCs (always) + selected macros
+                            prev_included = Set(1:dQ)
+                            for (l, j) in selected_vars
+                                if l == 1
+                                    push!(prev_included, j)
+                                end
                             end
-                        catch e
-                            println("  Candidate (lag=$k, var=$j): evaluation failed ($e)")
+                        else
+                            # Included at lag k-1 = variables selected at lag k-1
+                            prev_included = Set{Int}()
+                            for (l, j) in selected_vars
+                                if l == lag - 1
+                                    push!(prev_included, j)
+                                end
+                            end
                         end
-
-                        # Restore: exclude again
-                        psi[1:dQ, col] .= 1e-16
+                        candidate_vars = sort(collect(prev_included))
                     end
 
-                    # Check if improvement is sufficient
-                    improvement = best_candidate_logmarg - current_logmarg
-                    if improvement <= ml_tol || best_candidate_var == (0, 0)
-                        println("Variable selection stopped (improvement = $improvement)")
+                    if isempty(candidate_vars)
+                        println("  Lag $lag: no candidates → stopping")
                         break
                     end
 
-                    # Add the best candidate permanently
-                    push!(selected_vars, best_candidate_var)
-                    current_logmarg = best_candidate_logmarg
-                    k_best, j_best = best_candidate_var
-                    psi[1:dQ, (k_best-1)*dP+j_best] .= 1
+                    println("  Lag $lag: $(length(candidate_vars)) candidates = $candidate_vars")
 
-                    println("Added (lag=$k_best, var=$j_best) to model (log_marginal = $current_logmarg)")
+                    # Forward stepwise for this lag
+                    while true
+                        best_candidate_var = (0, 0)
+                        best_candidate_logmarg = current_logmarg
+
+                        for j in candidate_vars
+                            if (lag, j) ∈ selected_vars
+                                continue
+                            end
+
+                            col = (lag - 1) * dP + j
+                            psi[1:dQ, col] .= 1
+
+                            try
+                                temp_fitness = negative_log_marginal([current_x; current_p])
+                                temp_logmarg = -temp_fitness
+
+                                println("    Candidate (lag=$lag, var=$j): log_marginal = $temp_logmarg (improvement = $(temp_logmarg - current_logmarg))")
+
+                                if temp_logmarg > best_candidate_logmarg
+                                    best_candidate_logmarg = temp_logmarg
+                                    best_candidate_var = (lag, j)
+                                end
+                            catch e
+                                println("    Candidate (lag=$lag, var=$j): evaluation failed ($e)")
+                            end
+
+                            psi[1:dQ, col] .= 1e-16
+                        end
+
+                        improvement = best_candidate_logmarg - current_logmarg
+                        if improvement <= ml_tol || best_candidate_var == (0, 0)
+                            println("  Lag $lag: stopped (improvement = $improvement)")
+                            break
+                        end
+
+                        push!(selected_vars, best_candidate_var)
+                        current_logmarg = best_candidate_logmarg
+                        k_best, j_best = best_candidate_var
+                        psi[1:dQ, (k_best-1)*dP+j_best] .= 1
+
+                        println("    Added (lag=$k_best, var=$j_best) to model (log_marginal = $current_logmarg)")
+                    end
                 end
 
                 println("Selected variables: $(sort(collect(selected_vars)))")
