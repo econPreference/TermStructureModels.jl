@@ -603,8 +603,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                     end
 
                     if isempty(candidate_vars)
-                        println("  Lag $lag: no candidates → stopping")
-                        break
+                        println("  Lag $lag: no candidates → skipping")
+                        continue
                     end
 
                     println("  Lag $lag: $(length(candidate_vars)) candidates = $candidate_vars")
