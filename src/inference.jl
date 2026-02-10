@@ -297,12 +297,12 @@ This function optimizes the hyperparameters with automatic variable selection: s
 - `data_scale::scalar`: In a typical affine term structure model, theoretical yields are in decimals and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields and use (`data_scale`*theoretical yields) as the variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. Alternatively, you can supply `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ`, which define means and standard deviations for Normal priors on `[kappaQ[1]; diff(kappaQ)]`; the implied Normal prior for each `kappaQ[i]` is then truncated to (0, 1). These options are only needed when using the JSZ model.
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
-- `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. Variable selection is implemented by setting `psi_common[1:dQ, dQ+i] = 1e-16` for excluded macro variable i, which removes coefficients of macro variable i (dQ+i) on latent factors (1:dQ).
+- `psi_const` and `psi` (dP × dP*p) are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. Variable selection operates on all columns of `psi`: columns 1:dQ (lag 1 PCs) are always included, and all other columns are candidates. Setting `psi[1:dQ, col] = 1e-16` excludes a variable's effect on latent factors. For lag k, variable j, the column index is (k-1)*dP+j.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 # Output(3)
 Optimized hyperparameter, optimization result, psi matrix
-- The second output contains optimization results: when `optimizer=:LBFGS`, a NamedTuple with `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`, `selected_macros`, `psi_common`; when `optimizer=:BBO`, a NamedTuple with `opt` (bboptimize result), `selected_macros`, `psi_common`.
-- The third output is `psi = kron(ones(1, p), psi_common)`, the final prior variance scaling matrix for VAR coefficients.
+- The second output contains optimization results: when `optimizer=:LBFGS`, a NamedTuple with `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`, `selected_vars`, `psi`; when `optimizer=:BBO`, a NamedTuple with `opt` (bboptimize result), `selected_vars`, `psi`. `selected_vars` is a sorted list of (lag, variable) tuples indicating which columns are included beyond the always-included columns 1:dQ.
+- The third output is `psi` (dP × dP*p), the final prior variance scaling matrix for VAR coefficients.
 """
 function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 
@@ -328,28 +328,29 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         end
     end
 
-    # Number of macro variables for variable selection
-    n_macros = isempty(macros) ? 0 : size(macros, 2)
+    # Variable selection: total candidate columns = dP*upper_p - dQ
+    # Always included: columns 1:dQ (lag 1 PCs). All others are candidates.
+    n_vs_params = dP * upper_p - dQ
 
     if isempty(psi_common)
-        # Initialize with all macro variables excluded (if any)
-        psi_common = ones(dP, dP)
-        if n_macros > 0
-            for i in 1:n_macros
-                psi_common[1:dQ, dQ+i] .= 1e-16
-            end
+        # Initialize psi: only (1,1)..(1,dQ) included, all others excluded
+        psi = ones(dP, dP * upper_p)
+        if n_vs_params > 0
+            psi[1:dQ, (dQ+1):end] .= 1e-16
         end
+    else
+        psi = kron(ones(1, upper_p), psi_common)
     end
     if isempty(psi_const)
         psi_const = ones(dP)
     end
 
-    # Add variable selection parameters for BBO (binary: 0 or 1 for each macro variable)
+    # Add variable selection parameters for BBO (binary: 0 or 1 for each candidate column)
     lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
-    if n_macros > 0
-        lx = [lx; zeros(n_macros)]  # 0 = excluded
-        ux = [ux; ones(n_macros)]   # 1 = included
+    if n_vs_params > 0
+        lx = [lx; zeros(n_vs_params)]  # 0 = excluded
+        ux = [ux; ones(n_vs_params)]   # 1 = included
     end
 
     if isempty(mean_phi_const) && is_pure_EH
@@ -375,8 +376,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
     end
     starting = (lx + ux) ./ 2
     starting[12] = 1  # initial lag
-    if n_macros > 0
-        starting[13:end] .= 0  # start with all variables excluded
+    if n_vs_params > 0
+        starting[13:end] .= 0  # start with all candidate variables excluded
     end
 
     function negative_log_marginal(input)
@@ -390,18 +391,20 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         nu0 = input[11] + dP + 1
         p = Int(input[12])
 
-        # Variable selection: for BBO, read from input[13:end]; for LBFGS, use outer psi_common
-        if length(input) > 12 && n_macros > 0
-            # BBO: variable selection from input
-            psi_common_local = ones(dP, dP)
-            for i in 1:n_macros
-                if Int(input[12+i]) == 0  # variable i is excluded
-                    psi_common_local[1:dQ, dQ+i] .= 1e-16
+        # Variable selection: for BBO, read from input[13:end]; for LBFGS, use outer psi (closure)
+        if length(input) > 12 && n_vs_params > 0
+            # BBO: columns 1:dQ always included, params map to columns dQ+1:dP*p
+            psi_local = ones(dP, dP * p)
+            psi_local[1:dQ, (dQ+1):end] .= 1e-16
+            n_vs_active = dP * p - dQ  # relevant params for this p
+            for i in 1:n_vs_active
+                if Int(input[12+i]) == 1  # column dQ+i is included
+                    psi_local[1:dQ, dQ+i] .= 1
                 end
             end
         else
-            # LBFGS: use outer psi_common (closure)
-            psi_common_local = copy(psi_common)
+            # LBFGS: use outer psi (closure), trim to current p
+            psi_local = copy(psi[:, 1:dP*p])
         end
 
         PCs, ~, Wₚ = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)
@@ -417,11 +420,9 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
         if isempty(macros)
-            psi = kron(ones(1, p), psi_common_local)
-            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
+            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi=psi_local, psi_const)
         else
-            psi = kron(ones(1, p), psi_common_local)
-            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi=psi_local, psi_const)
         end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -430,8 +431,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
     if optimizer == :BBO
         # -1 = continuous, 0 = integer
-        # [hyperparameters (11 continuous); lag (1 integer); variable selection (n_macros integers)]
-        search_space_types = [-1 * ones(Int64, 11); zeros(Int64, 1 + n_macros)]
+        # [hyperparameters (11 continuous); lag (1 integer); variable selection (n_vs_params integers)]
+        search_space_types = [-1 * ones(Int64, 11); zeros(Int64, 1 + n_vs_params)]
         ss = MixedPrecisionRectSearchSpace(lx, ux, search_space_types)
         opt = bboptimize(negative_log_marginal, starting; SearchSpace=ss, MaxSteps=maxiter, PopulationSize=populationsize, CallbackInterval=10, CallbackFunction=x -> println("Current Best: p = $(Int(best_candidate(x)[12])), q[:,1] = $(best_candidate(x)[1:5]), q[:,2] = $(best_candidate(x)[6:10]), nu0 = $(best_candidate(x)[11] + dP + 1)"))
 
@@ -443,21 +444,23 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         nu0 = best_candidate(opt)[11] + dP + 1
         p = best_candidate(opt)[12] |> Int
 
-        # Extract selected variables
-        selected_macros = Int[]
-        psi_common = ones(dP, dP)
-        if n_macros > 0
-            for i in 1:n_macros
-                if Int(best_candidate(opt)[12+i]) == 1
-                    push!(selected_macros, i)
-                else
-                    psi_common[1:dQ, dQ+i] .= 1e-16
-                end
+        # Extract selected variables (lag, variable) pairs; ignore params beyond selected p
+        selected_vars = Tuple{Int,Int}[]
+        psi_result = ones(dP, dP * p)
+        psi_result[1:dQ, (dQ+1):end] .= 1e-16
+        n_vs_active = dP * p - dQ
+        for i in 1:n_vs_active
+            col = dQ + i
+            k = (col - 1) ÷ dP + 1
+            j = (col - 1) % dP + 1
+            if Int(best_candidate(opt)[12+i]) == 1
+                push!(selected_vars, (k, j))
+                psi_result[1:dQ, col] .= 1
             end
         end
 
         # Extend opt with variable selection info
-        opt = (opt=opt, selected_macros=selected_macros, psi_common=copy(psi_common))
+        opt = (opt=opt, selected_vars=selected_vars, psi=copy(psi_result))
 
     elseif optimizer == :LBFGS
         # Alternating optimization between hyperparameters, lag selection, and variable selection
@@ -521,12 +524,12 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         current_p = init_p
         iteration = 0
 
-        # Initialize variable selection: start with all macro variables excluded
-        selected_macros = Set{Int}()
-        prev_selected_macros = Set{Int}()
+        # Initialize variable selection: start with all candidate variables excluded
+        selected_vars = Set{Tuple{Int,Int}}()  # (lag, variable) pairs
+        prev_selected_vars = Set{Tuple{Int,Int}}()
 
         # Alternating optimization loop
-        while prev_p != current_p || prev_selected_macros != selected_macros || iteration == 0
+        while prev_p != current_p || prev_selected_vars != selected_vars || iteration == 0
             iteration += 1
             println("\n=== Alternating optimization iteration $iteration ===")
 
@@ -547,7 +550,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
             # Step 3: Select best lag with parsimony principle
             prev_p = current_p
-            prev_selected_macros = copy(selected_macros)
+            prev_selected_vars = copy(selected_vars)
             best_p = argmin(all_fitness_temp)
             best_fitness = all_fitness_temp[best_p]
 
@@ -558,86 +561,74 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
             println("Selected p = $current_p with fitness = $current_fitness")
 
-            # Step 4: Variable selection (forward stepwise) if there are macro variables
-            if n_macros > 0
+            # Step 4: Variable selection (forward stepwise)
+            # Candidates: all columns dQ+1 to dP*current_p (columns 1:dQ always included)
+            n_vs_active = dP * current_p - dQ
+            if n_vs_active > 0
                 # Reset variable selection: start from empty set each iteration
-                selected_macros = Set{Int}()
-                println("\n--- Forward stepwise variable selection ---")
+                selected_vars = Set{Tuple{Int,Int}}()
+
+                # Reset psi: only columns 1:dQ included, all others excluded
+                psi[1:dQ, (dQ+1):end] .= 1e-16
+
+                println("\n--- Forward stepwise variable selection (p=$current_p, candidates=$n_vs_active) ---")
                 current_logmarg = -current_fitness
 
                 while true
-                    # Find best candidate variable to add
-                    best_candidate_var = 0
+                    # Find best candidate column to add
+                    best_candidate_var = (0, 0)
                     best_candidate_logmarg = current_logmarg
 
-                    for macro_idx in 1:n_macros
-                        if macro_idx ∈ selected_macros
-                            continue  # Skip already selected variables
+                    for col in (dQ+1):(dP*current_p)
+                        k = (col - 1) ÷ dP + 1
+                        j = (col - 1) % dP + 1
+                        if (k, j) ∈ selected_vars
+                            continue  # Skip already selected
                         end
 
-                        # Try adding this variable
-                        temp_selected = copy(selected_macros)
-                        push!(temp_selected, macro_idx)
-
-                        # Update psi_common
-                        temp_psi_common = ones(dP, dP)
-                        for i in 1:n_macros
-                            if i ∉ temp_selected
-                                temp_psi_common[1:dQ, dQ+i] .= 1e-16
-                            end
-                        end
-
-                        # Evaluate marginal likelihood with this variable added
-                        # Save original psi_common
-                        orig_psi_common = copy(psi_common)
-                        psi_common = temp_psi_common
+                        # Try adding: temporarily include
+                        psi[1:dQ, col] .= 1
 
                         try
                             temp_fitness = negative_log_marginal([current_x; current_p])
                             temp_logmarg = -temp_fitness
 
-                            println("  Candidate macro_$macro_idx: log_marginal = $temp_logmarg (improvement = $(temp_logmarg - current_logmarg))")
+                            println("  Candidate (lag=$k, var=$j): log_marginal = $temp_logmarg (improvement = $(temp_logmarg - current_logmarg))")
 
                             if temp_logmarg > best_candidate_logmarg
                                 best_candidate_logmarg = temp_logmarg
-                                best_candidate_var = macro_idx
+                                best_candidate_var = (k, j)
                             end
                         catch e
-                            println("  Candidate macro_$macro_idx: evaluation failed ($e)")
+                            println("  Candidate (lag=$k, var=$j): evaluation failed ($e)")
                         end
 
-                        # Restore original psi_common
-                        psi_common = orig_psi_common
+                        # Restore: exclude again
+                        psi[1:dQ, col] .= 1e-16
                     end
 
                     # Check if improvement is sufficient
                     improvement = best_candidate_logmarg - current_logmarg
-                    if improvement <= ml_tol || best_candidate_var == 0
+                    if improvement <= ml_tol || best_candidate_var == (0, 0)
                         println("Variable selection stopped (improvement = $improvement)")
                         break
                     end
 
-                    # Add the best candidate variable
-                    push!(selected_macros, best_candidate_var)
+                    # Add the best candidate permanently
+                    push!(selected_vars, best_candidate_var)
                     current_logmarg = best_candidate_logmarg
+                    k_best, j_best = best_candidate_var
+                    psi[1:dQ, (k_best-1)*dP+j_best] .= 1
 
-                    # Update psi_common permanently
-                    psi_common = ones(dP, dP)
-                    for i in 1:n_macros
-                        if i ∉ selected_macros
-                            psi_common[1:dQ, dQ+i] .= 1e-16
-                        end
-                    end
-
-                    println("Added macro_$best_candidate_var to model (log_marginal = $current_logmarg)")
+                    println("Added (lag=$k_best, var=$j_best) to model (log_marginal = $current_logmarg)")
                 end
 
-                println("Selected macro variables: $(sort(collect(selected_macros)))")
+                println("Selected variables: $(sort(collect(selected_vars)))")
             end
 
-            if prev_p == current_p && prev_selected_macros == selected_macros && iteration > 1
+            if prev_p == current_p && prev_selected_vars == selected_vars && iteration > 1
                 println("Converged: optimal lag unchanged at p = $current_p and variable selection stabilized")
-                println("Selected macro variables: $(sort(collect(selected_macros)))")
+                println("Selected variables: $(sort(collect(selected_vars)))")
                 println("Final minimizer: $current_x")
                 break
             end
@@ -659,7 +650,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             current_x[4] current_x[9]
             current_x[5] current_x[10]]
         nu0 = current_x[11] + dP + 1
-        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness, selected_macros=sort(collect(selected_macros)), psi_common=copy(psi_common))
+        opt = (minimizer=current_x, minimum=all_fitness[current_p], p=current_p, all_minimizer=all_x, all_minimum=all_fitness, selected_vars=sort(collect(selected_vars)), psi=copy(psi[:, 1:dP*current_p]))
     end
     PCs = PCA(yields[(upper_p-p)+1:end, :], p; pca_loadings)[1]
     if isempty(macros)
@@ -672,10 +663,10 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         Omega0[i] = (AR_res_var(factors[:, i], p)[1]) * (optimizer == :BBO ? best_candidate(opt.opt)[11] : current_x[11])
     end
 
-    # Compute final psi (kron operation applied)
-    psi = kron(ones(1, p), psi_common)
+    # Final psi: trim to selected lag length
+    psi_final = optimizer == :BBO ? opt.psi : copy(psi[:, 1:dP*p])
 
-    return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt, psi
+    return Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p])), opt, psi_final
 
 end
 
