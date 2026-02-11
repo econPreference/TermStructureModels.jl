@@ -591,9 +591,6 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 if l == 0
                     continue
                 end
-                if j <= dQ && l == 1
-                    continue  # protect lag 1 PCs
-                end
 
                 col = (l - 1) * dP + j
                 psi[1:dQ, col] .= 1e-16  # try removing
@@ -627,9 +624,6 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 l = active_tip[best_j]
                 if l == 0
                     break
-                end
-                if best_j <= dQ && l == 1
-                    break  # protect lag 1 PCs
                 end
                 col = (l - 1) * dP + best_j
                 psi[1:dQ, col] .= 1e-16
