@@ -178,8 +178,12 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         function neg_logmarg_fixedp(y, p_fixed)
             x = y_to_x(y)
-            val = negative_log_marginal([x; p_fixed])
-            return isfinite(val) ? val : 1e10
+            try
+                val = negative_log_marginal([x; p_fixed])
+                return isfinite(val) ? val : 1e10
+            catch
+                return 1e10
+            end
         end
 
         # Step 1: Initial hyperparameter optimization with init_p
@@ -203,8 +207,12 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
             println("Evaluating all lags with current hyperparameters...")
             all_fitness_temp = Vector{Float64}(undef, upper_p)
             for p_candidate in 1:upper_p
-                all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
-                if !isfinite(all_fitness_temp[p_candidate])
+                try
+                    all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
+                    if !isfinite(all_fitness_temp[p_candidate])
+                        all_fitness_temp[p_candidate] = 1e10
+                    end
+                catch
                     all_fitness_temp[p_candidate] = 1e10
                 end
                 println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
@@ -495,8 +503,12 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
         function neg_logmarg_fixedp(y, p_fixed)
             x = y_to_x(y)
-            val = negative_log_marginal([x; p_fixed])
-            return isfinite(val) ? val : 1e10
+            try
+                val = negative_log_marginal([x; p_fixed])
+                return isfinite(val) ? val : 1e10
+            catch
+                return 1e10
+            end
         end
 
         # Phase 1: all variables included during optimization
@@ -523,8 +535,12 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             println("Evaluating all lags with current hyperparameters...")
             all_fitness_temp = Vector{Float64}(undef, upper_p)
             for p_candidate in 1:upper_p
-                all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
-                if !isfinite(all_fitness_temp[p_candidate])
+                try
+                    all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
+                    if !isfinite(all_fitness_temp[p_candidate])
+                        all_fitness_temp[p_candidate] = 1e10
+                    end
+                catch
                     all_fitness_temp[p_candidate] = 1e10
                 end
                 println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
