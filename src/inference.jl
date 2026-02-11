@@ -620,8 +620,30 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             psi[1:dQ, col] .= 1e-16
             current_logmarg = best_logmarg
             active_tip[best_j] -= 1
-
             println("Removed (lag=$best_l, var=$best_j), logmarg = $current_logmarg")
+
+            # Chain removal: keep removing lower lags of best_j until criterion fails
+            while true
+                l = active_tip[best_j]
+                if l == 0
+                    break
+                end
+                if best_j <= dQ && l == 1
+                    break  # protect lag 1 PCs
+                end
+                col = (l - 1) * dP + best_j
+                psi[1:dQ, col] .= 1e-16
+                temp_logmarg = -negative_log_marginal([current_x; current_p])
+                println("  Chain remove (lag=$l, var=$best_j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
+                if temp_logmarg >= current_logmarg - ml_tol
+                    current_logmarg = temp_logmarg
+                    active_tip[best_j] -= 1
+                    println("  Removed (lag=$l, var=$best_j), logmarg = $current_logmarg")
+                else
+                    psi[1:dQ, col] .= 1  # restore: criterion failed
+                    break
+                end
+            end
         end
 
         # Build selected_vars from active_tip
