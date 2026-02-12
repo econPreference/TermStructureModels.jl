@@ -658,6 +658,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
 
         # Phase 3: Re-optimize hyperparameters with selected variables
         println("\n--- Re-optimizing hyperparameters after variable selection ---")
+        current_y = x_to_y(current_x)
         sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
         current_x = y_to_x(Optim.minimizer(sol))
         all_x[current_p] = current_x
