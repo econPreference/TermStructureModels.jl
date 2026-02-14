@@ -574,57 +574,76 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
         end
 
-        # Phase 2: Forward variable selection (once)
-        # active_tip[j] = current highest included lag for variable j
-        # Start: only lag-1 PCs included; all others excluded
-        psi .= 1e-16
-        active_tip = zeros(Int, dP)
-        for j in 1:dQ
-            psi[1:dQ, j] .= 1  # lag 1, col = j
-            active_tip[j] = 1
-        end
-        current_logmarg = -negative_log_marginal([current_x; current_p])
+        # Phase 2: Backward variable selection (once)
+        # active_tip[j] = current highest included lag for variable j (initially = current_p)
+        # PCs (1:dQ) at lag 1 are protected: active_tip[j] for j≤dQ cannot go below 1
+        active_tip = fill(current_p, dP)
+        current_logmarg = -all_fitness[current_p]
 
-        println("\n--- Forward variable selection (p=$current_p) ---")
-        println("Initial logmarg (lag-1 PCs only) = $current_logmarg")
+        println("\n--- Backward variable selection (p=$current_p) ---")
 
         while true
-            # Collect candidates: next lag to add for each variable
+            # Collect candidates: (logmarg_after, j, l) for each removable tip
             candidates = Tuple{Float64,Int,Int}[]
 
             for j in 1:dP
-                l = active_tip[j] + 1  # next lag to try adding
-                if l > current_p
-                    continue  # already fully included
+                l = active_tip[j]
+                if l == 0
+                    continue
+                end
+                if j <= dQ && l == 1
+                    continue  # protect lag 1 PCs
                 end
 
                 col = (l - 1) * dP + j
-                psi[1:dQ, col] .= 1  # try adding
+                psi[1:dQ, col] .= 1e-16  # try removing
 
                 temp_logmarg = -negative_log_marginal([current_x; current_p])
-                println("  Try add (lag=$l, var=$j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
-                if temp_logmarg > current_logmarg + ml_tol
+                println("  Try remove (lag=$l, var=$j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
+                if temp_logmarg >= current_logmarg - ml_tol
                     push!(candidates, (temp_logmarg, j, l))
                 end
 
-                psi[1:dQ, col] .= 1e-16  # restore
+                psi[1:dQ, col] .= 1  # restore
             end
 
             if isempty(candidates)
-                println("Forward selection: no more variables to add")
+                println("Backward selection: no more removable variables")
                 break
             end
 
-            # Add the one with the highest logmarg
+            # Remove the one with the least logmarg decrease (highest logmarg after)
             sort!(candidates, by=x -> x[1], rev=true)
             best_logmarg, best_j, best_l = candidates[1]
 
             col = (best_l - 1) * dP + best_j
-            psi[1:dQ, col] .= 1
+            psi[1:dQ, col] .= 1e-16
             current_logmarg = best_logmarg
-            active_tip[best_j] += 1
+            active_tip[best_j] -= 1
+            println("Removed (lag=$best_l, var=$best_j), logmarg = $current_logmarg")
 
-            println("Added (lag=$best_l, var=$best_j), logmarg = $current_logmarg")
+            # Chain removal: keep removing lower lags of best_j until criterion fails
+            while true
+                l = active_tip[best_j]
+                if l == 0
+                    break
+                end
+                if best_j <= dQ && l == 1
+                    break  # protect lag 1 PCs
+                end
+                col = (l - 1) * dP + best_j
+                psi[1:dQ, col] .= 1e-16
+                temp_logmarg = -negative_log_marginal([current_x; current_p])
+                println("  Chain remove (lag=$l, var=$best_j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
+                if temp_logmarg >= current_logmarg - ml_tol
+                    current_logmarg = temp_logmarg
+                    active_tip[best_j] -= 1
+                    println("  Removed (lag=$l, var=$best_j), logmarg = $current_logmarg")
+                else
+                    psi[1:dQ, col] .= 1  # restore: criterion failed
+                    break
+                end
+            end
         end
 
         # Build selected_vars from active_tip
