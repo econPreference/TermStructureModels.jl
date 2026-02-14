@@ -591,8 +591,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 if l == 0
                     continue
                 end
-                if j <= dQ && l == 1
-                    continue  # protect lag 1 PCs
+                if j <= dQ
+                    continue  # PCs: always included at all lags
                 end
 
                 col = (l - 1) * dP + j
@@ -628,8 +628,8 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 if l == 0
                     break
                 end
-                if best_j <= dQ && l == 1
-                    break  # protect lag 1 PCs
+                if best_j <= dQ
+                    break  # PCs: always included at all lags
                 end
                 col = (l - 1) * dP + best_j
                 psi[1:dQ, col] .= 1e-16
