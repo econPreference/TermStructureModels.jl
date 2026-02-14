@@ -637,14 +637,55 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         sort!(selected_vars)
         println("Selected variables: $selected_vars")
 
-        # Phase 3: Re-optimize hyperparameters with selected variables
-        println("\n--- Re-optimizing hyperparameters after variable selection ---")
+        # Phase 3: Alternating lag ↔ hyperparameter optimization after variable selection
+        println("\n--- Re-optimizing lag & hyperparameters after variable selection ---")
         current_y = x_to_y(current_x)
         sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
-        current_x = y_to_x(Optim.minimizer(sol))
-        all_x[current_p] = current_x
+        all_x[current_p] = y_to_x(Optim.minimizer(sol))
         all_fitness[current_p] = Optim.minimum(sol)
+        current_x = all_x[current_p]
         println("Re-optimized after VS: x = $current_x, fitness = $(all_fitness[current_p])")
+
+        prev_p = current_p
+        iteration = 0
+        while true
+            iteration += 1
+            println("\n=== Post-VS alternating optimization iteration $iteration ===")
+
+            println("Evaluating all lags with current hyperparameters...")
+            all_fitness_temp = Vector{Float64}(undef, upper_p)
+            for p_candidate in 1:upper_p
+                try
+                    all_fitness_temp[p_candidate] = negative_log_marginal([current_x; p_candidate])
+                    if !isfinite(all_fitness_temp[p_candidate])
+                        all_fitness_temp[p_candidate] = 1e10
+                    end
+                catch
+                    all_fitness_temp[p_candidate] = 1e10
+                end
+                println("  p = $p_candidate: fitness = $(all_fitness_temp[p_candidate])")
+            end
+
+            prev_p = current_p
+            best_p = argmin(all_fitness_temp)
+            best_fitness = all_fitness_temp[best_p]
+            valid_lags = [p_candidate for p_candidate in 1:upper_p if all_fitness_temp[p_candidate] - best_fitness <= ml_tol]
+            current_p = isempty(valid_lags) ? best_p : minimum(valid_lags)
+            println("Selected p = $current_p with fitness = $(all_fitness_temp[current_p])")
+
+            if prev_p == current_p
+                println("Converged: optimal lag unchanged at p = $current_p")
+                break
+            end
+
+            println("Re-optimizing hyperparameters with p = $current_p")
+            current_y = x_to_y(current_x)
+            sol = optimize(y -> neg_logmarg_fixedp(y, current_p), current_y, LBFGS(), Optim.Options(iterations=maxiter, f_abstol=1e-2, x_abstol=1e-3, g_abstol=1e-4, show_trace=true))
+            all_x[current_p] = y_to_x(Optim.minimizer(sol))
+            all_fitness[current_p] = Optim.minimum(sol)
+            current_x = all_x[current_p]
+            println("Re-optimized x = $current_x, fitness = $(all_fitness[current_p])")
+        end
 
         p = current_p
         q = [current_x[1] current_x[6]
