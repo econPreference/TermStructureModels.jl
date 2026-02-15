@@ -1,6 +1,6 @@
 
 """
-    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+    tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 This function optimizes the hyperparameters by maximizing the marginal likelihood of the transition equation.
 # Input
 - When comparing marginal likelihoods between models, the data for the dependent variable should be the same across models. To achieve this, we set the period of the dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for the dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
@@ -25,14 +25,14 @@ This function optimizes the hyperparameters by maximizing the marginal likelihoo
 - `data_scale::scalar`: In a typical affine term structure model, theoretical yields are in decimals and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields and use (`data_scale`*theoretical yields) as the variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. Alternatively, you can supply `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ`, which define means and standard deviations for Normal priors on `[kappaQ[1]; diff(kappaQ)]`; the implied Normal prior for each `kappaQ[i]` is then truncated to (0, 1). These options are only needed when using the JSZ model.
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
-- `psi_const` and `psi = kron(ones(1, lag length), psi_common)` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`. The entries of `psi_common` and `psi_const` should be nearly zero (e.g., `1e-10`), not exactly zero.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`. `psi` is a (dP × dP*upper_p) matrix; when a shorter lag p < upper_p is selected, `psi[:, 1:dP*p]` is automatically used.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 # Output(2)
 Optimized hyperparameter, optimization result
 - Note that we minimize the negative log marginal likelihood, so the second output is for the minimization problem.
 - When `optimizer=:LBFGS`, the second output is a NamedTuple with fields `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`.
 """
-function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 
 
     if isempty(upper_nu0) == true
@@ -56,8 +56,8 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         end
     end
 
-    if isempty(psi_common)
-        psi_common = ones(dP, dP)
+    if isempty(psi)
+        psi = ones(dP, upper_p * dP)
     end
     if isempty(psi_const)
         psi_const = ones(dP)
@@ -113,11 +113,9 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
 
         tuned = Hyperparameter(p=copy(p), q=copy(q), nu0=copy(nu0), Omega0=copy(Omega0), mean_phi_const=copy(mean_phi_const[:, p]))
         if isempty(macros)
-            psi = kron(ones(1, p), psi_common)
-            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
+            return -log_marginal(factors, macros, rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi=psi[:, 1:p*dP], psi_const)
         else
-            psi = kron(ones(1, p), psi_common)
-            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi, psi_const)
+            return -log_marginal(factors[:, 1:dQ], factors[:, dQ+1:end], rho, tuned, tau_n, Wₚ; medium_tau, kappaQ_prior_pr, fix_const_PC1, psi=psi[:, 1:p*dP], psi_const)
         end
 
         # Although the input data should contains initial observations, the argument of the marginal likelihood should be the same across the candidate models. Therefore, we should align the length of the dependent variable across the models.
@@ -297,14 +295,14 @@ This function optimizes the hyperparameters with automatic variable selection: s
 - `data_scale::scalar`: In a typical affine term structure model, theoretical yields are in decimals and not annualized. However, for convenience (public data usually contains annualized percentage yields) and numerical stability, we sometimes want to scale up yields and use (`data_scale`*theoretical yields) as the variable `yields`. In this case, you can use the `data_scale` option. For example, we can set `data_scale = 1200` and use annualized percentage monthly yields as `yields`.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. Alternatively, you can supply `prior_mean_diff_kappaQ` and `prior_std_diff_kappaQ`, which define means and standard deviations for Normal priors on `[kappaQ[1]; diff(kappaQ)]`; the implied Normal prior for each `kappaQ[i]` is then truncated to (0, 1). These options are only needed when using the JSZ model.
 - `is_pure_EH::Bool`: When `mean_phi_const=[]`, `is_pure_EH=false` sets `mean_phi_const` to zero vectors. Otherwise, `mean_phi_const` is set to imply the pure expectation hypothesis under `mean_phi_const=[]`.
-- `psi_const` and `psi` (dP × dP*p) are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. Variable selection operates on all columns of `psi`: columns 1:dQ (lag 1 PCs) are always included, and all other columns are candidates. Setting `psi[1:dQ, col] = 1e-16` excludes a variable's effect on latent factors. For lag k, variable j, the column index is (k-1)*dP+j.
+- `psi_const` is multiplied with the prior variance of the intercept coefficients in the orthogonalized transition equation.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
 # Output(3)
 Optimized hyperparameter, optimization result, psi matrix
 - The second output contains optimization results: when `optimizer=:LBFGS`, a NamedTuple with `minimizer`, `minimum`, `p`, `all_minimizer`, `all_minimum`, `selected_vars`, `psi`; when `optimizer=:BBO`, a NamedTuple with `opt` (bboptimize result), `selected_vars`, `psi`. `selected_vars` is a sorted list of (lag, variable) tuples indicating which columns are included beyond the always-included columns 1:dQ.
-- The third output is `psi` (dP × dP*p), the final prior variance scaling matrix for VAR coefficients.
+- The third output is `psi` (dP × dP*p), the prior variance scaling matrix for lagged regressors in the orthogonalized transition equation. Backward variable selection is applied to all columns except lag-1 latent factors (j ≤ dQ, k = 1): setting `psi[1:dQ, col] = 0` excludes a variable's effect on latent factors. For lag k, variable j, the column index is (k-1)*dP+j.
 """
-function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_common=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
+function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 
 
     if isempty(upper_nu0) == true
@@ -331,15 +329,9 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
     # Variable selection: total candidate columns = dP*upper_p - dQ
     # Always included: columns 1:dQ (lag 1 PCs). All others are candidates.
     n_vs_params = dP * upper_p - dQ
-
-    if isempty(psi_common)
-        # Initialize psi: only (1,1)..(1,dQ) included, all others excluded
-        psi = ones(dP, dP * upper_p)
-        if n_vs_params > 0
-            psi[1:dQ, (dQ+1):end] .= 1e-16
-        end
-    else
-        psi = kron(ones(1, upper_p), psi_common)
+    psi = ones(dP, dP * upper_p)
+    if n_vs_params > 0
+        psi[1:dQ, (dQ+1):end] .= 0
     end
     if isempty(psi_const)
         psi_const = ones(dP)
@@ -395,7 +387,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         if length(input) > 12 && n_vs_params > 0
             # BBO: columns 1:dQ always included, params map to columns dQ+1:dP*p
             psi_local = ones(dP, dP * p)
-            psi_local[1:dQ, (dQ+1):end] .= 1e-16
+            psi_local[1:dQ, (dQ+1):end] .= 0
             n_vs_active = dP * p - dQ  # relevant params for this p
             for i in 1:n_vs_active
                 if Int(input[12+i]) == 1  # column dQ+i is included
@@ -447,7 +439,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         # Extract selected variables (lag, variable) pairs; ignore params beyond selected p
         selected_vars = Tuple{Int,Int}[]
         psi_result = ones(dP, dP * p)
-        psi_result[1:dQ, (dQ+1):end] .= 1e-16
+        psi_result[1:dQ, (dQ+1):end] .= 0
         n_vs_active = dP * p - dQ
         for i in 1:n_vs_active
             col = dQ + i
@@ -591,12 +583,12 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 if l == 0
                     continue
                 end
-                if j <= dQ
-                    continue  # PCs: always included at all lags
+                if j <= dQ && l == 1
+                    continue  # protect lag 1 PCs
                 end
 
                 col = (l - 1) * dP + j
-                psi[1:dQ, col] .= 1e-16  # try removing
+                psi[1:dQ, col] .= 0  # try removing
 
                 temp_logmarg = -negative_log_marginal([current_x; current_p])
                 println("  Try remove (lag=$l, var=$j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
@@ -617,7 +609,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
             best_logmarg, best_j, best_l = candidates[1]
 
             col = (best_l - 1) * dP + best_j
-            psi[1:dQ, col] .= 1e-16
+            psi[1:dQ, col] .= 0
             current_logmarg = best_logmarg
             active_tip[best_j] -= 1
             println("Removed (lag=$best_l, var=$best_j), logmarg = $current_logmarg")
@@ -628,11 +620,11 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
                 if l == 0
                     break
                 end
-                if best_j <= dQ
-                    break  # PCs: always included at all lags
+                if best_j <= dQ && l == 1
+                    break  # protect lag 1 PCs
                 end
                 col = (l - 1) * dP + best_j
-                psi[1:dQ, col] .= 1e-16
+                psi[1:dQ, col] .= 0
                 temp_logmarg = -negative_log_marginal([current_x; current_p])
                 println("  Chain remove (lag=$l, var=$best_j): logmarg = $temp_logmarg (change = $(temp_logmarg - current_logmarg))")
                 if temp_logmarg >= current_logmarg - ml_tol
