@@ -3,7 +3,7 @@
 This file calculates a value of the marginal likelihood. Only the transition equation is used to calculate it.
 # Input
 - tuned is a point where the marginal likelihood is evaluated.
-- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[i,j]`.
+- `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[:,1:1+dP*p][i,j]`.
 # Output
 - the log marginal likelihood of the VAR system.
 """
