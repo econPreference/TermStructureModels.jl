@@ -597,7 +597,7 @@ function fitted_yieldcurve(tau_vec, saved_latent_params::Vector{LatentSpace}; da
     dQ = saved_latent_params[:latents][1] |> x -> size(x, 2)
     iteration = length(saved_latent_params)
     YieldCurve_ = Vector{YieldCurve}(undef, iteration)
-    prog = Progress(iteration; dt=5, desc="fitted_YieldCurve...")
+    prog = Progress(iteration; dt=5, desc="fitted_yieldcurve...")
     if is_parallel
         Threads.@threads for iter in 1:iteration
 

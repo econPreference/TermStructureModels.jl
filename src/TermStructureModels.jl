@@ -239,7 +239,7 @@ export
     term_premium,
     latentspace,
     PCA,
-    fitted_YieldCurve,
+    fitted_yieldcurve,
 
     # utilities.jl
     getindex,

@@ -18,7 +18,7 @@ Each entry in `reduced_params::Vector{ReducedForm}` is a joint posterior sample 
 
 ## Yield Curve Interpolation
 
-First, transform the parameter space from the principal component space to the latent factor space. This is done using [`latentspace`](@ref). Then, use [`fitted_YieldCurve`](@ref) to obtain fitted yields. Specifically,
+First, transform the parameter space from the principal component space to the latent factor space. This is done using [`latentspace`](@ref). Then, use [`fitted_yieldcurve`](@ref) to obtain fitted yields. Specifically,
 
 ```julia
 saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
