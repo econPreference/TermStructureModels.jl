@@ -22,10 +22,10 @@ First, transform the parameter space from the principal component space to the l
 
 ```julia
 saved_latent_params = latentspace(saved_params, yields, tau_n; data_scale=1200, pca_loadings=[])
-fitted_yields = fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
+fitted_yields = fitted_yieldcurve(tau_vec, saved_latent_params::Vector{LatentSpace}; data_scale=1200)
 ```
 
-`τ0` is a vector containing the maturities for which you want to calculate fitted yields through interpolation. `fitted_yields::Vector{YieldCurve}` contains the interpolation results.
+`tau_vec` is a vector containing the maturities for which you want to calculate fitted yields through interpolation. `fitted_yields::Vector{YieldCurve}` contains the interpolation results.
 
 ## Term Premiums
 

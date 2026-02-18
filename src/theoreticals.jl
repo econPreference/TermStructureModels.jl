@@ -582,17 +582,17 @@ function PCs_2_latents(yields, tau_n; kappaQ, kQ_infty, KPF, GPFF, OmegaFF, data
 end
 
 """
-    fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=false)
+    fitted_yieldcurve(tau_vec, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=false)
 This function generates the fitted yield curve.
 # Input
-- `τ0` is a set of maturities of interest. `τ0` does not need to be the same as the one used for the estimation.
+- `tau_vec` is a set of maturities of interest. `tau_vec` does not need to be the same as the one used for the estimation.
 - `saved_latent_params` is a transformed posterior sample using function `latentspace`.
 - `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output
 - `Vector{YieldCurve}(,`# of iteration`)`
 - `yields` and `latents` contain initial observations.
 """
-function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=false)
+function fitted_yieldcurve(tau_vec, saved_latent_params::Vector{LatentSpace}; data_scale=1200, is_parallel=false)
 
     dQ = saved_latent_params[:latents][1] |> x -> size(x, 2)
     iteration = length(saved_latent_params)
@@ -607,10 +607,10 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
             OmegaXFXF = saved_latent_params[:OmegaXFXF][iter]
 
             # statistical Parameters
-            bτ_ = bτ(τ0[end]; kappaQ, dQ)
-            Bₓ_ = Bₓ(bτ_, τ0)
-            aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
-            Aₓ_ = Aₓ(aτ_, τ0)
+            bτ_ = bτ(tau_vec[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_vec)
+            aτ_ = aτ(tau_vec[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, tau_vec)
 
             YieldCurve_[iter] = YieldCurve(
                 latents=copy(latents),
@@ -630,10 +630,10 @@ function fitted_YieldCurve(τ0, saved_latent_params::Vector{LatentSpace}; data_s
             OmegaXFXF = saved_latent_params[:OmegaXFXF][iter]
 
             # statistical Parameters
-            bτ_ = bτ(τ0[end]; kappaQ, dQ)
-            Bₓ_ = Bₓ(bτ_, τ0)
-            aτ_ = aτ(τ0[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
-            Aₓ_ = Aₓ(aτ_, τ0)
+            bτ_ = bτ(tau_vec[end]; kappaQ, dQ)
+            Bₓ_ = Bₓ(bτ_, tau_vec)
+            aτ_ = aτ(tau_vec[end], bτ_; kQ_infty, ΩXX=OmegaXFXF[1:dQ, 1:dQ], data_scale)
+            Aₓ_ = Aₓ(aτ_, tau_vec)
 
             YieldCurve_[iter] = YieldCurve(
                 latents=copy(latents),

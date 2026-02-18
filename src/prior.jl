@@ -117,15 +117,15 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
         end
         for l = 1:1
             for j in 1:dQ
-                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))))
+                phi0[i, 1+dP*(l-1)+j] = Normal(GQ_XX_mean[i, j], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))))
             end
             for j in (dQ+1):dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))))
             end
         end
         for l = 2:p
             for j in 1:dP
-                phi0[i, 1+dP*(l-1)+j] = Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))))
+                phi0[i, 1+dP*(l-1)+j] = Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))))
             end
         end
     end
@@ -134,9 +134,9 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
-                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(rho[i-dQ], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))))
                 else
-                    phi0[i, 1+dP*(l-1)+j] = Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))))
+                    phi0[i, 1+dP*(l-1)+j] = Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))))
                 end
             end
         end
@@ -160,15 +160,15 @@ function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP;
         end
         for l = 1:1
             for j in 1:dQ
-                logpdf_ += logpdf(Normal(GQ_XX_mean[i, j], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                logpdf_ += logpdf(Normal(GQ_XX_mean[i, j], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
             end
             for j in (dQ+1):dP
-                logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
             end
         end
         for l = 2:p
             for j in 1:dP
-                logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
             end
         end
     end
@@ -177,9 +177,9 @@ function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP;
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
-                    logpdf_ += logpdf(Normal(rho[i-dQ], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                    logpdf_ += logpdf(Normal(rho[i-dQ], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
                 else
-                    logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * Minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                    logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
                 end
             end
         end
@@ -189,7 +189,7 @@ function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP;
 end
 
 """
-    Minnesota(l, i, j; q, nu0, Omega0, dQ=[])
+    minnesota(l, i, j; q, nu0, Omega0, dQ=[])
 This function returns the unscaled prior variance of the Minnesota prior.
 # Input
 - lag `l`, dependent variable `i`, regressor `j` in the VAR(`p`)
@@ -198,7 +198,7 @@ This function returns the unscaled prior variance of the Minnesota prior.
 # Output
 - Minnesota part in the prior variance
 """
-function Minnesota(l, i, j; q, nu0, Omega0, dQ=[])
+function minnesota(l, i, j; q, nu0, Omega0, dQ=[])
 
     dP = length(Omega0) # dimension
     if isempty(dQ)
