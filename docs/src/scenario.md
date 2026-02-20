@@ -87,3 +87,15 @@ Then, you can assign the content to `S[i]` by executing
 ```julia
 S[i] = Scenario(combinations=combs, values=vals)
 ```
+
+## Deviation-from-Baseline Scenario Forecasts
+
+By default, scenario forecasts return the predicted path levels. If you want to express both the scenario inputs and the forecast outputs as **deviations from a baseline**, use the `baseline` keyword argument.
+
+`baseline` should be the output of `conditional_forecast` (or `conditional_expectation`) obtained with `S = []`.
+
+When `baseline` is provided, the scenario in `S` must be specified as deviations from `baseline`. For example, if the scenario assumes that the 3-month yield at time `T+1` is 50 basis points above the baseline, `S[1].values` should be set to `0.5` (not the level of the yield itself). The output forecasts are then also returned as deviations from `baseline`.
+
+!!! warning "Consistency of `mean_macros`"
+
+    If `mean_macros` was used when computing `baseline`, it must also be passed when using `baseline` as an input. Conversely, if `mean_macros` was not used for `baseline`, do not include it.

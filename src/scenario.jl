@@ -9,7 +9,7 @@ scenarios, a result of the posterior sampler, and data
     - If `tau` is set to `[]`, the term premium is not forecasted.
 - `horizon`: maximum length of the predicted path. It should not be smaller than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
-- `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_forecast`. It is generally set as the result when `S` is empty. When provided, conditional forecasts represent deviations from `baseline`.
+- `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_forecast`. It is generally set as the result when `S` is empty. When provided, the scenario in `S` should be specified as deviations from `baseline` (i.e., the scenario path is expressed relative to `baseline`), and the output forecasts will also be returned as deviations from `baseline`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
@@ -17,7 +17,7 @@ scenarios, a result of the posterior sampler, and data
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`-th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
-- Mathematically, it is a posterior sample from `future observation|past observation,scenario`.
+- Mathematically, it is a posterior sample from `future observation|past observation,scenario`, or `future observation|past observation,scenario` minus `future observation|past observation,baseline` when `baseline` is provided.
 """
 function conditional_forecast(S::Vector, tau, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[], is_parallel=false)
     iteration = length(saved_params)
@@ -114,7 +114,15 @@ function conditional_forecast(S::Vector, tau, horizon, saved_params, yields, mac
     end
     finish!(prog)
 
-    return scenarios
+    if isempty(baseline)
+        return scenarios
+    else
+        scenarios_diff = similar(scenarios)
+        for i in eachindex(scenarios_diff)
+            scenarios_diff[i] = Forecast(yields=deepcopy(scenarios[i][:yields] - baseline[i][:yields]), factors=deepcopy(scenarios[i][:factors] - baseline[i][:factors]), TP=deepcopy(scenarios[i][:TP] - baseline[i][:TP]), EH=deepcopy(scenarios[i][:EH] - baseline[i][:EH]))
+        end
+        return scenarios_diff
+    end
 end
 
 """
@@ -420,7 +428,7 @@ scenarios, a result of the posterior sampler, and data
 - `tau` is a vector of maturities that term premiums of interest has.
 - `horizon`: maximum length of the predicted path. It should not be smaller than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
-- `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_expectation`. It is generally set as the result when `S` is empty. When provided, conditional forecasts represent deviations from `baseline`.
+- `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_expectation`. It is generally set as the result when `S` is empty. When provided, the scenario in `S` should be specified as deviations from `baseline` (i.e., the scenario path is expressed relative to `baseline`), and the output forecasts will also be returned as deviations from `baseline`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
 - If `mean_macros` was used as an input when deriving `baseline` with this function, `mean_macros` should also be included as an input when using `baseline` as an input. Conversely, if `mean_macros` was not used as an input when deriving `baseline`, it should not be included as an input when using `baseline`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
@@ -428,7 +436,7 @@ scenarios, a result of the posterior sampler, and data
 # Output
 - `Vector{Forecast}(, iteration)`
 - `t`-th rows in predicted `yields`, predicted `factors`, predicted `TP`, and predicted `EH` are the corresponding predicted value at time `size(yields, 1)+t`.
-- Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`.
+- Mathematically, it is a posterior distribution of `E[future obs|past obs, scenario, parameters]`, or `E[future obs|past obs, scenario, parameters] - E[future obs|past obs, baseline, parameters]` when `baseline` is provided.
 """
 function conditional_expectation(S::Vector, tau, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[], is_parallel=false)
     iteration = length(saved_params)
@@ -523,7 +531,15 @@ function conditional_expectation(S::Vector, tau, horizon, saved_params, yields, 
     end
     finish!(prog)
 
-    return scenarios
+    if isempty(baseline)
+        return scenarios
+    else
+        scenarios_diff = similar(scenarios)
+        for i in eachindex(scenarios_diff)
+            scenarios_diff[i] = Forecast(yields=deepcopy(scenarios[i][:yields] - baseline[i][:yields]), factors=deepcopy(scenarios[i][:factors] - baseline[i][:factors]), TP=deepcopy(scenarios[i][:TP] - baseline[i][:TP]), EH=deepcopy(scenarios[i][:EH] - baseline[i][:EH]))
+        end
+        return scenarios_diff
+    end
 end
 
 
