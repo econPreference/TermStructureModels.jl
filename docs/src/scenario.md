@@ -44,7 +44,7 @@ mean_macros = mean(raw_macros_data, dims=1)[1, :]
 
 !!! warning "Option `mean_macros`"
 
-    If macro variables are not demeaned, ignore option `mean_macros`. Also, this option simply adds the mean back to the forecasts(`projections`), so the scenario(`S`) and input data(`yields` and `macros`) should still be specified based on demeaned variables.
+    If macro variables are not demeaned, or if it is acceptable for the forecasts to remain in demeaned form, ignore option `mean_macros`. Also, this option simply adds the mean back to the forecasts (`projections`), so the scenario (`S`) and input data (`yields` and `macros`) should still be specified in terms of demeaned variables.
 
 `S` determines whether we are computing a baseline forecast or a scenario forecast. How `S` is set will be described in the following sections.
 
