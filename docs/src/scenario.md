@@ -23,18 +23,18 @@ The first one is the full Bayesian treatment, so it is mathematically strict. Ho
 The required inputs and the type of the output are the same between `conditional_forecast` and `conditional_expectation`. That is,
 
 ```julia
-projections = conditional_forecast(S::Vector, tau, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
+projections = conditional_forecast(S::Vector, tau, horizon, saved_params, yields, macros, tau_n; yields_est=[], baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 ```
 
 and
 
 ```julia
-projections = conditional_expectation(S::Vector, tau, horizon, saved_params, yields, macros, tau_n; baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
+projections = conditional_expectation(S::Vector, tau, horizon, saved_params, yields, macros, tau_n; yields_est=[], baseline=[], mean_macros::Vector=[], data_scale=1200, pca_loadings=[])
 ```
 
-`projections::Vector{Forecast}` contains the results of the forecasting. `tau` is a vector, and the term premium of `tau[i]`-bond is forecasted for each `i`. If `tau` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).
+`projections::Vector{Forecast}` contains the results of the forecasting. `tau` is a vector, and the term premium of `tau[i]`-bond is forecasted for each `i`. `tau` must be in increasing order without duplicates. If `tau` is set to `[]`, the term premium is not forecasted. `horizon` is the forecasting horizon. `horizon` should not be smaller than `length(S)`. `saved_params::Vector{Parameter}` is the output of [`posterior_sampler`](https://econpreference.github.io/TermStructureModels.jl/dev/estimation/#Step-2.-Sampling-the-Posterior-Distribution-of-Parameters).
 
-You can use the same `yields`, `tau_n` and `macros` you employed when executing `posterior_sampler`. If you wish to compute conditional forecasts using observations up to a certain point, you can simply use `yields` and `macros` from the initial period up to that point. However, parameter uncertainty is incorporated independently of `yields` and `macros` through `saved_params`.
+`yields` and `macros` are the observed histories used for forecasting. They must end at the forecast origin, cover the same periods, and contain at least `p` observations. `yields_est=[]` is an optional keyword for the yield data used to estimate `saved_params`. Specify it when the forecasting history differs from the estimation data; if empty, `yields` is used. `tau_n` must list distinct observed maturities in increasing order. The columns of `yields` and `yields_est` must match that order, with column `j` corresponding to `tau_n[j]`.
 
 If you use demeaned macro data, option `mean_macros` is useful. If the sample mean of macro data is specified as the input value for `mean_macros`, `projections` contains conditional forecasts of non-demeaned macro variables. The sample mean of macro data can be calculated as follows.
 

@@ -56,17 +56,17 @@ function prior_C(; Omega0::Vector)
 end
 
 """
-    logprior_C(C; Omega0::Vector)
+    logprior_C(C; varFF, Omega0::Vector)
 This is a companion function of `prior_C`. It calculates the log density of the prior distribution for `C`.
 """
-function logprior_C(C; Omega0::Vector)
+function logprior_C(C; varFF, Omega0::Vector)
 
     dP = length(Omega0) # dimension
 
     logpdf_ = 0.0
     for i in 2:dP
         for j in 1:(i-1)
-            logpdf_ += logpdf(Normal(0, sqrt(1 / Omega0[j])), C[i, j])
+            logpdf_ += logpdf(Normal(0, sqrt(varFF[i] / Omega0[j])), C[i, j])
         end
     end
 
@@ -146,40 +146,40 @@ function prior_phi0(mean_phi_const, rho::Vector, prior_kappaQ_, tau_n, Wₚ; psi
 end
 
 """
-    logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+    logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; varFF, psi_const, psi, q, nu0, Omega0, fix_const_PC1)
 This is a companion function of `prior_phi0`. It calculates the log density of the prior distribution for `phi0`.
 """
-function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; psi_const, psi, q, nu0, Omega0, fix_const_PC1)
+function logprior_phi0(phi0, mean_phi_const, rho::Vector, GQ_XX_mean, p, dQ, dP; varFF, psi_const, psi, q, nu0, Omega0, fix_const_PC1)
 
     logpdf_ = 0.0
     for i in 1:dQ
         if i == 1 && fix_const_PC1
-            logpdf_ += logpdf(Normal(mean_phi_const[i], max.(1e-8, sqrt(psi_const[i] * 1e-10)), phi0[i, 1]))
+            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(varFF[i]) * max.(1e-8, sqrt(psi_const[i] * 1e-10))), phi0[i, 1])
         else
-            logpdf_ += logpdf(Normal(mean_phi_const[i], max.(1e-8, sqrt(psi_const[i] * q[5, 1])), phi0[i, 1]))
+            logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(varFF[i]) * max.(1e-8, sqrt(psi_const[i] * q[5, 1]))), phi0[i, 1])
         end
         for l = 1:1
             for j in 1:dQ
-                logpdf_ += logpdf(Normal(GQ_XX_mean[i, j], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                logpdf_ += logpdf(Normal(GQ_XX_mean[i, j], sqrt(varFF[i]) * max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ)))), phi0[i, 1+dP*(l-1)+j])
             end
             for j in (dQ+1):dP
-                logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                logpdf_ += logpdf(Normal(0, sqrt(varFF[i]) * max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ)))), phi0[i, 1+dP*(l-1)+j])
             end
         end
         for l = 2:p
             for j in 1:dP
-                logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                logpdf_ += logpdf(Normal(0, sqrt(varFF[i]) * max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ)))), phi0[i, 1+dP*(l-1)+j])
             end
         end
     end
     for i in (dQ+1):dP
-        logpdf_ += logpdf(Normal(mean_phi_const[i], max.(1e-8, sqrt(psi_const[i] * q[5, 2])), phi0[i, 1]))
+        logpdf_ += logpdf(Normal(mean_phi_const[i], sqrt(varFF[i]) * max.(1e-8, sqrt(psi_const[i] * q[5, 2]))), phi0[i, 1])
         for l = 1:p
             for j in 1:dP
                 if i == j && l == 1
-                    logpdf_ += logpdf(Normal(rho[i-dQ], max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                    logpdf_ += logpdf(Normal(rho[i-dQ], sqrt(varFF[i]) * max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ)))), phi0[i, 1+dP*(l-1)+j])
                 else
-                    logpdf_ += logpdf(Normal(0, max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ))), phi0[i, 1+dP*(l-1)+j]))
+                    logpdf_ += logpdf(Normal(0, sqrt(varFF[i]) * max.(1e-8, sqrt(psi[i, dP*(l-1)+j] * minnesota(l, i, j; q, nu0, Omega0, dQ)))), phi0[i, 1+dP*(l-1)+j])
                 end
             end
         end

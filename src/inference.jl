@@ -3,6 +3,7 @@
     tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, maxiter=10_000, medium_tau=collect(24:3:48), upper_q=[1 1; 1 1; 1 1; 4 4; 100 100], mean_kQ_infty=0, std_kQ_infty=0.1, upper_nu0=[], mean_phi_const=[], fix_const_PC1=false, upper_p=24, mean_phi_const_PC1=[], data_scale=1200, kappaQ_prior_pr=[], init_nu0=[], is_pure_EH=false, psi=[], psi_const=[], pca_loadings=[], prior_mean_diff_kappaQ=[], prior_std_diff_kappaQ=[], optimizer=:LBFGS, ml_tol=1.0, init_x=[])
 This function optimizes the hyperparameters by maximizing the marginal likelihood of the transition equation.
 # Input
+- `tau_n`: observed maturities in strictly increasing order without duplicates; column `j` of `yields` must contain the yield at maturity `tau_n[j]`.
 - When comparing marginal likelihoods between models, the data for the dependent variable should be the same across models. To achieve this, we set the period of the dependent variable based on `upper_p`. For example, if `upper_p = 3`, `yields[4:end,:]` and `macros[4:end,:]` are the data for the dependent variable. `yields[1:3,:]` and `macros[1:3,:]` are used for setting initial observations for all lags.
 - `optimizer`: The optimization algorithm to use.
     - `:LBFGS` (default): Uses unconstrained LBFGS from `Optim.jl` with hybrid parameter transformations (exp for non-negativity, sigmoid for bounded parameters). Alternates between optimizing hyperparameters (with fixed lag) and selecting the best lag (with fixed hyperparameters) until convergence.
@@ -12,7 +13,7 @@ This function optimizes the hyperparameters by maximizing the marginal likelihoo
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
-- The lower bounds for `q` and `nu0` are `0` and `dP+2`.
+- The lower bounds for `q` and `nu0` are `0` and `dP+1`.
 - The upper bounds for `q`, `nu0`, and VAR lag can be set by `upper_q`, `upper_nu0`, and `upper_p`.
     - The default option for `upper_nu0` is the time-series length of the data.
 - If you use the default option for `mean_phi_const`,
@@ -63,7 +64,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         psi_const = ones(dP)
     end
 
-    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
     if isempty(mean_phi_const) && is_pure_EH
         mean_phi_const = Matrix{Float64}(undef, dP, upper_p)
@@ -282,7 +283,7 @@ This function optimizes the hyperparameters with automatic variable selection: s
 - `populationsize` and `maxiter` are options for the optimizer.
     - `populationsize`: the number of candidate solutions in each generation (only for `:BBO`)
     - `maxiter`: the maximum number of iterations
-- The lower bounds for `q` and `nu0` are `0` and `dP+2`.
+- The lower bounds for `q` and `nu0` are `0` and `dP+1`.
 - The upper bounds for `q`, `nu0`, and VAR lag can be set by `upper_q`, `upper_nu0`, and `upper_p`.
     - The default option for `upper_nu0` is the time-series length of the data.
 - If you use the default option for `mean_phi_const`,
@@ -338,7 +339,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
     end
 
     # Add variable selection parameters for BBO (binary: 0 or 1 for each candidate column)
-    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1; 1]
+    lx = [0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1]
     ux = 0.0 .+ [vec(upper_q); upper_nu0 - (dP + 1); upper_p]
     if n_vs_params > 0
         lx = [lx; zeros(n_vs_params)]  # 0 = excluded
@@ -749,6 +750,7 @@ end
     posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0)
 This function samples from the posterior distribution.
 # Input
+- `tau_n`: observed maturities in strictly increasing order without duplicates; column `j` of `yields` must contain the yield at maturity `tau_n[j]`.
 - `iteration`: Number of posterior samples
 - `tuned`: Optimized hyperparameters used during estimation
 - `init_param`: Starting point of the sampler. It should be of type Parameter.

@@ -255,7 +255,7 @@ end
     term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=false)
 This function generates posterior samples of the term premiums.
 # Input
-- Maturity of interest `tau_interest` for calculating `TP`
+- Maturities of interest `tau_interest` for calculating `TP`, in strictly increasing order without duplicates.
 - `saved_params` from function `posterior_sampler`
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 - `is_parallel` enables multi-threaded parallel computation when set to `true`.
@@ -686,8 +686,8 @@ function PCA(yields, p; pca_loadings=[], dQ=[])
     right_order = []
     available_pc_indices = collect(1:dQ)
     for i in 1:min(dQ, size(proxies, 2))
-        proxy = proxies[:, i]
-        correlations = [cor(proxy, PCs[:, j]) for j in available_pc_indices]
+        proxy = proxies[p+1:end, i]
+        correlations = [cor(proxy, PCs[p+1:end, j]) for j in available_pc_indices]
         _, best_idx_in_available = findmax(abs.(correlations))
         pc_idx_to_modify = available_pc_indices[best_idx_in_available]
         push!(right_order, pc_idx_to_modify)

@@ -29,7 +29,7 @@ fitted_yields = fitted_yieldcurve(tau_vec, saved_latent_params::Vector{LatentSpa
 
 ## Term Premiums
 
-[`term_premium`](@ref) calculates the term premium of the bonds. `tau_interest` contains the maturities of interest and should be a `Vector` (at least a one-dimensional vector).
+[`term_premium`](@ref) calculates the term premium of the bonds. `tau_interest` contains the maturities of interest and should be a `Vector` (at least a one-dimensional vector), in strictly increasing order without duplicates.
 
 ```julia
 saved_TP, saved_tv_TP, saved_tv_EH = term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)

@@ -25,7 +25,7 @@ If you accept the default values, the function is simplified to
 tuned, results = tuning_hyperparameter(yields, macros, tau_n, rho)
 ```
 
-`yields` is a `T` by `N` matrix, `T` is the length of the sample period and `N` is the number of maturities in the data. `tau_n` is an `N`-Vector that contains bond maturities in the data. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column represents an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in levels, or it is set to 0 if the macro variable is differenced.
+`yields` is a `T` by `N` matrix, `T` is the length of the sample period and `N` is the number of maturities in the data. `tau_n` is an `N`-Vector that contains bond maturities in the data, in strictly increasing order without duplicates. Arrange the columns of `yields` in the same order, so column `j` corresponds to `tau_n[j]`. For example, if there are two maturities, 3 and 24 months, in the monthly term structure model, `tau_n=[3; 24]`. `macros` is a `T` by `dP-dQ` matrix in which each column represents an individual macroeconomic variable. `rho` is a `dP-dQ`-Vector. In general, `rho[i] = 1` if `macros[:, i]` is in levels, or it is set to 0 if the macro variable is differenced.
 
 ### Several relevant points regarding hyperparameter optimization
 
