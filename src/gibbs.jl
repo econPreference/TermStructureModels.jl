@@ -114,7 +114,7 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
         end
     end
     x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, kappaQ) - logpost(x) - logpdf(proposal_dist, kappaQ_prop))
+    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, x) - logpost(x) - logpdf(proposal_dist, x_prop))
     if log(rand()) < log_MHPr
         return kappaQ_prop, true
     else
