@@ -86,7 +86,7 @@ function loglik_mea2(yields, tau_n, p; kappaQ, kQ_infty, ΩPP, SigmaO, data_scal
     PCs, OCs, Wₚ, Wₒ, mean_PCs = PCA(yields, 0; pca_loadings)
     bτ_ = bτ(tau_n[end]; kappaQ, dQ)
     Bₓ_ = Bₓ(bτ_, tau_n)
-    T1X_ = T1X(Bₓ_, Wₚ)
+    T1X_ = T1X(Bₓ_, Wₚ) |> x -> x + clamp(norm(x) * sqrt(eps(real(eltype(x)))), 1e-10, 1e-4)I
     Bₚ_ = Bₚ(Bₓ_, T1X_, Wₒ)
 
     aτ_ = aτ(tau_n[end], bτ_, tau_n, Wₚ; kQ_infty, ΩPP, data_scale)
