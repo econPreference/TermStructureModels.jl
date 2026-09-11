@@ -76,40 +76,49 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
-This function conducts the random-walk Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. The Normal proposal is centered at the current reparameterized `kappaQ`, with covariance `inv_x_hess`.
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+This function conducts the random-walk Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. The Normal proposal is centered at the current reparameterized `kappaQ`, with covariance computed from the conditional Hessian at each step.
 - Reparameterization:
-    kappaQ[1] = x[1]
-    kappaQ[2] = x[1] + x[2]
-    kappaQ[3] = x[1] + x[2] + x[3]
-- Jacobian:
-    [1 0 0
-    1 1 0
-    1 1 1]
+    kappaQ = cumsum(x)
+    x = [kappaQ[1]; diff(kappaQ)]
+- Jacobian: a lower triangular matrix of ones.
 - The determinant = 1
 """
-function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
 
     function logpost(x)
-        kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
+        kappaQ_logpost = cumsum(x)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
-            logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
+            logprior += logpdf(prior_kappaQ_[i], kappaQ_logpost[i])
         end
         logprior == -Inf && return -Inf
-        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+        loglik = loglik_mea(yields, tau_n; kappaQ=kappaQ_logpost, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
         return loglik + logprior
     end
 
+    function proposal_dist(x)
+        x_hess = hessian(x -> -logpost(x), x)
+        inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
+        if !isposdef(inv_x_hess)
+            C, V = eigen(inv_x_hess)
+            C = max.(eps(), C) |> diagm
+            inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
+        end
+        return MvNormal(x, inv_x_hess)
+    end
+
     # RWMH step
-    x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-    proposal_dist = MvNormal(x, inv_x_hess)
-    x_prop = rand(proposal_dist)
-    kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
+    x = [kappaQ[1]; diff(kappaQ)]
+    proposal_dist_ = proposal_dist(x)
+    x_prop = rand(proposal_dist_)
+    kappaQ_prop = cumsum(x_prop)
     if !(sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0)
         return kappaQ, false
     end
-    log_MHPr = min(0.0, logpost(x_prop) - logpost(x))
+    logpost_prop = logpost(x_prop)
+    logpost_prop == -Inf && return kappaQ, false
+    log_MHPr = min(0.0, logpost_prop + logpdf(proposal_dist(x_prop), x) - logpost(x) - logpdf(proposal_dist_, x_prop))
     if log(rand()) < log_MHPr
         return kappaQ_prop, true
     else

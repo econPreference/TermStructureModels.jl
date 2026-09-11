@@ -54,7 +54,7 @@ The algorithm has an inductive bias that the estimates should not deviate too mu
 In Step 1, we obtained `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
 
 ```julia
-saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[])
+saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
 ```
 
 If you changed the default values in Step 1, the corresponding default values in the above function should also be changed. If you use the default values, the function simplifies to

@@ -71,7 +71,7 @@ function tuning_hyperparameter(yields, macros, tau_n, rho; populationsize=50, ma
         for i in axes(mean_phi_const, 2)
             mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr, pca_loadings)[1] |> x -> mean(x, dims=1)[1, :]
             if !isempty(mean_phi_const_PC1)
-                mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
+                mean_phi_const_PCs = [mean_phi_const_PC1; mean_phi_const_PCs[2:end]]
             end
             if isempty(macros)
                 mean_phi_const[:, i] = copy(mean_phi_const_PCs)
@@ -351,7 +351,7 @@ function tuning_hyperparameter_with_vs(yields, macros, tau_n, rho; populationsiz
         for i in axes(mean_phi_const, 2)
             mean_phi_const_PCs = -calibrate_mean_phi_const(mean_kQ_infty, std_kQ_infty, init_nu0, yields[upper_p-i+1:end, :], macros[upper_p-i+1:end, :], tau_n, i; medium_tau, iteration=10_000, data_scale, kappaQ_prior_pr, pca_loadings)[1] |> x -> mean(x, dims=1)[1, :]
             if !isempty(mean_phi_const_PC1)
-                mean_phi_const_PCs = [mean_phi_const_PC1, mean_phi_const_PCs[2], mean_phi_const_PCs[3]]
+                mean_phi_const_PCs = [mean_phi_const_PC1; mean_phi_const_PCs[2:end]]
             end
             if isempty(macros)
                 mean_phi_const[:, i] = copy(mean_phi_const_PCs)
@@ -747,7 +747,7 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0)
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
 This function samples from the posterior distribution.
 # Input
 - `tau_n`: observed maturities in strictly increasing order without duplicates; column `j` of `yields` must contain the yield at maturity `tau_n[j]`.
@@ -757,12 +757,10 @@ This function samples from the posterior distribution.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[:,1:1+dP*p][i,j]`. `psi` should be a (dP × dP*p) matrix.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. This option is only needed when using the JSZ model.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
-- `kappaQ_proposal_mode=Vector{, dQ}` specifies the `kappaQ` values used to evaluate the Hessian for the JSZ proposal covariance. If it is empty, these values are optimized.
-- `proposal_time_limit`: When the JSZ model is used and `kappaQ_proposal_mode` is not provided, ParticleSwarm and L-BFGS are applied sequentially to find the MLE. This option specifies the maximum time, in seconds, allowed for the L-BFGS step. The default is 300 seconds.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -807,58 +805,6 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
     if isempty(psi_const)
         psi_const = ones(dP)
     end
-    if !(typeof(kappaQ_prior_pr[1]) <: Real)
-
-        ΩPP = mle_error_covariance(yields, [], tau_n, p; pca_loadings)
-        function logpost(x)
-            kappaQ_logpost = cumsum(x[1:dQ])
-            kQ_infty_logpost = x[dQ+1]
-            SigmaO_logpost = x[dQ+1+1:dQ+1+length(tau_n)-dQ] |> x -> exp.(x)
-            if maximum(abs.(kappaQ_logpost)) > 1 || !(sort(kappaQ_logpost, rev=true) == kappaQ_logpost) || !isposdef(diagm(SigmaO_logpost)) || !(minimum(kappaQ_logpost .∈ support.(prior_kappaQ_))) || !isempty(findall(abs.(diff(kappaQ_logpost)) .<= eps()))
-                return -Inf
-            end
-
-            logprior = 0.0
-            for i in eachindex(prior_kappaQ_)
-                logprior += logpdf(prior_kappaQ_[i], kappaQ_logpost[i])
-            end
-
-            try
-                return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale, pca_loadings)
-            catch err
-                err isa SingularException || rethrow()
-                return -Inf
-            end
-
-        end
-        if isempty(kappaQ_proposal_mode)
-            # Construct the proposal distribution
-            #kappaQ = 0.2rand(3) .+ 0.8 |> x -> sort(x, rev=true)
-            x = [kappaQ[1]; diff(kappaQ[1:end])]
-            init = [x; kQ_infty; log.(SigmaO)]
-            minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0.01 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
-                         Optim.minimizer |>
-                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true, time_limit=proposal_time_limit); autodiff=AutoForwardDiff()) |>
-                              Optim.minimizer
-        else
-            diff_kappaQ_proposal_mode = [kappaQ_proposal_mode[1]; diff(kappaQ_proposal_mode[1:end])]
-            init = [kQ_infty; log.(SigmaO)]
-            minimizers = optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
-                         Optim.minimizer |>
-                         y -> optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true, time_limit=proposal_time_limit); autodiff=AutoForwardDiff()) |>
-                              Optim.minimizer |> x -> [diff_kappaQ_proposal_mode; x]
-        end
-        x_mode = minimizers[1:dQ]
-        x_hess = hessian(x -> -logpost([x; minimizers[dQ+1:end]]), x_mode)
-        inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
-        if !isposdef(inv_x_hess)
-            C, V = eigen(inv_x_hess)
-            C = max.(eps(), C) |> diagm
-            inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
-        end
-
-    end
-
     isaccept_MH = zeros(dQ + 1)
     saved_params = Vector{Parameter}(undef, iteration)
     @showprogress 5 "posterior_sampler..." for iter in 1:iteration
@@ -866,7 +812,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         if typeof(kappaQ_prior_pr[1]) <: Real
             kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings))
         else
-            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
+            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
             isaccept_MH[end] += isaccept
         end
 
