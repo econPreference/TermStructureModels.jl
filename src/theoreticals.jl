@@ -39,7 +39,7 @@ function bτ(N; kappaQ, dQ)
     GQ_XX_ = GQ_XX(; kappaQ)
     ι = ones(dQ)
 
-    b = ones(dQ, N) # factor loadings
+    b = ones(promote_type(eltype(GQ_XX_), Float64), dQ, N) # factor loadings
     for i in 2:N
         b[:, i] = ι + GQ_XX_' * b[:, i-1]
     end

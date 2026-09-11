@@ -757,7 +757,7 @@ This function samples from the posterior distribution.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[:,1:1+dP*p][i,j]`. `psi` should be a (dP × dP*p) matrix.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. This option is only needed when using the JSZ model.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
-- `kappaQ_proposal_mode=Vector{, dQ}` contains the center of the proposal distribution for `kappaQ` when estimating the JSZ model. If it is empty, it is optimized by MLE.
+- `kappaQ_proposal_mode=Vector{, dQ}` specifies the `kappaQ` values used to evaluate the Hessian for the JSZ proposal covariance. If it is empty, these values are optimized.
 - `proposal_time_limit`: When the JSZ model is used and `kappaQ_proposal_mode` is not provided, ParticleSwarm and L-BFGS are applied sequentially to find the MLE. This option specifies the maximum time, in seconds, allowed for the L-BFGS step. The default is 300 seconds.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
@@ -823,7 +823,12 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
                 logprior += logpdf(prior_kappaQ_[i], kappaQ_logpost[i])
             end
 
-            return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale, pca_loadings)
+            try
+                return logprior + loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_logpost, kQ_infty=kQ_infty_logpost, ΩPP, SigmaO=SigmaO_logpost, data_scale, pca_loadings)
+            catch err
+                err isa SingularException || rethrow()
+                return -Inf
+            end
 
         end
         if isempty(kappaQ_proposal_mode)
@@ -833,14 +838,14 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
             init = [x; kQ_infty; log.(SigmaO)]
             minimizers = optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; 0.01 * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                          Optim.minimizer |>
-                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true, time_limit=proposal_time_limit)) |>
+                         y -> optimize(x -> -logpost(x), [0; -1 * ones(length(kappaQ) - 1); -Inf; fill(-Inf, length(tau_n) - dQ)], [1; eps() * ones(length(kappaQ) - 1); Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true, time_limit=proposal_time_limit); autodiff=AutoForwardDiff()) |>
                               Optim.minimizer
         else
             diff_kappaQ_proposal_mode = [kappaQ_proposal_mode[1]; diff(kappaQ_proposal_mode[1:end])]
             init = [kQ_infty; log.(SigmaO)]
             minimizers = optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], init, ParticleSwarm(), Optim.Options(show_trace=true)) |>
                          Optim.minimizer |>
-                         y -> optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true, time_limit=proposal_time_limit)) |>
+                         y -> optimize(x -> -logpost([diff_kappaQ_proposal_mode; x]), [-Inf; fill(-Inf, length(tau_n) - dQ)], [Inf; fill(Inf, length(tau_n) - dQ)], y, Fminbox(LBFGS(; alphaguess=LineSearches.InitialPrevious())), Optim.Options(show_trace=true, time_limit=proposal_time_limit); autodiff=AutoForwardDiff()) |>
                               Optim.minimizer |> x -> [diff_kappaQ_proposal_mode; x]
         end
         x_mode = minimizers[1:dQ]
@@ -861,7 +866,7 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         if typeof(kappaQ_prior_pr[1]) <: Real
             kappaQ = rand(post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings))
         else
-            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
+            kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
             isaccept_MH[end] += isaccept
         end
 

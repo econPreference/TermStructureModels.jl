@@ -76,8 +76,8 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
-This function conducts the Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. `x_mode` and `inv_x_hess` constitute the mean and variance of the Normal proposal distribution.
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
+This function conducts the random-walk Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. The Normal proposal is centered at the current reparameterized `kappaQ`, with covariance `inv_x_hess`.
 - Reparameterization:
     kappaQ[1] = x[1]
     kappaQ[2] = x[1] + x[2]
@@ -88,33 +88,28 @@ This function conducts the Metropolis-Hastings algorithm for the reparameterized
     1 1 1]
 - The determinant = 1
 """
-function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, x_mode, inv_x_hess, pca_loadings)
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
 
     function logpost(x)
         kappaQ = [x[1], x[1] + x[2], x[1] + x[2] + x[3]]
-        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
         logprior = 0.0
         for i in eachindex(prior_kappaQ_)
             logprior += logpdf(prior_kappaQ_[i], kappaQ[i])
         end
+        logprior == -Inf && return -Inf
+        loglik = loglik_mea(yields, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
         return loglik + logprior
     end
 
-    # AR step
-    proposal_dist = MvNormal(x_mode, inv_x_hess)
-
-    is_cond = true
-    kappaQ_prop = similar(kappaQ)
-    x_prop = similar(kappaQ)
-    while is_cond
-        x_prop = rand(proposal_dist)
-        kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
-        if sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0
-            is_cond = false
-        end
-    end
+    # RWMH step
     x = [kappaQ[1], kappaQ[2] - kappaQ[1], kappaQ[3] - kappaQ[2]]
-    log_MHPr = min(0.0, logpost(x_prop) + logpdf(proposal_dist, x) - logpost(x) - logpdf(proposal_dist, x_prop))
+    proposal_dist = MvNormal(x, inv_x_hess)
+    x_prop = rand(proposal_dist)
+    kappaQ_prop = [x_prop[1], x_prop[1] + x_prop[2], x_prop[1] + x_prop[2] + x_prop[3]]
+    if !(sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0)
+        return kappaQ, false
+    end
+    log_MHPr = min(0.0, logpost(x_prop) - logpost(x))
     if log(rand()) < log_MHPr
         return kappaQ_prop, true
     else
