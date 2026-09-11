@@ -75,16 +75,103 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
     return DiscreteNonParametric(kappaQ_candidate, Pr)
 end
 
+function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings)
+
+    dQ, dP = length(kappaQ), length(varFF)
+    p = div(size(psi, 2), dP)
+    r = 1 + p * dP
+    PCs, ~, Wₚ = PCA(yields, p; pca_loadings)
+    yphi, Xphi = yphi_Xphi(PCs, macros, p)
+    prior_phi_ = [prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1) prior_C(; Omega0)]
+    prior_varFF_ = prior_varFF(; nu0, Omega0)
+    mC, VC, post_varFF = [], [], []
+
+    # Integrate out the intercept and lag coefficients in the transition equation.
+    for i in 1:dQ
+        Xᵢ = Xphi[:, 1:(r+i-1)]
+        mᵢ = mean.(prior_phi_[i, 1:(r+i-1)])
+        invVᵢ = 1 ./ var.(prior_phi_[i, 1:(r+i-1)])
+        Kᵢ = cholesky(Symmetric(Xᵢ'Xᵢ + Diagonal(invVᵢ)))
+        m_hat = Kᵢ \ (Xᵢ'yphi[:, i] + invVᵢ .* mᵢ)
+        V_hat = inv(Kᵢ)
+        scale_hat = scale(prior_varFF_[i]) + (sum(abs2, yphi[:, i] - Xᵢ * m_hat) + sum(invVᵢ .* (m_hat - mᵢ).^2)) / 2
+        push!(mC, m_hat[r+1:end])
+        push!(VC, V_hat[r+1:end, r+1:end])
+        push!(post_varFF, InverseGamma(shape(prior_varFF_[i]) + size(yphi, 1) / 2, scale_hat))
+    end
+
+    idxC = [CartesianIndex(i, j) for i in 2:dQ for j in 1:(i-1)]
+    idx_varFF = (dQ+2+length(idxC)):(2dQ+1+length(idxC))
+    idx_SigmaO = (last(idx_varFF)+1):(last(idx_varFF)+length(SigmaO))
+    other_params(kQ_infty, phi, varFF, SigmaO) = [kQ_infty; phi[1:dQ, r+1:r+dQ][idxC]; log.(varFF[1:dQ]); log.(SigmaO)]
+
+    function logpost(z)
+        0 < sum(z[1:dQ]) && z[1] < 1 && all(<(0), z[2:dQ]) || return -Inf
+        kappaQ_ = cumsum(z[1:dQ])
+        logprior = sum(logpdf.(prior_kappaQ_, kappaQ_))
+        logprior == -Inf && return -Inf
+        C = Matrix{eltype(z)}(I, dQ, dQ)
+        C[idxC] = z[dQ+2:last(idx_varFF)-dQ]
+        varFF_ = exp.(z[idx_varFF])
+        SigmaO_ = exp.(z[idx_SigmaO])
+        ΩPP = (C \ Diagonal(varFF_)) / C'
+        logpost_ = logprior + logpdf(Normal(mean_kQ_infty, std_kQ_infty), z[dQ+1])
+        logpost_ += loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_, kQ_infty=z[dQ+1], ΩPP, SigmaO=SigmaO_, data_scale, pca_loadings)
+        for i in 1:dQ
+            logpost_ += logpdf(post_varFF[i], varFF_[i]) + z[idx_varFF[i]]
+            if i > 1
+                logpost_ += logpdf(MvNormal(mC[i], varFF_[i] * VC[i]), C[i, 1:i-1])
+            end
+        end
+        # Integrate out gamma; include the Jacobians for log variances.
+        logpost_ += sum(log(2gamma_bar) .- 3log.(1 .+ gamma_bar .* SigmaO_) .+ z[idx_SigmaO])
+        return logpost_
+    end
+
+    # Optimize ordered roots in (0, 1), rescaling kQ_infty for the optimizer.
+    function transform(u)
+        kappaQ_ = cumprod(1 ./ (1 .+ exp.(-u[1:dQ])))
+        return [kappaQ_[1]; diff(kappaQ_); 0.01u[dQ+1]; u[dQ+2:end]]
+    end
+    prob = [kappaQ[1]; kappaQ[2:end] ./ kappaQ[1:end-1]]
+    u = [log.(prob ./ (1 .- prob)); other_params(kQ_infty, phi, varFF, SigmaO)]
+    u[dQ+1] /= 0.01
+    opt = optimize(u -> -logpost(transform(u)), u, LBFGS(), Optim.Options(iterations=700, g_abstol=1e-5); autodiff=AutoForwardDiff())
+    z_mode = transform(Optim.minimizer(opt))
+    objective = TwiceDifferentiable(z -> -logpost(z), z_mode; autodiff=AutoForwardDiff())
+    V = inv(cholesky(Symmetric(Optim.hessian!(objective, z_mode))))
+    V_other = cholesky(Symmetric(V[dQ+1:end, dQ+1:end]))
+    B = V[1:dQ, dQ+1:end] / V_other
+    V_cond = Matrix(Symmetric(V[1:dQ, 1:dQ] - B * V[dQ+1:end, 1:dQ]))
+
+    # Conditional distribution of a joint Student t approximation (15 d.f.).
+    function proposal_dist(kQ_infty, phi, varFF, SigmaO)
+        delta = other_params(kQ_infty, phi, varFF, SigmaO) - z_mode[dQ+1:end]
+        df = 15 + length(delta)
+        scale = (15 + dot(delta, V_other \ delta)) / df
+        return MvTDist(df, z_mode[1:dQ] + B * delta, scale * V_cond)
+    end
+
+    phi_mode, varFF_mode = copy(phi), copy(varFF)
+    for (i, idx) in enumerate(idxC)
+        phi_mode[idx[1], r+idx[2]] = z_mode[dQ+1+i]
+    end
+    varFF_mode[1:dQ] = exp.(z_mode[idx_varFF])
+    SigmaO_mode = exp.(z_mode[idx_SigmaO])
+    param_mode = Parameter(kappaQ=cumsum(z_mode[1:dQ]), kQ_infty=z_mode[dQ+1], phi=phi_mode, varFF=varFF_mode, SigmaO=SigmaO_mode, gamma=mean.(post_gamma(; gamma_bar, SigmaO=SigmaO_mode)))
+    return proposal_dist, param_mode
+end
+
 """
-    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
-This function conducts the random-walk Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. The Normal proposal is centered at the current reparameterized `kappaQ`, with covariance computed from the conditional Hessian at each step.
+    post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings, proposal_dist)
+This function conducts the tailored independent Metropolis-Hastings algorithm for the reparameterized `kappaQ` under the unrestricted JSZ form. The proposal conditions the initial joint Student t approximation on the current values of the other parameters.
 - Reparameterization:
     kappaQ = cumsum(x)
     x = [kappaQ[1]; diff(kappaQ)]
 - Jacobian: a lower triangular matrix of ones.
 - The determinant = 1
 """
-function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings)
+function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, pca_loadings, proposal_dist)
 
     function logpost(x)
         kappaQ_logpost = cumsum(x)
@@ -97,20 +184,9 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
         return loglik + logprior
     end
 
-    function proposal_dist(x)
-        x_hess = hessian(x -> -logpost(x), x)
-        inv_x_hess = inv(x_hess) |> x -> 0.5 * (x + x')
-        if !isposdef(inv_x_hess)
-            C, V = eigen(inv_x_hess)
-            C = max.(eps(), C) |> diagm
-            inv_x_hess = V * C / V |> x -> 0.5 * (x + x')
-        end
-        return MvNormal(x, inv_x_hess)
-    end
-
-    # RWMH step
+    # Independent MH step
     x = [kappaQ[1]; diff(kappaQ)]
-    proposal_dist_ = proposal_dist(x)
+    proposal_dist_ = proposal_dist(kQ_infty, phi, varFF, SigmaO)
     x_prop = rand(proposal_dist_)
     kappaQ_prop = cumsum(x_prop)
     if !(sort(kappaQ_prop, rev=true) == kappaQ_prop && kappaQ_prop[1] < 1.0)
@@ -118,7 +194,7 @@ function post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF
     end
     logpost_prop = logpost(x_prop)
     logpost_prop == -Inf && return kappaQ, false
-    log_MHPr = min(0.0, logpost_prop + logpdf(proposal_dist(x_prop), x) - logpost(x) - logpdf(proposal_dist_, x_prop))
+    log_MHPr = min(0.0, logpost_prop + logpdf(proposal_dist_, x) - logpost(x) - logpdf(proposal_dist_, x_prop))
     if log(rand()) < log_MHPr
         return kappaQ_prop, true
     else

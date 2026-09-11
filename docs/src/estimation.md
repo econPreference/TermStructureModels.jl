@@ -63,7 +63,7 @@ If you changed the default values in Step 1, the corresponding default values in
 saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter)
 ```
 
-`iteration` is the number of posterior samples to generate. The MCMC sampler starts at the prior mean, and you need to discard burn-in samples manually.
+`iteration` is the number of posterior samples to generate. The JSZ sampler is initialized using the optimized mode. Use `init_param::Parameter` to specify a starting point. Discard burn-in samples manually.
 
 `saved_params::Vector{Parameter}` has length `iteration`, and each entry is a posterior sample. `acceptPrMH` is a `dQ+1`-Vector, where the `i(<=dQ)`-th entry shows the MH acceptance rate for the i-th principal component in the recursive $\mathbb{P}$-VAR. The last entry of `acceptPrMH` is the MH acceptance rate for `kappaQ` under the unrestricted JSZ model. It is zero under the AFNS restriction.
 
