@@ -753,7 +753,7 @@ This function samples from the posterior distribution.
 - `tau_n`: observed maturities in strictly increasing order without duplicates; column `j` of `yields` must contain the yield at maturity `tau_n[j]`.
 - `iteration`: Number of posterior samples
 - `tuned`: Optimized hyperparameters used during estimation
-- `init_param`: Starting point of the sampler. It should be of type Parameter. By default, the JSZ sampler is initialized using the optimized mode.
+- `init_param`: Starting point of the sampler. It should be of type Parameter. By default, the AFNS sampler uses preset initial values, while the JSZ sampler is initialized using the optimized mode.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[:,1:1+dP*p][i,j]`. `psi` should be a (dP × dP*p) matrix.
 - `kappaQ_prior_pr` is a vector of prior distributions for `kappaQ` under the JSZ model: each element specifies the prior for `kappaQ[i]` and must be provided as a `Distributions.jl` object. This option is only needed when using the JSZ model.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.
@@ -806,10 +806,14 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         psi_const = ones(dP)
     end
     if !(typeof(kappaQ_prior_pr[1]) <: Real)
+        println("Preparing MH proposal...")
+        flush(stdout)
         proposal_dist, param_mode = proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings)
         if typeof(init_param) != Parameter
             kappaQ, kQ_infty, phi, varFF, SigmaO, gamma = param_mode.kappaQ, param_mode.kQ_infty, param_mode.phi, param_mode.varFF, param_mode.SigmaO, param_mode.gamma
         end
+        println("MH proposal ready. Starting posterior sampling...")
+        flush(stdout)
     end
     isaccept_MH = zeros(dQ + 1)
     saved_params = Vector{Parameter}(undef, iteration)

@@ -75,52 +75,59 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
     return DiscreteNonParametric(kappaQ_candidate, Pr)
 end
 
+"""
+    proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings)
+This function prepares the tailored independent MH proposal for `kappaQ` under the JSZ model. It computes an initial joint mode and Hessian after integrating out the VAR intercept and lag coefficients and `gamma`.
+# Output(2)
+- `proposal_dist(kQ_infty, phi, varFF, SigmaO)`: conditional Student t proposal for `[kappaQ[1]; diff(kappaQ)]`.
+- `param_mode::Parameter`: initial parameters based on the optimized mode.
+"""
 function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings)
 
     dQ, dP = length(kappaQ), length(varFF)
-    p = div(size(psi, 2), dP)
-    r = 1 + p * dP
+    p = Int(size(psi, 2) / dP)
     PCs, ~, Wₚ = PCA(yields, p; pca_loadings)
     yphi, Xphi = yphi_Xphi(PCs, macros, p)
     prior_phi_ = [prior_phi0(mean_phi_const, rho, prior_kappaQ_, tau_n, Wₚ; psi_const, psi, q, nu0, Omega0, fix_const_PC1) prior_C(; Omega0)]
     prior_varFF_ = prior_varFF(; nu0, Omega0)
-    mC, VC, post_varFF = [], [], []
+    m = mean.(prior_phi_)
+    V = var.(prior_phi_)
+    mCQ, VCQ, post_varFFQ = [], [], []
 
     # Integrate out the intercept and lag coefficients in the transition equation.
     for i in 1:dQ
-        Xᵢ = Xphi[:, 1:(r+i-1)]
-        mᵢ = mean.(prior_phi_[i, 1:(r+i-1)])
-        invVᵢ = 1 ./ var.(prior_phi_[i, 1:(r+i-1)])
-        Kᵢ = cholesky(Symmetric(Xᵢ'Xᵢ + Diagonal(invVᵢ)))
-        m_hat = Kᵢ \ (Xᵢ'yphi[:, i] + invVᵢ .* mᵢ)
-        V_hat = inv(Kᵢ)
-        scale_hat = scale(prior_varFF_[i]) + (sum(abs2, yphi[:, i] - Xᵢ * m_hat) + sum(invVᵢ .* (m_hat - mᵢ).^2)) / 2
-        push!(mC, m_hat[r+1:end])
-        push!(VC, V_hat[r+1:end, r+1:end])
-        push!(post_varFF, InverseGamma(shape(prior_varFF_[i]) + size(yphi, 1) / 2, scale_hat))
+        Kphiᵢ = Kphi(i, V, Xphi, dP)
+        phiᵢ_hat = phi_hat(i, m, V, yphi, Xphi, dP)
+        Sᵢ_hat = S_hat(i, m, V, yphi, Xphi, dP; Omega0)
+        push!(mCQ, phiᵢ_hat[(1+p*dP+1):end])
+        push!(VCQ, Symmetric(inv(Kphiᵢ))[(1+p*dP+1):end, (1+p*dP+1):end])
+        push!(post_varFFQ, InverseGamma(shape(prior_varFF_[i]) + size(yphi, 1) / 2, Sᵢ_hat))
     end
 
-    idxC = [CartesianIndex(i, j) for i in 2:dQ for j in 1:(i-1)]
-    idx_varFF = (dQ+2+length(idxC)):(2dQ+1+length(idxC))
-    idx_SigmaO = (last(idx_varFF)+1):(last(idx_varFF)+length(SigmaO))
-    other_params(kQ_infty, phi, varFF, SigmaO) = [kQ_infty; phi[1:dQ, r+1:r+dQ][idxC]; log.(varFF[1:dQ]); log.(SigmaO)]
+    idxCQ = [CartesianIndex(i, j) for i in 2:dQ for j in 1:(i-1)]
+    idx_varFFQ = (dQ+2+length(idxCQ)):(2dQ+1+length(idxCQ))
+    idx_SigmaO = (last(idx_varFFQ)+1):(last(idx_varFFQ)+length(SigmaO))
+    other_params(kQ_infty_, phi_, varFF_, SigmaO_) = [kQ_infty_; phi_[1:dQ, (1+p*dP+1):(1+p*dP+dQ)][idxCQ]; log.(varFF_[1:dQ]); log.(SigmaO_)]
 
+    # Joint marginal log posterior of kappaQ, kQ_infty, CQ, varFFQ and SigmaO in z coordinates, integrating out VAR intercepts, lag coefficients and gamma.
     function logpost(z)
-        0 < sum(z[1:dQ]) && z[1] < 1 && all(<(0), z[2:dQ]) || return -Inf
+        if !(z[1] < 1 && all(z[2:dQ] .< 0))
+            return -Inf
+        end
         kappaQ_ = cumsum(z[1:dQ])
         logprior = sum(logpdf.(prior_kappaQ_, kappaQ_))
         logprior == -Inf && return -Inf
-        C = Matrix{eltype(z)}(I, dQ, dQ)
-        C[idxC] = z[dQ+2:last(idx_varFF)-dQ]
-        varFF_ = exp.(z[idx_varFF])
+        CQ = Matrix{eltype(z)}(I, dQ, dQ)
+        CQ[idxCQ] = z[dQ+2:last(idx_varFFQ)-dQ]
+        varFFQ = exp.(z[idx_varFFQ])
         SigmaO_ = exp.(z[idx_SigmaO])
-        ΩPP = (C \ Diagonal(varFF_)) / C'
+        ΩPP = (CQ \ diagm(varFFQ)) / CQ'
         logpost_ = logprior + logpdf(Normal(mean_kQ_infty, std_kQ_infty), z[dQ+1])
         logpost_ += loglik_mea2(yields, tau_n, p; kappaQ=kappaQ_, kQ_infty=z[dQ+1], ΩPP, SigmaO=SigmaO_, data_scale, pca_loadings)
         for i in 1:dQ
-            logpost_ += logpdf(post_varFF[i], varFF_[i]) + z[idx_varFF[i]]
+            logpost_ += logpdf(post_varFFQ[i], varFFQ[i]) + z[idx_varFFQ[i]]
             if i > 1
-                logpost_ += logpdf(MvNormal(mC[i], varFF_[i] * VC[i]), C[i, 1:i-1])
+                logpost_ += logpdf(MvNormal(mCQ[i], varFFQ[i] * VCQ[i]), CQ[i, 1:i-1])
             end
         end
         # Integrate out gamma; include the Jacobians for log variances.
@@ -128,35 +135,36 @@ function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, ta
         return logpost_
     end
 
-    # Optimize ordered roots in (0, 1), rescaling kQ_infty for the optimizer.
+    # Optimize ordered roots below 1.
     function transform(u)
-        kappaQ_ = cumprod(1 ./ (1 .+ exp.(-u[1:dQ])))
-        return [kappaQ_[1]; diff(kappaQ_); 0.01u[dQ+1]; u[dQ+2:end]]
+        return [1 - exp(u[1]); -exp.(u[2:dQ]); u[dQ+1:end]]
     end
-    prob = [kappaQ[1]; kappaQ[2:end] ./ kappaQ[1:end-1]]
-    u = [log.(prob ./ (1 .- prob)); other_params(kQ_infty, phi, varFF, SigmaO)]
-    u[dQ+1] /= 0.01
-    opt = optimize(u -> -logpost(transform(u)), u, LBFGS(), Optim.Options(iterations=700, g_abstol=1e-5); autodiff=AutoForwardDiff())
+    u = [log(1 - kappaQ[1]); log.(-diff(kappaQ)); other_params(kQ_infty, phi, varFF, SigmaO)]
+    println("Optimizing posterior mode...")
+    flush(stdout)
+    opt = optimize(u -> -logpost(transform(u)), u, LBFGS(), Optim.Options(show_trace=true); autodiff=AutoForwardDiff())
     z_mode = transform(Optim.minimizer(opt))
+    println("Computing proposal Hessian...")
+    flush(stdout)
     objective = TwiceDifferentiable(z -> -logpost(z), z_mode; autodiff=AutoForwardDiff())
-    V = inv(cholesky(Symmetric(Optim.hessian!(objective, z_mode))))
-    V_other = cholesky(Symmetric(V[dQ+1:end, dQ+1:end]))
-    B = V[1:dQ, dQ+1:end] / V_other
-    V_cond = Matrix(Symmetric(V[1:dQ, 1:dQ] - B * V[dQ+1:end, 1:dQ]))
+    inv_hess = Symmetric(inv(Optim.hessian!(objective, z_mode)))
+    inv_V_other = inv(inv_hess[dQ+1:end, dQ+1:end])
+    B = inv_hess[1:dQ, dQ+1:end] * inv_V_other
+    V_cond = Matrix(Symmetric(inv_hess[1:dQ, 1:dQ] - B * inv_hess[dQ+1:end, 1:dQ]))
 
     # Conditional distribution of a joint Student t approximation (15 d.f.).
-    function proposal_dist(kQ_infty, phi, varFF, SigmaO)
-        delta = other_params(kQ_infty, phi, varFF, SigmaO) - z_mode[dQ+1:end]
+    function proposal_dist(kQ_infty_, phi_, varFF_, SigmaO_)
+        delta = other_params(kQ_infty_, phi_, varFF_, SigmaO_) - z_mode[dQ+1:end]
         df = 15 + length(delta)
-        scale = (15 + dot(delta, V_other \ delta)) / df
+        scale = (15 + delta' * inv_V_other * delta) / df
         return MvTDist(df, z_mode[1:dQ] + B * delta, scale * V_cond)
     end
 
     phi_mode, varFF_mode = copy(phi), copy(varFF)
-    for (i, idx) in enumerate(idxC)
-        phi_mode[idx[1], r+idx[2]] = z_mode[dQ+1+i]
+    for (i, idx) in enumerate(idxCQ)
+        phi_mode[idx[1], 1+p*dP+idx[2]] = z_mode[dQ+1+i]
     end
-    varFF_mode[1:dQ] = exp.(z_mode[idx_varFF])
+    varFF_mode[1:dQ] = exp.(z_mode[idx_varFFQ])
     SigmaO_mode = exp.(z_mode[idx_SigmaO])
     param_mode = Parameter(kappaQ=cumsum(z_mode[1:dQ]), kQ_infty=z_mode[dQ+1], phi=phi_mode, varFF=varFF_mode, SigmaO=SigmaO_mode, gamma=mean.(post_gamma(; gamma_bar, SigmaO=SigmaO_mode)))
     return proposal_dist, param_mode
