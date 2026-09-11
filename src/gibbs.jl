@@ -116,7 +116,7 @@ function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, ta
         end
         kappaQ_ = cumsum(z[1:dQ])
         logprior = sum(logpdf.(prior_kappaQ_, kappaQ_))
-        logprior == -Inf && return -Inf
+        !isfinite(logprior) && return -Inf
         CQ = Matrix{eltype(z)}(I, dQ, dQ)
         CQ[idxCQ] = z[dQ+2:last(idx_varFFQ)-dQ]
         varFFQ = exp.(z[idx_varFFQ])
