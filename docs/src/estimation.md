@@ -54,7 +54,7 @@ The algorithm has an inductive bias that the estimates should not deviate too mu
 In Step 1, we obtained `tuned::Hyperparameter`. [`posterior_sampler`](@ref) uses it for the estimation.
 
 ```julia
-saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[])
+saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], proposal_NM_maxiter=0)
 ```
 
 If you changed the default values in Step 1, the corresponding default values in the above function should also be changed. If you use the default values, the function simplifies to
@@ -64,6 +64,8 @@ saved_params, acceptPrMH = posterior_sampler(yields, macros, tau_n, rho, iterati
 ```
 
 `iteration` is the number of posterior samples to generate. By default, the AFNS sampler uses preset initial values, while the JSZ sampler is initialized using the optimized mode. Use `init_param::Parameter` to specify a starting point. Discard burn-in samples manually.
+
+Under the JSZ model, LBFGS is used to construct the proposal distribution for `kappaQ`. If this optimization performs poorly, use `proposal_NM_maxiter` to improve the starting point for LBFGS with Nelder-Mead. The default is 0; values greater than 0 enable Nelder-Mead and set its maximum number of iterations.
 
 `saved_params::Vector{Parameter}` has length `iteration`, and each entry is a posterior sample. `acceptPrMH` is a `dQ+1`-Vector, where the `i(<=dQ)`-th entry shows the MH acceptance rate for the i-th principal component in the recursive $\mathbb{P}$-VAR. The last entry of `acceptPrMH` is the MH acceptance rate for `kappaQ` under the unrestricted JSZ model. It is zero under the AFNS restriction.
 

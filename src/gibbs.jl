@@ -76,13 +76,14 @@ function post_kappaQ(yields, prior_kappaQ_, tau_n; kQ_infty, phi, varFF, SigmaO,
 end
 
 """
-    proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings)
-This function prepares the tailored independent MH proposal for `kappaQ` under the JSZ model. It computes an initial joint mode and Hessian after integrating out the VAR intercept and lag coefficients and `gamma`.
+    proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings, proposal_NM_maxiter=0)
+This function prepares the tailored independent MH proposal for `kappaQ` under the JSZ model. It uses LBFGS to find an initial joint mode and computes the corresponding Hessian after integrating out the VAR intercept and lag coefficients and `gamma`.
+If LBFGS performs poorly, set `proposal_NM_maxiter` to a value greater than 0 to use Nelder-Mead to improve its starting point. Its value sets the maximum number of Nelder-Mead iterations.
 # Output(2)
 - `proposal_dist(kQ_infty, phi, varFF, SigmaO)`: conditional Student t proposal for `[kappaQ[1]; diff(kappaQ)]`.
 - `param_mode::Parameter`: initial parameters based on the optimized mode.
 """
-function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings)
+function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, psi, psi_const, q, nu0, Omega0, gamma_bar, mean_kQ_infty, std_kQ_infty, fix_const_PC1, data_scale, pca_loadings, proposal_NM_maxiter=0)
 
     dQ, dP = length(kappaQ), length(varFF)
     p = Int(size(psi, 2) / dP)
@@ -142,6 +143,10 @@ function proposal_kappaQ2(yields, macros, mean_phi_const, rho, prior_kappaQ_, ta
     u = [log(1 - kappaQ[1]); log.(-diff(kappaQ)); other_params(kQ_infty, phi, varFF, SigmaO)]
     println("Optimizing posterior mode...")
     flush(stdout)
+    if proposal_NM_maxiter >= 1
+        opt = optimize(u -> -logpost(transform(u)), u, NelderMead(), Optim.Options(iterations=proposal_NM_maxiter, show_trace=true))
+        u = Optim.minimizer(opt)
+    end
     opt = optimize(u -> -logpost(transform(u)), u, LBFGS(), Optim.Options(show_trace=true); autodiff=AutoForwardDiff())
     z_mode = transform(Optim.minimizer(opt))
     println("Computing proposal Hessian...")
