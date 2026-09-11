@@ -747,13 +747,11 @@ function AR_res_var(TS::Vector, p)
 end
 
 """
-    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0, burnin=0, target_acceptance_rate=0.234)
+    posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0)
 This function samples from the posterior distribution.
 # Input
 - `tau_n`: observed maturities in strictly increasing order without duplicates; column `j` of `yields` must contain the yield at maturity `tau_n[j]`.
 - `iteration`: Number of posterior samples
-- `burnin`: Number of initial iterations used to adapt the JSZ `kappaQ` proposal scale. The scale is fixed afterward. These samples are included in the output.
-- `target_acceptance_rate`: Target acceptance rate for the JSZ `kappaQ` update, between 0 and 1. The default is 0.234.
 - `tuned`: Optimized hyperparameters used during estimation
 - `init_param`: Starting point of the sampler. It should be of type Parameter.
 - `psi_const` and `psi` are multiplied with prior variances of coefficients of the intercept and lagged regressors in the orthogonalized transition equation. They are used for imposing zero prior variances. An empty default value means that you do not use this function. `[psi_const psi][i,j]` corresponds to `phi[:,1:1+dP*p][i,j]`. `psi` should be a (dP × dP*p) matrix.
@@ -764,7 +762,7 @@ This function samples from the posterior distribution.
 # Output(2)
 `Vector{Parameter}(posterior, iteration)`, acceptance rate of the MH algorithm
 """
-function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0, burnin=0, target_acceptance_rate=0.234)
+function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperparameter; medium_tau=collect(24:3:48), init_param=[], psi=[], psi_const=[], gamma_bar=[], kappaQ_prior_pr=[], mean_kQ_infty=0, std_kQ_infty=0.1, fix_const_PC1=false, data_scale=1200, pca_loadings=[], kappaQ_proposal_mode=[], proposal_time_limit=300.0)
 
     p, q, nu0, Omega0, mean_phi_const = tuned.p, tuned.q, tuned.nu0, tuned.Omega0, tuned.mean_phi_const
     N = size(yields, 2) # of maturities
@@ -870,9 +868,6 @@ function posterior_sampler(yields, macros, tau_n, rho, iteration, tuned::Hyperpa
         else
             kappaQ, isaccept = post_kappaQ2(yields, prior_kappaQ_, tau_n; kappaQ, kQ_infty, phi, varFF, SigmaO, data_scale, inv_x_hess, pca_loadings)
             isaccept_MH[end] += isaccept
-            if iter <= burnin
-                inv_x_hess .*= exp((isaccept - target_acceptance_rate) / iter^0.6)
-            end
         end
 
         kQ_infty = rand(post_kQ_infty(mean_kQ_infty, std_kQ_infty, yields, tau_n; kappaQ, phi, varFF, SigmaO, data_scale, pca_loadings))
