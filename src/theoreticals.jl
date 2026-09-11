@@ -252,11 +252,14 @@ function _termPremium(τ, PCs, macros, bτ_, T0P_, T1X_; kappaQ, kQ_infty, KPF, 
 end
 
 """
-    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=false)
+    term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], decomp_yields=[], decomp_macros=[], is_parallel=false)
 This function generates posterior samples of the term premiums.
 # Input
 - Maturities of interest `tau_interest` for calculating `TP`, in strictly increasing order without duplicates.
 - `saved_params` from function `posterior_sampler`
+- `yields` and `macros`: data used to estimate `saved_params`.
+- `decomp_yields`: yield curves to decompose while keeping the estimated model fixed. Supported only for P-dynamics with `p=1`. They may differ from `yields` in sample length and observation frequency, but must have the same maturity columns in the same order as `yields` and `tau_n`. If the yield curves to decompose are the same as `yields`, leave both `decomp_yields` and `decomp_macros` as `[]`.
+- `decomp_macros`: required alongside `decomp_yields` if the model includes macros, and otherwise must be empty. They must have the same number of rows as `decomp_yields` and the same number/order of variables as `macros`. They cannot be supplied without `decomp_yields`.
 - `pca_loadings=Matrix{, dQ, size(yields, 2)}` stores the loadings for the first dQ principal components (so `principal_components = yields * pca_loadings'`), and you may optionally provide these loadings externally; if omitted, the package computes them internally via PCA.  ￼
 - `is_parallel` enables multi-threaded parallel computation when set to `true`.
 # Output(3)
@@ -266,7 +269,7 @@ This function generates posterior samples of the term premiums.
 - `saved_tv_EH::Vector{Array}(, iteration)`
 - Both the term premiums and expectation hypothesis components are decomposed into the time-invariant part and time-varying part. For the maturity `tau_interest[i]` and `j`-th posterior sample, the time-varying parts are saved in `saved_tv_TP[j][:, :, i]` and `saved_tv_EH[j][:, :, i]`. The time-varying parts driven by the `k`-th pricing factor are stored in `saved_tv_TP[j][:, k, i]` and `saved_tv_EH[j][:, k, i]`.
 """
-function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], is_parallel=false)
+function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200, pca_loadings=[], decomp_yields=[], decomp_macros=[], is_parallel=false)
 
     iteration = length(saved_params)
     saved_TP = Vector{TermPremium}(undef, iteration)
@@ -277,12 +280,25 @@ function term_premium(tau_interest, tau_n, saved_params, yields, macros; data_sc
     dP = size(saved_params[:phi][1], 1)
     p = Int((size(saved_params[:phi][1], 2) - 1) / dP - 1)
     PCs, ~, Wₚ, ~, mean_PCs = PCA(yields, p; pca_loadings)
+    if isempty(decomp_yields)
+        isempty(decomp_macros) || throw(ArgumentError("`decomp_macros` requires `decomp_yields`."))
+    else
+        p > 1 && throw(ArgumentError("`decomp_yields` is currently supported only when the estimated P-dynamics has lag order p = 1."))
+        size(decomp_yields, 2) == size(yields, 2) == length(tau_n) || throw(DimensionMismatch("`decomp_yields` and `yields` must have one column for each maturity in `tau_n`."))
+        isempty(macros) == isempty(decomp_macros) || throw(ArgumentError("With `decomp_yields`, `macros` and `decomp_macros` must either both be empty or both be nonempty."))
+        if !isempty(decomp_macros)
+            size(decomp_macros, 1) == size(decomp_yields, 1) || throw(DimensionMismatch("`decomp_macros` and `decomp_yields` must have the same number of rows."))
+            size(decomp_macros, 2) == size(macros, 2) || throw(DimensionMismatch("`decomp_macros` and `macros` must have the same number of columns."))
+        end
+        PCs = decomp_yields * Wₚ' .- mean_PCs'
+    end
+    macros_decomp = isempty(decomp_yields) ? macros : decomp_macros
     T = size(PCs, 1)
 
-    if isempty(macros)
+    if isempty(macros_decomp)
         indfactors = copy(PCs)
     else
-        indfactors = [PCs macros]
+        indfactors = [PCs macros_decomp]
     end
 
     factors = Matrix{Float64}(undef, T - p, dP * p + dP)

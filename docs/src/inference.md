@@ -35,4 +35,15 @@ fitted_yields = fitted_yieldcurve(tau_vec, saved_latent_params::Vector{LatentSpa
 saved_TP, saved_tv_TP, saved_tv_EH = term_premium(tau_interest, tau_n, saved_params, yields, macros; data_scale=1200)
 ```
 
+`yields` and `macros` are the data used to estimate `saved_params`. If the yield curves to decompose are the same as `yields`, leave both `decomp_yields` and `decomp_macros` as `[]`. To decompose another yield curve dataset while keeping the estimated model fixed, supply `decomp_yields` and, if the model includes macro variables, `decomp_macros`. For example:
+
+```julia
+saved_TP, saved_tv_TP, saved_tv_EH = term_premium(tau_interest, tau_n, saved_params, yields, macros;
+    data_scale=1200, decomp_yields=new_yields, decomp_macros=new_macros)
+```
+
+`decomp_yields` may have a different number of observations and a different observation frequency, but must use the same yield units/scaling and the same maturity columns in the same order as `yields` and `tau_n`. The PCA rotation, ordering, signs, and centering are determined from the estimation sample `yields`; the new yields are projected through that fixed transformation. The estimated model frequency, maturity units, `data_scale`, and P- and Q-dynamics remain unchanged. External decomposition data are supported only for P-dynamics with `p=1`; outputs exclude the first observation of that sample.
+
+When supplying `decomp_yields`, also supply `decomp_macros` if the model includes macro variables; otherwise leave `decomp_macros` empty. Its rows must match `decomp_yields`, and its columns must match the number and order of variables in `macros`. It cannot be supplied without `decomp_yields`.
+
 `saved_TP::Vector{TermPremium}` contains the results of the term premium calculations. Both the term premiums and expectation hypothesis components are decomposed into time-invariant and time-varying parts. For the maturity `tau_interest[i]`, the time-varying parts are saved in `saved_tv_TP[:, :, i]` and `saved_tv_EH[:, :, i]`. The time-varying parts driven by the `j`-th pricing factor are stored in `saved_tv_TP[:, j, i]` and `saved_tv_EH[:, j, i]`.

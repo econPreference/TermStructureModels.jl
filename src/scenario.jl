@@ -10,7 +10,7 @@ scenarios, a result of the posterior sampler, and data
 - `horizon`: maximum length of the predicted path. It should not be smaller than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
 - `yields`, `macros`: observed histories used for forecasting, ending at the forecast origin and containing at least `p` observations; their rows must refer to the same periods.
-- `yields_est=[]`: the yield data used to estimate `saved_params`. Specify it when the forecasting history differs from the estimation data; if empty, `yields` is used.
+- `yields_est`: the yield data used to estimate `saved_params`. Specify it when the forecasting history differs from the estimation data; if empty, `yields` is used.
 - `tau_n`: observed maturities in strictly increasing order without duplicates; columns of both `yields` and `yields_est` must follow that same order.
 - `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_forecast`. It is generally set as the result when `S` is empty. When provided, the scenario in `S` should be specified as deviations from `baseline` (i.e., the scenario path is expressed relative to `baseline`), and the output forecasts will also be returned as deviations from `baseline`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
@@ -442,7 +442,7 @@ scenarios, a result of the posterior sampler, and data
 - `horizon`: maximum length of the predicted path. It should not be smaller than `length(S)`.
 - `saved_params`: the first output of function `posterior_sampler`.
 - `yields`, `macros`: observed histories used for forecasting, ending at the forecast origin and containing at least `p` observations; their rows must refer to the same periods.
-- `yields_est=[]`: the yield data used to estimate `saved_params`. Specify it when the forecasting history differs from the estimation data; if empty, `yields` is used.
+- `yields_est`: the yield data used to estimate `saved_params`. Specify it when the forecasting history differs from the estimation data; if empty, `yields` is used.
 - `tau_n`: observed maturities in strictly increasing order without duplicates; columns of both `yields` and `yields_est` must follow that same order.
 - `baseline::Vector{Forecast}`: `baseline` is the output of `conditional_expectation`. It is generally set as the result when `S` is empty. When provided, the scenario in `S` should be specified as deviations from `baseline` (i.e., the scenario path is expressed relative to `baseline`), and the output forecasts will also be returned as deviations from `baseline`.
 - `mean_macros::Vector`: If you demeaned macro variables, you can input the mean of the macro variables. Then, the output will be generated in terms of the un-demeaned macro variables.
